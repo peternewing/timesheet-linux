@@ -19,14 +19,13 @@ A private Linux desktop app that records which applications you use, helps turn 
 
 Window titles are **off by default**. No account, server, subscription, keystroke logging or screenshots are required. The screenshots in this repository contain synthetic example data.
 
-## Linux compatibility research and next version
+## Candidate packages and installation
 
-A separate [0.3.0 compatibility candidate](https://github.com/peternewing/timesheet-linux/tree/linux-compatibility-0.3)
-adds experimental Plasma 6 Wayland and X11 adapters, safer reinstall behavior and
-diagnostics. The stable code on this branch remains unchanged. Read the
-[desktop compatibility matrix and PDF/AppImage/Flatpak roadmap](docs/LINUX_COMPATIBILITY.md)
-and [multi-distribution installation guide](docs/INSTALL.md) before trying it.
-Real Plasma/X11 acceptance is still required; universal Linux support is not claimed.
+The separate [0.3.0 candidate](https://github.com/peternewing/timesheet-linux/tree/linux-compatibility-0.3) adds Plasma, Sway, experimental Hyprland and X11 capture, PDF reports and invoice drafts. Your stable 0.2.0 installation remains available.
+
+See the [complete Linux installation guide](docs/INSTALL.md) for source, AppImage and Flatpak instructions, desktop setup, checksums, updates and rollback. Candidate x86-64 packages are attached to successful [GitHub Actions package runs](https://github.com/peternewing/timesheet-linux/actions/workflows/packages.yml?query=branch%3Alinux-compatibility-0.3); downloading artifacts requires a GitHub login. These are test builds, not signed releases or a Flathub listing.
+
+The [compatibility matrix](docs/LINUX_COMPATIBILITY.md) records tested sessions and remaining hardware and desktop limits.
 
 ## Linux compatibility
 

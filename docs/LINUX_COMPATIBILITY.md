@@ -12,12 +12,14 @@ No universal Wayland API exposes every application's foreground window.
 
 | Session | 0.2.0 | 0.3.0 candidate | Evidence / remaining validation |
 |---|---|---|---|
-| GNOME 50 Wayland | Automatic | Existing adapter preserved | Prior isolated GNOME 50.1 check; collector protocol regression |
+| GNOME 50 Wayland | Automatic | Existing adapter preserved | Real isolated GNOME Wayland fixture rechecked; collector protocol regression |
 | GNOME 45–49 / newer Shell | Manual | Manual until extension tested | Do not bypass extension version checks |
-| Plasma 6 Wayland | Manual | KWin helper + swayidle | Adapter unit/protocol tests; real Plasma session acceptance still required |
+| Plasma 6 Wayland | Manual | KWin helper + swayidle | Real headless KWin 6.6 Wayland focus and idle passed; hardware lock/suspend still pending |
 | Plasma 5 Wayland | Manual | Manual | Helper targets Plasma 6 API |
-| KDE / Xfce / Cinnamon / MATE / GNOME on X11 | Manual | python-xlib adapter | Requires EWMH, XScreenSaver and supported lock service; real desktop acceptance still required |
-| Sway / Hyprland / other Wayland | Manual | Manual | Need compositor-specific foreground adapters; never use Xwayland as a substitute |
+| KDE / Xfce / Cinnamon / MATE / GNOME on X11 | Manual | python-xlib adapter | Virtual X server test passed; requires EWMH, XScreenSaver and supported lock service; real desktop acceptance pending |
+| Sway Wayland | Manual | Sway IPC + swayidle | Real headless focus/idle passed; lock service simulated |
+| Hyprland Wayland | Manual | Hyprland IPC + swayidle | Mock tests passed; real GPU-backed session still needed |
+| Other Wayland | Manual | Manual | No universal foreground API; never use Xwayland as a substitute |
 | Headless / SSH / unspecified session | Manual UI if available | Capture unavailable | No graphical activity inferred |
 
 “Candidate” is not certification. In particular, a passing mock does not establish
@@ -41,6 +43,9 @@ can be considered reliable. libadwaita widgets work on KDE; they retain GTK styl
   observer gives approximate boundaries; short idle periods are treated as active.
 - Query the lock service separately. Missing lock or idle evidence yields unknown
   activity and stops task timers; it never silently means unlocked/active.
+- Sway/Hyprland use their compositor IPC plus swayidle and a supported D-Bus lock
+  service. If that lock service does not reflect the actual locker, capture must not
+  be trusted. Sway headless tested; Hyprland still requires real-session acceptance.
 - X11 uses EWMH `_NET_ACTIVE_WINDOW`, WM_CLASS and the XScreenSaver idle counter.
   App identifiers differ from GNOME display names; review assignment/exclusion
   rules when changing desktop. Window titles remain off in storage by default.
@@ -50,58 +55,32 @@ can be considered reliable. libadwaita widgets work on KDE; they retain GTK styl
   pause, title storage and autostart preferences. No automatic system upgrade,
   session restart or database replacement is performed.
 
-## Packaging recommendation
+## Distribution and PDF status
 
-**First: native source install with clear package commands and diagnostics.** It
-fits the existing host collector and per-user helpers. A versioned release archive
-and checksums are a useful next step; keep installation outside system directories.
+The candidate includes a source installer, a bundled x86-64 AppImage build and a
+Flatpak build. The AppImage is built on Ubuntu 24.04, requires glibc 2.39+ and keeps
+its launcher/service tied to the persistent image path. The Flatpak uses a separate
+host collector/helper and a narrow permission to the existing default data directory;
+it does not escape the sandbox to install host files. See [installation](INSTALL.md).
+The project has not published signed releases or a Flathub listing. Packages are
+candidate GitHub Actions artifacts. ARM64 Flatpak sources are specified but have not
+been built or tested; no ARM64 AppImage is currently produced.
 
-**Next: AppImage pilot**, before promising one-download installation. Bundle Python,
-PyGObject, GTK, libadwaita, typelibs and resources; build against the oldest supported
-base and separately for each architecture. Test FUSE and extraction execution,
-font rendering, portal file dialogs, X11 and Wayland. Host helpers still require
-installation. Copy the application to a persistent per-user location before writing
-systemd or desktop paths: an AppImage's temporary mount must never become a saved
-service path. AppImage does not make newer glibc binaries run on older systems.
+Saved reports export directly to PDF or to clearly labelled invoice draft PDFs, in
+addition to CSV and HTML. Invoice drafts accept seller/customer details, reference,
+dates and payment text, but do not calculate taxes, make legal claims or mark work
+billed. Data comes from the frozen report snapshot; exporting does not change it.
+PDF rendering uses embedded DejaVu Sans; writing systems outside its glyph coverage
+need further font support.
 
-**Then: Flatpak UI + a separately installed host collector.** Flatpak is attractive
-for consistent GTK libraries and software-center updates, but the current app writes
-host systemd/autostart/extension files and opens a host database directly. Packaging
-it unchanged is not a complete solution. Introduce a versioned, authenticated
-D-Bus interface for collector status/settings/data, use narrow talk-name permissions
-and document the host-helper install. Do not grant unrestricted session-bus access
-or a host-shell escape just to make the existing installer work. Plan explicit
-import/backup for the Flatpak XDG data location; never open two divergent databases
-silently. Flathub submission follows functional and permission review.
-
-No AppImage, Flatpak or Flathub release is currently published by this project.
-Do not advertise installation commands for nonexistent artifacts.
-
-## Suggested product improvements (priority order)
-
-1. **Direct PDF timesheet export from saved report snapshots.** Use the same frozen
-   amounts as CSV/HTML; choose a maintained PDF renderer with Unicode font embedding,
-   repeated table headers, page numbers and long-description wrapping. Test A4/Letter,
-   multi-page reports, GBP/EUR/USD, non-ASCII names and empty reports. Export must not
-   approve entries or mark invoices billed. Existing browser Print → Save as PDF works.
-2. **Invoice PDFs as a separate feature.** Add seller/customer addresses, invoice
-   number/date, due date, currency, payment details and configurable taxes/discounts.
-   Preserve issued snapshots and corrections. Avoid labelling a basic timesheet a tax
-   invoice; jurisdiction-specific invoice requirements need separate review.
-3. **In-app diagnostics and onboarding.** Show selected adapter, missing dependencies,
-   helper heartbeat, lock/idle availability and precise repair actions. Export a
-   sanitised diagnostic bundle with no titles, activity or database contents.
-4. **Installer/release polish.** Versioned packages, checksums, a stable launcher path,
-   backup before upgrade, explicit rollback and a release smoke-test matrix.
-5. **Desktop coverage.** Validate older GNOME extensions one version at a time, then
-   implement Sway IPC and Hyprland foreground adapters with idle and lock checks.
-6. **Billing usability.** Optional rounding policies displayed before approval,
-   XLSX export, keyboard/accessibility audit and configurable week starts.
+Further priorities: improve invoice tax/discount configuration with jurisdictional
+review; Sway and Hyprland foreground adapters; accessible keyboard workflows; XLSX
+export and configurable rounding; multi-architecture and long-duration testing.
 
 ## Acceptance gate before promoting 0.3.0
 
-Use disposable accounts/data on GNOME 50 Wayland, Plasma 6 Wayland and at least
-one EWMH X11 desktop. Exercise native and Xwayland apps, focus changes, title
+Continue testing disposable accounts/data on GNOME 50 Wayland, Plasma 6 Wayland and
+at least one EWMH X11 desktop. Headless KWin 6.6 focus and idle have passed locally. Exercise native and Xwayland apps, focus changes, title
 privacy, exclusions, idle cutoff, lock/unlock, suspend/resume, helper crash/restart,
 logout/login, missing dependencies, installation in a path with spaces, systemd
 and detached startup, upgrade/rollback, saved report equality and uninstall.
