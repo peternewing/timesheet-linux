@@ -28,11 +28,14 @@ PAGE_ICONS=('go-home-symbolic','x-office-calendar-symbolic','document-open-recen
 def fmt_duration(seconds):
     seconds=max(0,int(seconds))
     if seconds<60: return f'{seconds}s'
-    return f'{seconds//3600}h {(seconds%3600)//60:02d}m' if seconds>=3600 else f'{seconds//60}m {seconds%60:02d}s'
+    return f'{seconds//3600}h {(seconds%3600)//60:02d}m {seconds%60:02d}s' if seconds>=3600 else f'{seconds//60}m {seconds%60:02d}s'
 
 def fmt_timer(seconds):
     seconds=max(0,int(seconds))
     return f'{seconds//3600:02d}:{(seconds%3600)//60:02d}:{seconds%60:02d}'
+
+def set_changed_text(widget,text):
+    if widget.get_text()!=text: widget.set_text(text)
 
 def fmt_time(ts): return datetime.fromtimestamp(ts).strftime('%d %b %H:%M')
 def money(minor): return f'{Decimal(minor)/100:,.2f}'
@@ -122,6 +125,8 @@ class TimeSheet(Adw.Application):
         self.dialog_count=0; self.last_refresh=0; self.history_search=''; self.history_period='month'; self.history_status='all'
         self.dialogs=[]
         self.timer_label=None; self.timer_started=None
+        self.live_signature=None; self.today_metrics={}; self.today_apps={}; self.calendar_live={}; self.history_live={}
+        self.project_live={}; self.task_live={}; self.task_projects={}
         self.history_kind='tasks'
         self.activity_filter='all'; self.selected_entries=set(); self.selected_blocks=[]; self.rendered_signature=None
 
@@ -164,7 +169,7 @@ class TimeSheet(Adw.Application):
             body=margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=16),24)
             clamp.set_child(body); scroll.set_child(clamp); self.stack.add_named(scroll,name); setattr(self,'body_'+name.lower(),body)
         desktop.start_collector(); self.show_page('Today'); self.tick()
-        self.tick_source=GLib.timeout_add_seconds(1,self.tick)
+        self.tick_source=GLib.timeout_add(250,self.tick)
         self.timer_source=GLib.timeout_add(200,self.update_timer_display); self.win.present()
         for name,callback,keys in [
             ('today',lambda *_:self.show_page('Today'),['<Control>1']),
@@ -253,6 +258,7 @@ class TimeSheet(Adw.Application):
     def project_choices(self): return [(r['id'],f"{r['client']} / {r['name']}") for r in self.store.rows('SELECT p.*,c.name client FROM projects p JOIN clients c ON c.id=p.client_id WHERE p.archived=0 AND c.archived=0 ORDER BY c.name,p.name')]
     def show_page(self,name):
         self.page=name; self.stack.set_visible_child_name(name)
+        self.live_signature=None
         for n,b in self.nav.items():
             if n==name: b.add_css_class('selected')
             else: b.remove_css_class('selected')
@@ -267,11 +273,15 @@ class TimeSheet(Adw.Application):
             self.status.set_text(names.get(status,'Starting…'))
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
             if self.page=='Today':
-                signature=(rt['state'],rt['capture_status'],rt['app'],int(time.time())//15)
+                signature=(rt['state'],rt['capture_status'],rt['app'],datetime.now().date(),int(time.time())//15)
                 if signature!=self.rendered_signature and not self.dialog_count:
                     self.refresh_today(); self.rendered_signature=signature
             elif self.page=='Calendar' and not self.dialog_count and not self.selected_blocks and time.monotonic()-self.last_refresh>15:
                 self.refresh_calendar_details(); self.last_refresh=time.monotonic()
+            now=int(time.time())
+            signature=(self.page,rt['collector_seen'],rt['state'],rt['started'],now if rt['state']=='running' else None)
+            if signature!=self.live_signature:
+                self.update_live_counts(rt,now); self.live_signature=signature
         except (sqlite3.Error,OSError) as exc: self.status.set_text('Recording needs attention')
         return True
     def update_timer_display(self):
@@ -282,6 +292,61 @@ class TimeSheet(Adw.Application):
             if self.timer_button.get_label()!=text: self.timer_button.set_label(text)
             if self.timer_label is not None and self.timer_label.get_text()!=text: self.timer_label.set_text(text)
         return True
+    def update_live_counts(self,rt,now):
+        if self.page in ('Today','Calendar'):
+            day=datetime.fromtimestamp(now).date() if self.page=='Today' else self.day
+            start,end=day_bounds(day)
+            summary=self.store.day_summary(start,end,include_running=True,now=now)
+            if self.page=='Today':
+                for key,w in self.today_metrics.items(): set_changed_text(w,fmt_duration(summary[key]))
+                durations=dict(summary['apps'])
+                for name,(detail,progress) in self.today_apps.items():
+                    duration=durations.get(name,0); set_changed_text(detail,fmt_duration(duration))
+                    progress.set_fraction(duration/max(1,summary['active']))
+            else:
+                current=self.current_live_id(start,end)
+                if current!=self.calendar_seen_live and not self.selected_blocks and not self.dialog_count:
+                    self.refresh_calendar_details(); self.last_refresh=time.monotonic()
+                set_changed_text(self.calendar_summary,self.calendar_summary_text(summary))
+                self.calendar_timeline.records=self.store.activity_for(start,end); self.calendar_timeline.queue_draw()
+                self.update_live_rows(self.calendar_live)
+        elif self.page=='History' and self.history_kind=='usage':
+            start,end=self.history_bounds(); current=self.current_live_id(start,end)
+            if current!=self.history_seen_live and not self.dialog_count: self.history_update()
+            self.update_live_rows(self.history_live)
+        elif self.page=='Projects':
+            task_seconds={r['task_id']:r['seconds'] for r in self.store.rows('SELECT task_id,SUM(end-start) seconds FROM entries WHERE deleted=0 GROUP BY task_id')}
+            if rt['state']=='running' and rt['started'] is not None and now>rt['started']:
+                start=rt['started']
+                overlaps=self.store.entries(start,now)
+                live=now-start-sum(max(0,min(now,r['end'])-max(start,r['start'])) for r in overlaps)
+                task_seconds[rt['task_id']]=task_seconds.get(rt['task_id'],0)+live
+            project_seconds={}
+            for task_id,seconds in task_seconds.items():
+                project_id=self.task_projects.get(task_id)
+                if project_id is not None: project_seconds[project_id]=project_seconds.get(project_id,0)+seconds
+            for project_id,(detail,budget,progress) in self.project_live.items():
+                seconds=project_seconds.get(project_id,0); set_changed_text(detail,self.project_detail(seconds,budget))
+                if progress: progress.set_fraction(min(1,seconds/budget))
+            for task_id,(detail,budget) in self.task_live.items(): set_changed_text(detail,self.task_detail(task_seconds.get(task_id,0),budget))
+    def update_live_rows(self,rows):
+        for aid,(detail,format_detail) in rows.items():
+            record=self.store.db.execute('SELECT * FROM activity WHERE id=?',(aid,)).fetchone()
+            if record: set_changed_text(detail,format_detail(record))
+    def current_live_id(self,start,end):
+        row=self.store.db.execute('SELECT id FROM activity WHERE closed=0 AND start<? AND end>? ORDER BY id DESC LIMIT 1',(end,start)).fetchone()
+        return row['id'] if row else None
+    def calendar_summary_text(self,summary):
+        return f"Active {fmt_duration(summary['active'])} · Assigned {fmt_duration(summary['assigned'])} · Unassigned {fmt_duration(summary['unassigned'])} · Away {fmt_duration(summary['away'])}"
+    def project_detail(self,seconds,budget):
+        detail='Spent '+fmt_duration(seconds)
+        if budget is not None:
+            delta=budget-seconds; detail+=' · Budget '+fmt_duration(budget)+' · '+(fmt_duration(delta)+' remaining' if delta>=0 else fmt_duration(-delta)+' over budget')
+        return detail
+    def task_detail(self,seconds,budget):
+        detail=fmt_duration(seconds)+' recorded'
+        if budget is not None: detail+=' · '+fmt_duration(budget)+' budget'
+        return detail
     def toggle_capture(self,*_):
         paused=self.store.get('capture_enabled','0')!='1'
         desktop.set_paused(self.store,not paused); desktop.start_collector(); self.tick(); self.show_page(self.page)
@@ -299,7 +364,8 @@ class TimeSheet(Adw.Application):
 
     def refresh_today(self):
         self.timer_label=None
-        b=self.body_today; self.clear(b); now=int(time.time()); start,end=day_bounds(datetime.now().date()); rt=self.store.runtime(); summary=self.store.day_summary(start,end)
+        b=self.body_today; self.clear(b); now=int(time.time()); start,end=day_bounds(datetime.now().date()); rt=self.store.runtime(); summary=self.store.day_summary(start,end,include_running=True,now=now)
+        self.today_metrics={}; self.today_apps={}
         self.timer_started=rt['started'] if rt['state']=='running' else None; self.update_timer_display()
         self.heading(b,'Today',datetime.now().strftime('%A, %d %B')+' · Review your day and record your work')
         if not self.task_choices():
@@ -315,8 +381,8 @@ class TimeSheet(Adw.Application):
         else:
             self.row(b,'Now using '+(rt['app'] or 'your desktop'),'Away and locked time are kept separate from active work.', [('Pause 15 min',lambda _:self.pause_for(15))])
         metrics=Gtk.Box(spacing=12,homogeneous=True)
-        for value,title in [(summary['active'],'Active desktop use'),(summary['assigned'],'Assigned to tasks'),(summary['unassigned'],'Needs assignment')]:
-            card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); card.add_css_class('card'); card.append(label(fmt_duration(value),'metric')); card.append(label(title,'dim-label')); metrics.append(card)
+        for key,title in [('active','Active desktop use'),('assigned','Assigned to tasks'),('unassigned','Needs assignment')]:
+            card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); card.add_css_class('card'); value=label(fmt_duration(summary[key]),'metric'); card.append(value); self.today_metrics[key]=value; card.append(label(title,'dim-label')); metrics.append(card)
         b.append(metrics)
         bar=action_bar(); b.append(bar)
         bar.append(button('Review today',lambda _:self.review_today(),True)); bar.append(button('Add time',lambda _:self.entry_dialog())); bar.append(button('New project',self.quick_setup))
@@ -341,6 +407,7 @@ class TimeSheet(Adw.Application):
         for app,duration in summary['apps'][:8]:
             card=self.row(b,app,fmt_duration(duration),[('Assign usage',lambda _,a=app:self.assign_app(a,start,end))])
             progress=Gtk.ProgressBar(fraction=duration/max(1,summary['active'])); card.append(progress)
+            self.today_apps[app]=(card.get_first_child().get_next_sibling(),progress)
     def dismiss_notice(self,notice_id):
         with self.store.db: self.store.db.execute('UPDATE notices SET read=1 WHERE id=?',(notice_id,))
     def review_today(self): self.day=datetime.now().date(); self.activity_filter='unassigned'; self.show_page('Calendar')
@@ -451,10 +518,10 @@ class TimeSheet(Adw.Application):
     def set_activity_filter(self,value): self.activity_filter=value; self.selected_blocks=[]; self.refresh_calendar_details()
     def jump_today(self): self.day=datetime.now().date(); self.show_page('Calendar')
     def refresh_calendar_details(self):
-        b=self.calendar_detail; self.clear(b); start,end=day_bounds(self.day); summary=self.store.day_summary(start,end)
-        self.heading(b,self.day.strftime('%A, %d %B'),f"Active {fmt_duration(summary['active'])} · Assigned {fmt_duration(summary['assigned'])} · Unassigned {fmt_duration(summary['unassigned'])} · Away {fmt_duration(summary['away'])}")
+        b=self.calendar_detail; self.clear(b); start,end=day_bounds(self.day); summary=self.store.day_summary(start,end,include_running=True)
+        self.calendar_live={}; self.calendar_seen_live=self.current_live_id(start,end); self.heading(b,self.day.strftime('%A, %d %B'),self.calendar_summary_text(summary)); self.calendar_summary=b.get_last_child()
         records=self.store.activity_for(start,end)
-        b.append(Timeline(start,end,records))
+        self.calendar_timeline=Timeline(start,end,records); b.append(self.calendar_timeline)
         if self.activity_filter!='unassigned':
             bar=Gtk.Box(spacing=8); b.append(bar); bar.append(label('Task entries','title-3')); bar.append(button('Add time',lambda _:self.entry_dialog(start=int(datetime.combine(self.day,datetime.min.time()).replace(hour=9).timestamp()),end=int(datetime.combine(self.day,datetime.min.time()).replace(hour=10).timestamp()))))
             entries=self.store.entries(start,end)
@@ -485,6 +552,12 @@ class TimeSheet(Adw.Application):
                 else: detail+=' · Assigned'
             elif group['state']=='personal': actions=[('Return to review',lambda _,g=group:self.run_action(lambda:self.store.set_personal([r['id'] for r in g['blocks']],False)))]
             card=self.row(b,name or 'Desktop',detail,actions)
+            if live:
+                first=group['start']; start_text=datetime.fromtimestamp(first).strftime('%H:%M:%S')
+                def format_live(r,first=first,start_text=start_text,limit=end):
+                    finish=min(r['end'],limit)
+                    return f"{start_text} – {datetime.fromtimestamp(finish):%H:%M:%S} · {fmt_duration(finish-first)}"+(' · Live' if not r['closed'] else '')
+                self.calendar_live[group['blocks'][-1]['id']]=(card.get_first_child().get_next_sibling(),format_live)
             if group['state'] in ('active','away') and not live and remaining:
                 cb=Gtk.CheckButton(label='Select activity')
                 def changed(w,g=group['blocks']):
@@ -521,9 +594,11 @@ class TimeSheet(Adw.Application):
         results=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); b.append(results)
         def update(*_):
             self.history_kind=selected(kind);self.history_period=selected(period); self.history_status=selected(status); self.history_search=search.get_text(); self.selected_entries=set(); self.history_checks=[]; self.history_draft_ids=set(); self.clear(results)
+            self.history_live={}
             usage=self.history_kind=='usage';controls.set_visible(not usage);selection_bar.set_visible(not usage);selection_count.set_visible(not usage);status.set_sensitive(not usage)
             search.set_placeholder_text('Search app, window title or activity state' if usage else 'Search client, project, task or description')
             a,z=self.history_bounds(); rows=self.store.entries(a,z,status=None if self.history_status=='all' else self.history_status,search=self.history_search)
+            self.history_seen_live=self.current_live_id(a,z)
             if usage:
                 source=self.store.activity_for(a,z);needle=self.history_search.casefold()
                 groups=group_activity([r for r in source if needle in (r['app']+' '+r['title']+' '+r['state']).casefold()])
@@ -531,7 +606,11 @@ class TimeSheet(Adw.Application):
                 for group in groups[:200]:
                     date=datetime.fromtimestamp(group['start']).date()
                     def open_day(_,day=date):self.day=day;self.activity_filter='all';self.show_page('Calendar')
-                    self.row(results,group['app'] or group['state'].capitalize(),f"{fmt_time(group['start'])} – {datetime.fromtimestamp(group['end']):%H:%M} · {fmt_duration(group['end']-group['start'])} · {group['state']}"+('\n'+group['title'] if group['title'] else ''),[('Review day',open_day)])
+                    def format_usage(r,first=group['start'],limit=z):
+                        finish=min(r['end'],limit)
+                        return f"{fmt_time(first)} – {datetime.fromtimestamp(finish):%H:%M:%S} · {fmt_duration(finish-first)} · {r['state']}"+(' · Live' if not r['closed'] else '')+('\n'+r['title'] if r['title'] else '')
+                    card=self.row(results,group['app'] or group['state'].capitalize(),format_usage(group),[('Review day',open_day)])
+                    if not group['closed']: self.history_live[group['blocks'][-1]['id']]=(card.get_first_child().get_next_sibling(),format_usage)
                 if not groups:self.empty(results,'No matching usage','Try another app name or period.')
                 if len(groups)>200:results.append(label('Showing the first 200 groups. Narrow the search or period.'))
                 return
@@ -540,11 +619,13 @@ class TimeSheet(Adw.Application):
             for r in rows[:200]: self.entry_row(results,r,True)
             if not rows: self.empty(results,'No matching time','Try another period or record your first task.')
             if len(rows)>200: results.append(label('Showing the most recent 200 matches. Narrow the search or period.'))
+        self.history_update=update
         kind.connect('notify::selected',update);period.connect('notify::selected',update); status.connect('notify::selected',update); search.connect('search-changed',update); update()
         exp=Gtk.Expander(label='Recent changes'); changes=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); exp.set_child(changes)
         for r in self.store.rows('SELECT * FROM audit ORDER BY id DESC LIMIT 30'): changes.append(label(f"{fmt_time(r['at'])} · {r['action']}"))
         b.append(exp)
     def refresh_projects(self):
+        self.project_live={}; self.task_live={}; self.task_projects={}
         b=self.body_projects; self.clear(b); self.heading(b,'Projects','See where your hours went and how much budget remains.')
         tools=Gtk.Box(spacing=8); b.append(tools); tools.append(button('New project',self.quick_setup,True)); tools.append(button('Add client',lambda _:self.client_dialog())); tools.append(button('Add task',lambda _:self.task_dialog()))
         clients=self.store.rows('SELECT * FROM clients ORDER BY archived,name')
@@ -557,17 +638,17 @@ class TimeSheet(Adw.Application):
             self.row(b,title,rate,actions)
             for project in self.store.rows('SELECT * FROM projects WHERE client_id=? ORDER BY archived,name',(client['id'],)):
                 seconds=self.store.db.execute('SELECT COALESCE(SUM(e.end-e.start),0) FROM entries e JOIN tasks t ON e.task_id=t.id WHERE e.deleted=0 AND t.project_id=?',(project['id'],)).fetchone()[0]
-                detail='Spent '+fmt_duration(seconds)
-                if project['budget'] is not None:
-                    delta=project['budget']-seconds; detail+=' · Budget '+fmt_duration(project['budget'])+' · '+(fmt_duration(delta)+' remaining' if delta>=0 else fmt_duration(-delta)+' over budget')
+                detail=self.project_detail(seconds,project['budget'])
                 card=self.row(b,project['name']+(' · Archived' if project['archived'] else ''),detail,[('Edit project',lambda _,r=project:self.project_dialog(r))])
+                progress=None
                 if project['budget']:
-                    card.append(Gtk.ProgressBar(fraction=min(1,seconds/project['budget'])))
+                    progress=Gtk.ProgressBar(fraction=min(1,seconds/project['budget'])); card.append(progress)
+                self.project_live[project['id']]=(card.get_first_child().get_next_sibling(),project['budget'],progress)
                 tasks=self.store.rows('SELECT t.*,COALESCE((SELECT SUM(e.end-e.start) FROM entries e WHERE e.deleted=0 AND e.task_id=t.id),0) spent FROM tasks t WHERE project_id=? ORDER BY archived,name',(project['id'],))
                 for task in tasks:
-                    detail=fmt_duration(task['spent'])+' recorded'
-                    if task['budget'] is not None: detail+=' · '+fmt_duration(task['budget'])+' budget'
-                    self.row(b,'  '+task['name']+(' · Archived' if task['archived'] else ''),detail,[('Edit task',lambda _,r=task:self.task_dialog(r))])
+                    detail=self.task_detail(task['spent'],task['budget'])
+                    card=self.row(b,'  '+task['name']+(' · Archived' if task['archived'] else ''),detail,[('Edit task',lambda _,r=task:self.task_dialog(r))])
+                    self.task_live[task['id']]=(card.get_first_child().get_next_sibling(),task['budget']); self.task_projects[task['id']]=project['id']
     def client_dialog(self,row=None):
         def build(b):
             n=field(b,'Client name',row['name'] if row else ''); c=field(b,'Currency code (GBP, EUR or USD)',row['currency'] if row else 'GBP'); rate=field(b,'Default hourly rate',f"{row['rate']/100:.2f}" if row and row['rate'] is not None else '', 'e.g. 60.00')
