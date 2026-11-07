@@ -770,7 +770,7 @@ class TimeSheet(Adw.Application):
         self.dialogs.append(w); self.dialog_count=len(self.dialogs)
         w.connect('close-request',lambda *_:self.dialog_closed(w))
         box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL); w.set_content(box); head=Adw.HeaderBar(); box.append(head)
-        head.pack_start(button('CSV',lambda _:self.export_report(rid,'csv'))); head.pack_start(button('Printable report',lambda _:self.export_report(rid,'html')))
+        head.pack_start(button('PDF',lambda _:self.export_report(rid,'pdf'))); head.pack_start(button('Invoice PDF',lambda _:self.invoice_pdf_dialog(rid))); head.pack_start(button('CSV',lambda _:self.export_report(rid,'csv'))); head.pack_start(button('Printable report',lambda _:self.export_report(rid,'html')))
         if self.report_state(rid)=='Ready to bill': head.pack_end(button('Mark billed',lambda _:self.bill_dialog(rid,w),True))
         billing=self.store.db.execute('SELECT * FROM report_billing WHERE report_id=?',(rid,)).fetchone()
         if billing and billing['state']=='billed': head.pack_end(button('Record correction',lambda _:self.correct_report_dialog(rid,w)))
@@ -811,7 +811,27 @@ class TimeSheet(Adw.Application):
                 except (ValueError,sqlite3.Error,OSError) as exc: self.error(exc)
             c.destroy()
         chooser.connect('response',response); chooser.show()
+    def invoice_pdf_dialog(self,rid):
+        def build(b):
+            b.append(label('Create a draft invoice PDF from this saved report. No tax is calculated; review before issuing. Export does not mark work billed.'))
+            return [field(b,title,value) for title,value in [
+                ('Invoice reference',''),('Seller name and address',''),
+                ('Customer name and address',self.store.report(rid)[0]['client']),
+                ('Issue date (YYYY-MM-DD)',datetime.now().strftime('%Y-%m-%d')),
+                ('Due date (YYYY-MM-DD)',datetime.now().strftime('%Y-%m-%d')),('Payment details','')]]
+        def save(fields):
+            from .pdf_export import report_pdf,write_pdf
+            invoice=dict(zip(('number','seller','customer','issued','due','payment'),[w.get_text() for w in fields]))
+            content=report_pdf(self.store.report(rid),rid,invoice=invoice)
+            GLib.idle_add(lambda:(self.save_file('Save invoice draft',f'invoice-draft-{rid}.pdf',lambda path:write_pdf(path,content)),False)[1])
+        self.dialog('Invoice PDF',build,save)
+
     def export_report(self,rid,kind):
+        if kind=='pdf':
+            from .pdf_export import report_pdf,write_pdf
+            content=report_pdf(self.store.report(rid),rid)
+            self.save_file('Save PDF report',f'timesheet-{rid}.pdf',lambda path:write_pdf(path,content))
+            return
         content=self.store.csv_report(rid) if kind=='csv' else self.store.html_report(rid)
         self.save_file('Save report',f'timesheet-{rid}.{kind}',lambda p:Path(p).write_text(content,encoding='utf-8'))
     def refresh_settings(self):
@@ -819,11 +839,15 @@ class TimeSheet(Adw.Application):
         available=desktop.capture_available()
         if available: self.row(b,'Automatic tracking is ready','The desktop capture adapter is connected. App names are recorded; window titles are optional.')
         elif desktop.supported_desktop(): self.row(b,'Finish automatic tracking setup','Check desktop dependencies and helper activation in docs/INSTALL.md. After installation, save your work and sign out and back in once.',[('Install / repair setup',lambda _:self.install_setup())])
-        else: self.row(b,'Manual timesheet mode','Capture needs GNOME 50, Plasma 6 with its helper and swayidle, or X11 with python-xlib. Other desktops support manual timers and reports.')
+        else: self.row(b,'Manual timesheet mode','Capture needs a supported desktop adapter and reliable idle and lock services. Check the installation guide; manual timers and reports remain available.')
         tracking=Adw.PreferencesGroup(title='Tracking'); b.append(tracking)
         capture=Adw.SwitchRow(title='Track desktop usage automatically',subtitle='Record the foreground app, excluding idle and locked time'); capture.set_active(self.store.get('capture_enabled','0')=='1'); tracking.add(capture)
         titles=Adw.SwitchRow(title='Include window titles',subtitle='Titles can include document names and other sensitive information'); titles.set_active(self.store.get('capture_titles','0')=='1'); tracking.add(titles)
-        startup=Adw.SwitchRow(title='Start when I sign in',subtitle='Keep recording when the main window closes'); startup.set_active(desktop.AUTOSTART.exists()); tracking.add(startup)
+        startup=None
+        if not desktop.FLATPAK:
+            startup=Adw.SwitchRow(title='Start when I sign in',subtitle='Keep recording when the main window closes'); startup.set_active(desktop.AUTOSTART.exists()); tracking.add(startup)
+        else:
+            b.append(label('Startup is managed by the host companion.','dim-label'))
         backups=Adw.SwitchRow(title='Automatic daily backups',subtitle='Keep seven daily copies on this computer'); backups.set_active(self.store.get('auto_backup','1')=='1'); tracking.add(backups)
         exclusions=field(b,'Excluded applications',self.store.get('excluded_apps',''),'Exact app names separated by commas')
         idle=field(b,'Idle threshold in minutes',str(int(self.store.get('idle_seconds','300'))//60))
@@ -836,7 +860,8 @@ class TimeSheet(Adw.Application):
                 if not 1<=minutes<=240 or not 1<=days<=3650: raise ValueError('Idle: 1–240 minutes. Retention: 1–3650 days.')
                 desktop.set_paused(self.store,not capture.get_active())
                 for key,value in [('capture_titles',int(titles.get_active())),('excluded_apps',exclusions.get_text()),('idle_seconds',minutes*60),('retention_days',days),('auto_backup',int(backups.get_active()))]: self.store.set(key,value)
-                desktop.set_autostart(startup.get_active()); desktop.start_collector()
+                if startup is not None: desktop.set_autostart(startup.get_active())
+                desktop.start_collector()
             self.run_action(apply,lambda _:self.toast('Preferences saved'))
         b.append(button('Save preferences',save,True))
         self.heading(b,'Data and recovery')
@@ -847,7 +872,8 @@ class TimeSheet(Adw.Application):
         actions.append(button('Open data folder',lambda _:Gio.AppInfo.launch_default_for_uri(DATA_DIR.as_uri(),None)))
         b.append(button('Delete activity for a period',lambda _:self.delete_period_dialog()))
         b.append(label('Deletion removes captured app details from this database. Task entries, reports and older backups remain. Database files are not encrypted.','dim-label'))
-        b.append(button('Stop background tracking',lambda _:self.confirm('Stop tracking?', 'Recording stops until you open the app or sign in again.',self.stop_collector)))
+        if not desktop.FLATPAK: b.append(button('Stop background tracking',lambda _:self.confirm('Stop tracking?', 'Recording stops until you open the app or sign in again.',self.stop_collector)))
+        else: b.append(label('The host companion manages automatic capture and startup. See the Flatpak installation guide.','dim-label'))
     def install_setup(self):
         self.run_action(lambda:desktop.install(),lambda result:self.info('Setup installed','Desktop capture dependencies are missing or this desktop is unsupported. See docs/INSTALL.md; manual timesheets remain available.' if result['manual_only'] else 'Sign out and back in once to activate your desktop helper; check tracking status afterwards.' if result['needs_sign_in'] else 'Automatic tracking is ready.'))
     def stop_collector(self): desktop.stop_collector()
@@ -927,6 +953,7 @@ def main():
     parser.add_argument('--diagnose',action='store_true',help='Print privacy-safe Linux compatibility diagnostics')
     parser.add_argument('--install',action='store_true',help='Install desktop launcher, GNOME helper and background startup')
     parser.add_argument('--uninstall',action='store_true',help='Remove desktop integration, keeping timesheet data')
+    parser.add_argument('--collector-direct',action='store_true',help=argparse.SUPPRESS)
     parser.add_argument('--background',action='store_true',help='Start the background collector')
     parser.add_argument('--pause',action='store_true',help='Pause automatic tracking')
     parser.add_argument('--resume',action='store_true',help='Resume automatic tracking')
@@ -938,6 +965,9 @@ def main():
     if args.install:
         result=desktop.install(); print(json.dumps(result,indent=2)); return 0
     if args.uninstall: print(desktop.uninstall()); return 0
+    if args.collector_direct:
+        from .collector import run
+        run(); return 0
     if args.background: desktop.start_collector(); return 0
     if args.pause or args.resume or args.status:
         store=Store()

@@ -1,0 +1,66 @@
+name: Candidate Linux packages
+on:
+  push:
+    branches: [linux-compatibility-0.3]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  appimage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-gi python3-gi-cairo python3-cairo python3-reportlab python3-pil python3-xlib gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-graphene-1.0 fonts-dejavu-core librsvg2-common libfuse2 xvfb xauth
+      - name: Download verified packaging tools
+        run: |
+          curl -fsSL -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          echo 'ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  /tmp/appimagetool' | sha256sum -c -
+          chmod +x /tmp/appimagetool
+          curl -fsSL -o /tmp/runtime-x86_64 https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
+          echo '2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d  /tmp/runtime-x86_64' | sha256sum -c -
+      - name: Build AppImage
+        run: |
+          /usr/bin/python3 packaging/appimage/build.py /tmp/AppDir
+          mkdir -p dist
+          ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 /tmp/appimagetool --runtime-file /tmp/runtime-x86_64 --mksquashfs-opt -processors --mksquashfs-opt 2 /tmp/AppDir dist/TimeSheetLinux-x86_64.AppImage
+          (cd dist && sha256sum TimeSheetLinux-x86_64.AppImage > AppImage-SHA256SUMS)
+      - name: Smoke test AppImage
+        run: |
+          APPIMAGE_EXTRACT_AND_RUN=1 dist/TimeSheetLinux-x86_64.AppImage --version
+          APPIMAGE_EXTRACT_AND_RUN=1 dist/TimeSheetLinux-x86_64.AppImage --diagnose
+          export APPIMAGE_EXTRACT_AND_RUN=1 TIMESHEET_TESTING=1 XDG_DATA_HOME=/tmp/appimage-data GDK_BACKEND=x11
+          xvfb-run -a timeout 10 dist/TimeSheetLinux-x86_64.AppImage || test "$?" = 124
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TimeSheetLinux-AppImage-x86_64
+          path: |
+            dist/TimeSheetLinux-x86_64.AppImage
+            dist/AppImage-SHA256SUMS
+  flatpak:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flatpak tools and SDK
+        run: |
+          sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive flathub org.gnome.Platform//49 org.gnome.Sdk//49
+      - name: Build Flatpak
+        run: |
+          flatpak-builder --force-clean --user --repo=/tmp/ts-repo /tmp/ts-build packaging/flatpak/org.local.TimeSheetLinux.yml
+          mkdir -p dist
+          flatpak build-bundle /tmp/ts-repo dist/TimeSheetLinux-x86_64.flatpak org.local.TimeSheetLinux --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+          (cd dist && sha256sum TimeSheetLinux-x86_64.flatpak > Flatpak-SHA256SUMS)
+      - name: Smoke test bundled PDF exporter
+        run: |
+          flatpak install --user -y --noninteractive dist/TimeSheetLinux-x86_64.flatpak
+          mkdir -p /tmp/ts-runtime && chmod 700 /tmp/ts-runtime
+          export XDG_RUNTIME_DIR=/tmp/ts-runtime
+          dbus-run-session -- flatpak run --user --no-documents-portal --env=TIMESHEET_TESTING=1 --command=python3 org.local.TimeSheetLinux -c 'from timesheet.pdf_export import report_pdf; r={"client":"Client","project":"Project","task":"Task","description":"Test","start":0,"end":3600,"rate":6000,"amount":6000,"currency":"GBP"}; assert report_pdf([r],1).startswith(b"%PDF")'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TimeSheetLinux-Flatpak-x86_64
+          path: |
+            dist/TimeSheetLinux-x86_64.flatpak
+            dist/Flatpak-SHA256SUMS

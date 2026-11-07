@@ -4,9 +4,81 @@
 
 Python 3.10+, PyGObject, GTK 4 and libadwaita 1.5+ are required. GNOME 50
 Wayland is the previously exercised automatic-capture target. The 0.3.0 candidate
-adds experimental Plasma 6 Wayland and X11 adapters. They require real-session
-acceptance testing before promotion. Other Wayland desktops retain manual mode.
+adds Plasma 6, Sway and Hyprland Wayland adapters and an X11 adapter. Real
+headless Plasma and Sway focus/idle tests have passed; Hyprland and full hardware
+lock/suspend testing remain pending. Other Wayland desktops retain manual mode.
 See the [compatibility matrix and research](LINUX_COMPATIBILITY.md).
+
+## Choose an installation method
+
+The candidate's successful [package workflow](https://github.com/peternewing/timesheet-linux/actions/workflows/packages.yml?query=branch%3Alinux-compatibility-0.3)
+provides **TimeSheetLinux-AppImage-x86_64** and **TimeSheetLinux-Flatpak-x86_64**
+artifacts. Open a successful run, download and unzip the artifact and its checksum.
+GitHub requires you to sign in to download Actions artifacts. These are candidate
+builds, not signed releases or a Flathub listing. Read the desktop setup below and
+back up your existing database before switching. Source installation remains available.
+
+### AppImage (x86-64)
+
+Built on Ubuntu 24.04 with bundled Python, GTK, libadwaita, PDF and X11 libraries.
+It requires a compatible x86-64 Linux host with glibc 2.39 or newer and a desktop
+session; it is not guaranteed on older systems. Move the image to a folder you intend
+to keep, then from that folder:
+
+```sh
+sha256sum -c AppImage-SHA256SUMS
+chmod +x TimeSheetLinux-x86_64.AppImage
+./TimeSheetLinux-x86_64.AppImage --diagnose
+./TimeSheetLinux-x86_64.AppImage
+# Optional: install launcher and background service for the current user
+./TimeSheetLinux-x86_64.AppImage --install
+```
+
+The service and launcher point to this **persistent AppImage path**, not its temporary
+mount. Do not move or delete the image after `--install`; if you do, rerun `--install`
+from its new location. If FUSE is unavailable, run the same commands with
+`APPIMAGE_EXTRACT_AND_RUN=1` before `./TimeSheetLinux-x86_64.AppImage`. Automatic
+capture still needs the relevant GNOME extension or KWin helper and `swayidle` on the
+host (see below). The image contains PDF dependencies. It uses the existing database.
+
+### Flatpak (x86-64)
+
+Install Flatpak using your distribution's official instructions, then from the
+folder containing the downloaded files:
+
+```sh
+sha256sum -c Flatpak-SHA256SUMS
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user ./TimeSheetLinux-x86_64.flatpak
+flatpak run --user org.local.TimeSheetLinux
+```
+
+The bundle downloads the GNOME 49 runtime from Flathub. It contains the interface and
+PDF dependencies. It accesses the existing **default** data folder
+`~/.local/share/time-sheet-linux` through a narrow filesystem permission. Do not use
+this bundle with a customised `XDG_DATA_HOME` until you have explicitly migrated and
+verified a backup: it will otherwise see a different database. Run one UI at a time.
+
+For automatic tracking, a host companion is required because a sandbox cannot install
+or supervise desktop helpers on your behalf. Keep a source checkout in a permanent
+folder and install the GTK-free host collector from your normal desktop session:
+
+```sh
+git clone --branch linux-compatibility-0.3 https://github.com/peternewing/timesheet-linux.git timesheet-linux-host
+cd timesheet-linux-host
+# Ubuntu/Debian; use the equivalent python3-gi package on other distributions
+sudo apt install python3-gi
+./run-host --install
+```
+
+Plasma also needs `swayidle` and `kwriteconfig6`; Sway or Hyprland needs
+`swayidle` and its compositor IPC command (`swaymsg` or `hyprctl`); X11 needs python-xlib. Sign out/in
+if needed. The companion installs the per-user service, startup and applicable
+compositor helper; it does not replace an existing application-menu launcher. Startup
+is managed on the host. To restore an older native installation, rerun `./install.sh`
+from its original checkout. Flatpak removal retains the shared host data and the host
+companion; remove the companion from its source checkout using `./uninstall.sh` only
+if you also want to remove the native desktop integration.
 
 ## Install distribution dependencies
 
@@ -17,7 +89,7 @@ Ubuntu 24.04+ / Debian 13+ (older releases may lack libadwaita 1.5):
 
 ```sh
 sudo apt update
-sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1
+sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 python3-reportlab fonts-dejavu-core
 # Optional: for the 0.3.0 X11 adapter
 sudo apt install python3-xlib
 # Optional: for the 0.3.0 Plasma 6 Wayland adapter
@@ -27,7 +99,7 @@ sudo apt install swayidle
 Fedora (supported release):
 
 ```sh
-sudo dnf install git python3-gobject python3-cairo gtk4 libadwaita
+sudo dnf install git python3-gobject python3-cairo gtk4 libadwaita python3-reportlab dejavu-sans-fonts
 # For X11: sudo dnf install python3-xlib
 # For Plasma 6 Wayland: sudo dnf install swayidle
 ```
@@ -35,7 +107,7 @@ sudo dnf install git python3-gobject python3-cairo gtk4 libadwaita
 Arch / EndeavourOS:
 
 ```sh
-sudo pacman -Syu git python-gobject python-cairo gtk4 libadwaita
+sudo pacman -Syu git python-gobject python-cairo gtk4 libadwaita python-reportlab ttf-dejavu
 # For X11: sudo pacman -S python-xlib
 # For Plasma 6 Wayland: sudo pacman -S swayidle
 ```
@@ -43,7 +115,7 @@ sudo pacman -Syu git python-gobject python-cairo gtk4 libadwaita
 openSUSE Tumbleweed:
 
 ```sh
-sudo zypper install git python3-gobject python3-gobject-Gdk python3-cairo typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1
+sudo zypper install git python3-gobject python3-gobject-Gdk python3-cairo typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1 python3-reportlab dejavu-fonts
 # For Plasma 6 Wayland: sudo zypper install swayidle
 ```
 
@@ -93,6 +165,15 @@ observer can initialise. Check `./run-timesheet --status` before trusting captur
 The KWin helper is not a GNOME extension. It supports native Wayland and Xwayland
 windows. No global input logging is used. If idle/lock information is missing,
 tracking is degraded and activity remains unknown.
+
+## Sway and Hyprland Wayland setup (0.3.0 candidate)
+
+Install `swayidle` and the compositor's IPC command (`swaymsg` or `hyprctl`).
+Run `./install.sh` from that graphical session, then check `./run-timesheet --status`.
+A supported D-Bus screen-lock service must reflect your actual locker: if lock state
+is unavailable, the app records unknown time instead of assuming active work.
+Sway focus and idle were tested in headless Sway; Hyprland's adapter has unit tests
+but requires a real GPU-backed session for acceptance testing.
 
 ## X11 setup (0.3.0 candidate)
 
@@ -181,9 +262,9 @@ restore an older backup over newer work without reviewing what would be lost.
 
 ## PDF and easier distribution
 
-Reports already export printable HTML: open it in a browser and choose Print →
-Save as PDF. Direct PDF and invoice generation, AppImage and Flatpak are proposed,
-not shipped. See the [prioritised roadmap](LINUX_COMPATIBILITY.md#suggested-product-improvements-priority-order).
+Open a saved report and choose **PDF** or **Invoice PDF**. Invoice PDFs are clearly
+marked drafts, do not calculate tax, and do not mark entries billed. Check details and
+local invoicing requirements before issuing them. You can also print HTML to PDF.
 
 ## Uninstall
 

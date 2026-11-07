@@ -1,5 +1,6 @@
 """Read-only compatibility diagnostics; no paths, titles or activity data."""
 import json
+import importlib.util
 import os
 import platform
 from . import __version__
@@ -10,7 +11,8 @@ def diagnose():
     result = dict(version=__version__, python=platform.python_version(),
                   session=os.environ.get('XDG_SESSION_TYPE','unknown'),
                   desktop=os.environ.get('XDG_CURRENT_DESKTOP','unknown'),
-                  backend=backend_name(), missing_dependencies=dependencies())
+                  backend=backend_name(), missing_dependencies=dependencies(),
+                  pdf_available=importlib.util.find_spec('reportlab') is not None)
     try:
         import gi
         gi.require_version('Gtk','4.0'); gi.require_version('Adw','1')

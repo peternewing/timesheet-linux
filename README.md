@@ -13,7 +13,7 @@ A private Linux desktop app that records which applications you use, helps turn 
 - Assigns usage to clients, projects and tasks, individually or in bulk. “Always assign this app” creates a reusable rule.
 - Automatically turns settled rule matches into **draft** task entries. You review them before billing.
 - Supports optional task timers, manual work, time budgets, split/merge, undo, bulk approval and a history of changes.
-- Saves rates with approved entries and creates immutable CSV and printable HTML report snapshots.
+- Saves rates with approved entries and creates immutable report snapshots and exports CSV, printable HTML, PDF reports and draft invoice PDFs.
 - Locks billed entries and records invoice corrections without rewriting the original report.
 - Provides daily local backups, checked restore, retention controls, app exclusions and period-specific activity deletion.
 
@@ -22,9 +22,10 @@ Window titles are **off by default**. No account, server, subscription, keystrok
 ## Linux compatibility
 
 Version **0.3.0 is a compatibility candidate**. It preserves the GNOME 50 Wayland
-adapter and adds experimental **Plasma 6 Wayland** (KWin helper + swayidle) and
-**X11** (python-xlib) adapters. Real Plasma/X11 acceptance testing is still required;
-these are not certified for every distribution. Other Wayland compositors remain
+adapter and adds **Plasma 6**, **Sway** and experimental **Hyprland** Wayland adapters,
+plus an **X11** (python-xlib) adapter. Real headless Plasma 6 and Sway sessions and a virtual X server
+have passed focus and idle tests; hardware lock, suspend and distro-wide acceptance
+remain to be tested. Other Wayland compositors remain
 manual-only. Missing idle, lock or focus data is never treated as active work.
 
 The interface needs Python 3.10+, GTK 4 and libadwaita 1.5+. See the
@@ -32,13 +33,21 @@ The interface needs Python 3.10+, GTK 4 and libadwaita 1.5+. See the
 [installation commands for Ubuntu/Debian, Fedora, Arch and openSUSE](docs/INSTALL.md).
 The existing GNOME helper was exercised in an isolated GNOME 50.1 session.
 
-## Install the candidate on Ubuntu GNOME
+## Installation options
+
+The [installation guide](docs/INSTALL.md) covers the source install and candidate
+x86-64 AppImage and Flatpak builds. Download the packages and SHA-256 files from a
+successful [candidate package workflow](https://github.com/peternewing/timesheet-linux/actions/workflows/packages.yml?query=branch%3Alinux-compatibility-0.3).
+GitHub Actions downloads require a GitHub login. These are test builds, not a signed
+release or Flathub listing. Back up before switching your existing installation.
+
+## Install the candidate from source on Ubuntu GNOME
 
 Install the distribution packages:
 
 ```sh
 sudo apt update
-sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1
+sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 python3-reportlab fonts-dejavu-core
 ```
 
 Clone the repository into a folder you intend to keep:
@@ -65,7 +74,7 @@ For detailed requirements, diagnostics, update and removal instructions, see [In
 2. **Create a project.** “New project” creates a client, project and first task together. Rates and time budgets are optional until billing.
 3. **Assign work.** Choose “Assign usage” beside an app, or review a day in Calendar. Already assigned time is skipped. Tick “Always assign this application” when the whole app belongs to that task.
 4. **Review.** In History, edit descriptions and billability, split or merge adjacent entries, and approve selected work. Recent automatic activity waits for the idle threshold before approval so idle detection cannot silently change billable time.
-5. **Export.** Select a client and period in Reports. Create a saved snapshot, inspect it, then save CSV or a printable HTML report. Print the HTML from your browser to PDF if needed.
+5. **Export.** Select a client and period in Reports. Create a saved snapshot, inspect it, then save CSV, printable HTML, a PDF report or a draft invoice PDF. Invoice drafts omit tax and require review before issuing.
 6. **Mark billed separately.** Enter your external invoice reference after invoicing. Repeated exports do not bill work twice. If you cancel or revise the external invoice, record the reason through the report's correction action; the original snapshot stays in history.
 
 You can use a task timer for focused work or add a call, reading or offline work manually. Running timers, project and task totals, daily summaries and live activity counters update as each second is recorded. A running task is included in the assigned total; finished entries and saved reports stay fixed. Idle detection is an estimate: genuine reading and meetings can be recovered from away time. Foreground app usage alone does not prove that time is billable.
@@ -107,7 +116,7 @@ Keyboard shortcuts: **Ctrl+1** Today, **Ctrl+2** Calendar, **Ctrl+3** History, *
 
 ## Current limits
 
-This is an early desktop release. Exact-duration billing supports GBP, EUR and USD. It does not generate tax invoices, collect payments, sync devices, track browser URLs, provide team access or use AI. There is no direct PDF/XLSX export or configurable billing-duration rounding. App rules cannot distinguish clients inside a browser unless the user opts into an appropriate window-title rule.
+This is an early desktop release. Exact-duration billing supports GBP, EUR and USD. It does not generate tax invoices, collect payments, sync devices, track browser URLs, provide team access or use AI. There is no XLSX export or configurable billing-duration rounding. Invoice PDFs are drafts without tax calculation. App rules cannot distinguish clients inside a browser unless the user opts into an appropriate window-title rule.
 
 Manual time input rejects nonexistent or repeated local clock times at daylight-saving transitions instead of guessing. Cross-midnight entries must be split if a report's date boundary cuts through them. Approved and billed amounts are snapshots; changing a default rate does not update old approved work.
 

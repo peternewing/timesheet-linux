@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from gi.repository import Gio, GLib
 from .store import DATA_DIR, Store
-from .capture import backend_name, dependencies
+from .capture import backend_name, dependencies, host_environment
 
 ROOT=Path(__file__).resolve().parent.parent
 APP_ID='org.local.TimeSheetLinux'
@@ -19,6 +19,9 @@ CONFIG=Path(os.environ.get('XDG_CONFIG_HOME',Path.home()/'.config'))
 SHARE=Path(os.environ.get('XDG_DATA_HOME',Path.home()/'.local/share'))
 SERVICE=CONFIG/'systemd/user/time-sheet-linux.service'
 AUTOSTART=CONFIG/'autostart/time-sheet-linux.desktop'
+APPIMAGE=os.environ.get('APPIMAGE')
+FLATPAK=bool(os.environ.get('FLATPAK_ID'))
+EXECUTABLE=Path(APPIMAGE) if APPIMAGE else ROOT/'run-timesheet'
 
 
 def quote(value):
@@ -27,16 +30,18 @@ def quote(value):
 
 def run_systemd(*args):
     try:
-        return subprocess.run(['systemctl','--user',*args],capture_output=True,text=True,timeout=8,check=False)
+        return subprocess.run(['systemctl','--user',*args],capture_output=True,text=True,timeout=8,check=False,env=host_environment())
     except (OSError,subprocess.TimeoutExpired):
         return None
 
 
 def start_collector():
+    if FLATPAK: return  # The host companion owns and supervises capture.
     if os.environ.get('TIMESHEET_TESTING')!='1' and SERVICE.exists():
         # Graphical autostart has the current session environment; systemd may not.
         variables = ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY',
-                     'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP', 'XDG_SESSION_ID')
+                     'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP', 'XDG_SESSION_ID',
+                     'SWAYSOCK', 'HYPRLAND_INSTANCE_SIGNATURE')
         names = [name for name in variables if name in os.environ]
         absent = [name for name in variables if name not in os.environ]
         if absent: run_systemd('unset-environment', *absent)
@@ -44,11 +49,13 @@ def start_collector():
         result=run_systemd('start','time-sheet-linux.service')
         if result is not None and result.returncode==0: return
     env=os.environ.copy(); env['PYTHONPATH']=str(ROOT)
-    subprocess.Popen([sys.executable,'-m','timesheet.collector'],cwd=ROOT,env=env,
+    command=[APPIMAGE,'--collector-direct'] if APPIMAGE else [sys.executable,'-m','timesheet.collector']
+    subprocess.Popen(command,cwd=ROOT,env=env,
                      stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 
 
 def stop_collector(wait=True):
+    if FLATPAK: raise ValueError('Stop or restart the host collector using the installation guide.')
     if os.environ.get('TIMESHEET_TESTING')!='1' and SERVICE.exists(): run_systemd('stop','time-sheet-linux.service')
     p=DATA_DIR/'collector.pid'
     try:
@@ -81,7 +88,7 @@ def read_health(store):
 
 
 def capture_available():
-    if backend_name() in ('kde', 'x11'):
+    if backend_name() in ('kde', 'x11', 'sway', 'hyprland'):
         try:
             value=json.loads((DATA_DIR/'health.json').read_text())
             return time.time()-value['at']<12 and value['status']=='active'
@@ -95,14 +102,14 @@ def capture_available():
 def gnome_supported():
     if os.environ.get('XDG_SESSION_TYPE')!='wayland' or 'GNOME' not in os.environ.get('XDG_CURRENT_DESKTOP','').upper(): return False
     try:
-        version=subprocess.run(['gnome-shell','--version'],capture_output=True,text=True,timeout=3).stdout.strip().split()[-1]
+        version=subprocess.run(['gnome-shell','--version'],capture_output=True,text=True,timeout=3,env=host_environment()).stdout.strip().split()[-1]
         return version.split('.')[0]=='50'
     except (OSError,subprocess.TimeoutExpired,IndexError): return False
 
 def supported_desktop():
     name = backend_name()
     if name == 'gnome': return gnome_supported()
-    if name == 'x11': return not dependencies(name)
+    if name in ('x11', 'sway', 'hyprland'): return not dependencies(name)
     if name == 'kde':
         return bool(shutil.which('kwriteconfig6')) and not dependencies(name)
     return False
@@ -113,7 +120,7 @@ def install_kwin():
     shutil.copytree(ROOT/'resources/kwin-script', destination, dirs_exist_ok=True)
     result = subprocess.run(['kwriteconfig6', '--file', 'kwinrc', '--group', 'Plugins',
                             '--key', 'timesheet-captureEnabled', 'true'],
-                           capture_output=True, timeout=5)
+                           capture_output=True, timeout=5, env=host_environment())
     if result.returncode: return False
     from .capture import call
     call('org.kde.KWin', '/KWin', 'org.kde.KWin', 'reconfigure', '()')
@@ -122,14 +129,20 @@ def install_kwin():
 
 def shell_settings():
     source=Gio.SettingsSchemaSource.get_default()
-    if not source or not source.lookup('org.gnome.shell',True): return None
-    return Gio.Settings.new('org.gnome.shell')
+    schema=source.lookup('org.gnome.shell',True) if source else None
+    if schema is None and APPIMAGE:
+        try:
+            source=Gio.SettingsSchemaSource.new_from_directory('/usr/share/glib-2.0/schemas',None,False)
+            schema=source.lookup('org.gnome.shell',True)
+        except GLib.Error: return None
+    return Gio.Settings.new_full(schema,None,None) if schema else None
 
 
-def set_autostart(enabled):
+def set_autostart(enabled,host_only=False):
+    if FLATPAK: return
     if enabled:
         AUTOSTART.parent.mkdir(parents=True,exist_ok=True)
-        AUTOSTART.write_text('[Desktop Entry]\nType=Application\nName=Time Sheet Linux\nExec='+quote(ROOT/'run-timesheet')+' --background\nX-GNOME-Autostart-enabled=true\n',encoding='utf-8')
+        AUTOSTART.write_text('[Desktop Entry]\nType=Application\nName=Time Sheet Linux\nExec='+quote(ROOT/'run-host' if host_only else EXECUTABLE)+' --background\nX-GNOME-Autostart-enabled=true\n',encoding='utf-8')
         # XDG autostart imports the session environment before starting the unit.
         # Do not also start it from graphical-session.target with stale variables.
         if SERVICE.exists(): run_systemd('disable','time-sheet-linux.service')
@@ -138,42 +151,46 @@ def set_autostart(enabled):
         if SERVICE.exists(): run_systemd('disable','time-sheet-linux.service')
 
 
-def install(enable_capture=True):
-    applications=SHARE/'applications'; applications.mkdir(parents=True,exist_ok=True)
-    icons=SHARE/'icons/hicolor/scalable/apps'; icons.mkdir(parents=True,exist_ok=True)
-    shutil.copyfile(ROOT/'resources/timesheet.svg',icons/(APP_ID+'.svg'))
-    launcher=applications/(APP_ID+'.desktop')
-    text='''[Desktop Entry]
-Type=Application
-Name=Time Sheet Linux
-Comment=Automatic private desktop time tracking and client timesheets
-Exec={exec}
-Icon=org.local.TimeSheetLinux
-Terminal=false
-Categories=Office;Finance;ProjectManagement;
-StartupNotify=true
-StartupWMClass=org.local.TimeSheetLinux
-Actions=Pause;Resume;
+def install(enable_capture=True,host_only=False):
+    if FLATPAK: raise ValueError('Install or repair the host companion outside Flatpak; see the installation guide.')
+    launcher=SHARE/'applications'/(APP_ID+'.desktop')
+    if not host_only:
+        applications=SHARE/'applications'; applications.mkdir(parents=True,exist_ok=True)
+        icons=SHARE/'icons/hicolor/scalable/apps'; icons.mkdir(parents=True,exist_ok=True)
+        shutil.copyfile(ROOT/'resources/timesheet.svg',icons/(APP_ID+'.svg'))
+        launcher=applications/(APP_ID+'.desktop')
+        text='''[Desktop Entry]
+    Type=Application
+    Name=Time Sheet Linux
+    Comment=Automatic private desktop time tracking and client timesheets
+    Exec={exec}
+    Icon=org.local.TimeSheetLinux
+    Terminal=false
+    Categories=Office;Finance;ProjectManagement;
+    StartupNotify=true
+    StartupWMClass=org.local.TimeSheetLinux
+    Actions=Pause;Resume;
 
-[Desktop Action Pause]
-Name=Pause tracking
-Exec={exec} --pause
+    [Desktop Action Pause]
+    Name=Pause tracking
+    Exec={exec} --pause
 
-[Desktop Action Resume]
-Name=Resume tracking
-Exec={exec} --resume
-'''.format(exec=quote(ROOT/'run-timesheet'))
-    launcher.write_text(text,encoding='utf-8')
-    commands=Path.home()/'.local/bin'; commands.mkdir(parents=True,exist_ok=True)
-    command=commands/'time-sheet-linux'
-    # The wrapper is a launcher, not a second copy of the application.
-    import shlex
-    command.write_text('#!/bin/sh\nexec '+shlex.quote(str(ROOT/'run-timesheet'))+' "$@"\n',encoding='utf-8')
-    command.chmod(0o755)
-    legacy=applications/'time-sheet-linux.desktop'
-    if legacy.exists() and 'run-timesheet' in legacy.read_text(): legacy.unlink()
+    [Desktop Action Resume]
+    Name=Resume tracking
+    Exec={exec} --resume
+    '''.format(exec=quote(EXECUTABLE)).replace('\n    ','\n')
+        launcher.write_text(text,encoding='utf-8')
+        commands=Path.home()/'.local/bin'; commands.mkdir(parents=True,exist_ok=True)
+        command=commands/'time-sheet-linux'
+        # The wrapper is a launcher, not a second copy of the application.
+        import shlex
+        command.write_text('#!/bin/sh\nexec '+shlex.quote(str(EXECUTABLE))+' "$@"\n',encoding='utf-8')
+        command.chmod(0o755)
+        legacy=applications/'time-sheet-linux.desktop'
+        if legacy.exists() and 'run-timesheet' in legacy.read_text(): legacy.unlink()
     SERVICE.parent.mkdir(parents=True,exist_ok=True)
-    working=str(ROOT).replace('%','%%')
+    working=str(Path(APPIMAGE).parent if APPIMAGE else ROOT).replace('%','%%')
+    collector_exec=(quote(APPIMAGE).replace('%','%%')+' --collector-direct') if APPIMAGE else '/usr/bin/python3 -m timesheet.collector'
     SERVICE.write_text('''[Unit]
 Description=Time Sheet Linux activity collector
 PartOf=graphical-session.target
@@ -182,7 +199,7 @@ After=graphical-session.target
 [Service]
 Type=simple
 WorkingDirectory='''+working+'''
-ExecStart=/usr/bin/python3 -m timesheet.collector
+ExecStart='''+collector_exec+'''
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=8
@@ -195,7 +212,7 @@ WantedBy=graphical-session.target
     with_store=Store()
     first_install=with_store.get('setup_complete','0')!='1'
     startup_enabled=first_install or AUTOSTART.exists()
-    set_autostart(startup_enabled)
+    set_autostart(startup_enabled,host_only=host_only)
     compatible=supported_desktop()
     gnome=gnome_supported()
     kde=backend_name()=='kde' and compatible
@@ -225,7 +242,7 @@ WantedBy=graphical-session.target
     stop_collector()
     start_collector()
     running=run_systemd('is-active','time-sheet-linux.service')
-    return dict(launcher=str(launcher),service=bool(running and running.returncode==0),
+    return dict(launcher=None if host_only else str(launcher),service=bool(running and running.returncode==0),
                 extension_installed=gnome,extension_enabled=extension_enabled,
                 backend=backend_name(),missing_dependencies=dependencies(),
                 needs_sign_in=(gnome or kde) and not capture_available(),manual_only=not compatible)
@@ -238,7 +255,7 @@ def uninstall():
     (SHARE/'applications'/(APP_ID+'.desktop')).unlink(missing_ok=True)
     (SHARE/'icons/hicolor/scalable/apps'/(APP_ID+'.svg')).unlink(missing_ok=True)
     command=Path.home()/'.local/bin/time-sheet-linux'
-    if command.exists() and str(ROOT/'run-timesheet') in command.read_text(): command.unlink()
+    if command.exists() and str(EXECUTABLE) in command.read_text(): command.unlink()
     try:
         settings=shell_settings()
         if settings is None: raise ValueError('No GNOME settings')
@@ -252,7 +269,7 @@ def uninstall():
         if tool:
             try:
                 subprocess.run([tool,'--file','kwinrc','--group','Plugins','--key',
-                                'timesheet-captureEnabled','false'],timeout=5,check=False)
+                                'timesheet-captureEnabled','false'],timeout=5,check=False,env=host_environment())
             except (OSError,subprocess.TimeoutExpired): pass
         from .capture import call
         call('org.kde.KWin','/Scripting','org.kde.kwin.Scripting','unloadScript','(b)',

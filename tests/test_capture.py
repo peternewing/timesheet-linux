@@ -14,13 +14,13 @@ class CaptureTests(unittest.TestCase):
         for session, desktop, expected in (
             ('wayland','ubuntu:GNOME','gnome'), ('wayland','KDE','kde'),
             ('x11','KDE','x11'), ('x11','XFCE','x11'), ('x11','MATE','x11'),
-            ('wayland','sway','unsupported'), ('wayland','Hyprland','unsupported'),
+            ('wayland','sway','sway'), ('wayland','Hyprland','hyprland'),
             ('','GNOME','unsupported'), ('tty','','unsupported')):
             with self.subTest(session=session,desktop=desktop):
                 self.assertEqual(backend_name(dict(XDG_SESSION_TYPE=session,XDG_CURRENT_DESKTOP=desktop)),expected)
 
     def test_never_treat_xwayland_as_full_desktop(self):
-        self.assertEqual(backend_name(dict(WAYLAND_DISPLAY='wayland-0',DISPLAY=':0',XDG_SESSION_TYPE='x11',XDG_CURRENT_DESKTOP='sway')),'unsupported')
+        self.assertEqual(backend_name(dict(WAYLAND_DISPLAY='wayland-0',DISPLAY=':0',XDG_SESSION_TYPE='x11',XDG_CURRENT_DESKTOP='other')),'unsupported')
 
     def test_gnome_protocol_unchanged(self):
         with patch('timesheet.capture.backend_name',return_value='gnome'), patch('timesheet.capture.call',return_value=('Editor','title',42,False)) as call:
@@ -121,3 +121,53 @@ class UpgradeTests(unittest.TestCase):
                 self.assertEqual(store.get('capture_titles'),'1')
                 self.assertEqual(store.html_report(report),before)
             store.close()
+
+class PackagingTests(unittest.TestCase):
+    def test_flatpak_host_companion_preserves_existing_native_launcher(self):
+        from timesheet import desktop
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);store=Store(root/'data.sqlite3')
+            launcher=root/'share/applications'/ (desktop.APP_ID+'.desktop')
+            launcher.parent.mkdir(parents=True);launcher.write_text('existing native launcher')
+            try:
+                with patch.object(desktop,'SHARE',root/'share'), patch.object(desktop,'SERVICE',root/'config/service'), patch.object(desktop,'AUTOSTART',root/'config/autostart/app.desktop'), patch.object(Path,'home',return_value=root), patch.object(desktop,'Store',return_value=store), patch.object(store,'close'), patch.object(desktop,'run_systemd'), patch.object(desktop,'start_collector'), patch.object(desktop,'stop_collector'), patch.object(desktop,'supported_desktop',return_value=True), patch.object(desktop,'gnome_supported',return_value=False), patch.object(desktop,'backend_name',return_value='x11'), patch.object(desktop,'FLATPAK',False), patch.object(desktop,'APPIMAGE',None):
+                    result=desktop.install(host_only=True)
+                    self.assertIsNone(result['launcher'])
+                    self.assertEqual(launcher.read_text(),'existing native launcher')
+                    self.assertIn('run-host',desktop.AUTOSTART.read_text())
+            finally:store.close()
+
+    def test_appimage_install_uses_persistent_image_not_mount_path(self):
+        from timesheet import desktop
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);store=Store(root/'data.sqlite3'); image=root/'Time Sheet.AppImage'
+            try:
+                with patch.object(desktop,'SHARE',root/'share'), patch.object(desktop,'SERVICE',root/'config/service'), patch.object(desktop,'AUTOSTART',root/'config/autostart/app.desktop'), patch.object(Path,'home',return_value=root), patch.object(desktop,'Store',return_value=store), patch.object(store,'close'), patch.object(desktop,'run_systemd'), patch.object(desktop,'start_collector'), patch.object(desktop,'stop_collector'), patch.object(desktop,'supported_desktop',return_value=True), patch.object(desktop,'gnome_supported',return_value=False), patch.object(desktop,'backend_name',return_value='x11'), patch.object(desktop,'FLATPAK',False), patch.object(desktop,'APPIMAGE',str(image)), patch.object(desktop,'EXECUTABLE',image):
+                    result=desktop.install()
+                    self.assertIn(str(image),Path(result['launcher']).read_text())
+                    service=desktop.SERVICE.read_text()
+                    self.assertIn(str(image),service);self.assertIn('--collector-direct',service)
+                    self.assertNotIn('run-timesheet',service)
+            finally:store.close()
+
+class WaylandIPCTests(unittest.TestCase):
+    def test_sway_and_hyprland_are_selected_without_xwayland(self):
+        self.assertEqual(backend_name({'XDG_SESSION_TYPE':'wayland','XDG_CURRENT_DESKTOP':'sway'}),'sway')
+        self.assertEqual(backend_name({'XDG_SESSION_TYPE':'wayland','HYPRLAND_INSTANCE_SIGNATURE':'abc'}),'hyprland')
+
+    def test_sway_and_hyprland_focus_and_missing_lock(self):
+        import json
+        from timesheet.capture import CompositorCapture
+        cases=[('sway',{'nodes':[{'focused':True,'app_id':'editor','name':'Private'}]}),('hyprland',{'class':'editor','title':'Private'})]
+        for name,payload in cases:
+            adapter=CompositorCapture(name);adapter.idle=Mock();adapter.idle.sample.return_value=123
+            result=Mock();result.stdout=json.dumps(payload)
+            with self.subTest(name=name),patch('timesheet.capture.subprocess.run',return_value=result),patch('timesheet.capture.screen_locked',return_value=None):
+                self.assertEqual(adapter.sample(),('editor','Private',-1,False))
+
+    def test_ipc_failure_is_unknown(self):
+        import subprocess
+        from timesheet.capture import CompositorCapture
+        adapter=CompositorCapture('sway')
+        with patch('timesheet.capture.subprocess.run',side_effect=subprocess.TimeoutExpired('swaymsg',2)):
+            self.assertIsNone(adapter.sample())

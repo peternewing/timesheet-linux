@@ -1,11 +1,20 @@
 """Session-specific capture. Missing evidence is unknown, never active work."""
 from __future__ import annotations
 import importlib.util
+import json
 import os
 import shutil
 import subprocess
 import time
 from gi.repository import Gio, GLib
+
+
+def host_environment():
+    env=os.environ.copy()
+    if env.get('APPIMAGE'):
+        for name in ('LD_LIBRARY_PATH','PYTHONHOME','PYTHONPATH','GI_TYPELIB_PATH','GSETTINGS_SCHEMA_DIR','GDK_PIXBUF_MODULE_FILE'):
+            env.pop(name,None)
+    return env
 
 
 def backend_name(env=None):
@@ -16,6 +25,8 @@ def backend_name(env=None):
     if session == 'wayland' or env.get('WAYLAND_DISPLAY'):
         if 'GNOME' in desktop: return 'gnome'
         if 'KDE' in desktop: return 'kde'
+        if 'SWAY' in desktop or env.get('SWAYSOCK'): return 'sway'
+        if 'HYPRLAND' in desktop or env.get('HYPRLAND_INSTANCE_SIGNATURE'): return 'hyprland'
         return 'unsupported'
     if session == 'x11': return 'x11'
     return 'unsupported'
@@ -45,8 +56,9 @@ def dependencies(name=None):
     name = name or backend_name()
     if name == 'x11' and importlib.util.find_spec('Xlib') is None:
         return ['python3-xlib (python-xlib on Arch)']
-    if name == 'kde':
-        return [tool for tool in ('swayidle','kwriteconfig6') if not shutil.which(tool)]
+    if name in ('kde','sway','hyprland'):
+        command={'kde':'kwriteconfig6','sway':'swaymsg','hyprland':'hyprctl'}[name]
+        return [tool for tool in ('swayidle',command) if not shutil.which(tool)]
     return []
 
 
@@ -67,10 +79,11 @@ class WaylandIdle:
         if self.process is None:
             if now < self.retry_at: return -1
             try:
+                env=host_environment()
                 self.process = subprocess.Popen(
                     ['swayidle', '-C', '/dev/null', '-w', 'timeout', '1',
                      'printf "idle\\n"', 'resume', 'printf "resumed\\n"'],
-                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
                 os.set_blocking(self.process.stdout.fileno(), False)
             except OSError:
                 self.retry_at = now + 10
@@ -143,6 +156,39 @@ class KDECapture:
         Gio.bus_unown_name(self.owner)
 
 
+class CompositorCapture:
+    """Read focused-window IPC from Sway/Hyprland, with separate idle/lock evidence."""
+    def __init__(self,name):
+        self.name=name
+        self.idle=WaylandIdle()
+
+    @staticmethod
+    def sway_focus(node):
+        if node.get('focused'):
+            props=node.get('window_properties') or {}
+            return (str(node.get('app_id') or props.get('class') or '')[:4096],
+                    str(node.get('name') or '')[:4096])
+        for child in (node.get('nodes') or [])+(node.get('floating_nodes') or []):
+            found=CompositorCapture.sway_focus(child)
+            if found is not None: return found
+        return None
+
+    def sample(self):
+        command=['swaymsg','-r','-t','get_tree'] if self.name=='sway' else ['hyprctl','-j','activewindow']
+        try:
+            result=subprocess.run(command,capture_output=True,text=True,timeout=2,check=True,env=host_environment())
+            value=json.loads(result.stdout)
+            if not isinstance(value,dict): return None
+            focus=self.sway_focus(value) if self.name=='sway' else (str(value.get('class') or '')[:4096],str(value.get('title') or '')[:4096])
+            if focus is None: focus=('','')
+            idle=self.idle.sample();locked=screen_locked()
+            return (*focus,idle if locked is not None else -1,bool(locked))
+        except (OSError,subprocess.SubprocessError,ValueError,TypeError,RecursionError):
+            return None
+
+    def close(self): self.idle.close()
+
+
 class X11Capture:
     def __init__(self):
         from Xlib import display
@@ -197,11 +243,11 @@ class Capture:
         if self.name == 'gnome':
             return call('org.local.TimeSheetCapture', '/org/local/TimeSheetCapture',
                         'org.local.TimeSheetCapture', 'GetState', '(ssxb)')
-        if self.name not in ('kde', 'x11'): return None
+        if self.name not in ('kde', 'x11', 'sway', 'hyprland'): return None
         try:
             if self.adapter is None:
                 if time.monotonic() < self.retry_at: return None
-                self.adapter = KDECapture() if self.name == 'kde' else X11Capture()
+                self.adapter = KDECapture() if self.name == 'kde' else X11Capture() if self.name == 'x11' else CompositorCapture(self.name)
             return self.adapter.sample()
         except Exception:
             # Optional adapters must never stop durable collection or invent focus.
