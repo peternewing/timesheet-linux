@@ -30,7 +30,7 @@ Backups use SQLite's online backup API. Restore validates a temporary upgraded c
 
 ## 0.3.0 capture adapters
 
-`timesheet.capture` selects GNOME, KDE Wayland, X11 or unsupported from the graphical
+`timesheet.capture` selects GNOME, KDE, Sway, Hyprland, X11 or unsupported from the graphical
 session. The collector consumes the same `(app, title, idle_ms, locked)` tuple for
 all sources and retains existing privacy, idle trimming and gap semantics. The KDE
 receiver validates the KWin D-Bus owner and expires stale heartbeats. Its swayidle
@@ -38,3 +38,11 @@ observer runs with an empty configuration and is closed on pause/collector exit.
 Unknown idle/lock state produces unknown activity, never assumed work. Adapters are
 optional; import/connection failures do not crash durable collection. No database
 schema migration accompanies this candidate.
+
+
+Saved reports can be exported using ReportLab as PDFs or invoice drafts. The export
+reads frozen rows and does not change billing state. AppImage bundles the runtime
+and installs services against the persistent image path. The Flatpak contains the
+UI and PDF runtime, accesses only the default host data folder, and relies on a
+separately installed host capture companion. The Flatpak cannot install or stop the
+host service from its sandbox; backup restore requires the collector to be stopped.
