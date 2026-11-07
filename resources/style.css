@@ -1,0 +1,12 @@
+.sidebar { background: alpha(@window_fg_color, .035); border-right: 1px solid alpha(@window_fg_color, .08); }
+.sidebar button { padding: 11px 12px; border-radius: 10px; }
+.sidebar .selected { background: alpha(@accent_bg_color,.18); color: @accent_color; font-weight: 600; }
+.brand { font-size: 12px; font-weight: 800; letter-spacing: 1px; }
+.card { padding: 16px; background: @card_bg_color; border-radius: 12px; box-shadow: 0 1px 3px alpha(black,.08); border: 1px solid alpha(@window_fg_color,.07); }
+.metric { font-size: 30px; font-weight: 750; letter-spacing: -1px; }
+.status-pill { padding: 5px 10px; border-radius: 20px; background: alpha(@accent_bg_color,.12); font-size: 12px; }
+.field-label { font-size: 12px; font-weight: 600; margin-top: 4px; }
+progressbar trough { min-height: 6px; border-radius: 6px; }
+progressbar progress { border-radius: 6px; }
+
+.sidebar > label.dim-label { font-size: 10px; }

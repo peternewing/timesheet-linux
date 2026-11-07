@@ -1,0 +1,9 @@
+{
+  "uuid": "timesheet-capture@local",
+  "name": "Time Sheet Linux Activity Capture",
+  "description": "Exposes the focused application and idle status to the local Time Sheet Linux app.",
+  "shell-version": [
+    "50"
+  ],
+  "version": 2
+}
