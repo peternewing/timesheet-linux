@@ -4,12 +4,23 @@ permissions:
   contents: read
 jobs:
   core:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Install system Python bindings
-        run: sudo apt-get update && sudo apt-get install -y python3-gi
-      - name: Run accounting and collector tests
+        run: sudo apt-get update && sudo apt-get install -y python3-gi python3-xlib xvfb dbus-daemon
+      - name: Run accounting, capture and upgrade tests
         run: /usr/bin/python3 -m unittest discover -s tests -v
+      - name: GNOME collector protocol and privacy
+        run: XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=GNOME PYTHONPATH=. dbus-run-session -- /usr/bin/python3 tests/verify_collector.py
+      - name: KDE bridge protocol (simulated compositor)
+        run: PYTHONPATH=. dbus-run-session -- /usr/bin/python3 tests/verify_kde_capture.py
+      - name: X11 capture on a virtual X server
+        run: PYTHONPATH=. /usr/bin/python3 tests/verify_x11_capture.py
       - name: Compile Python modules
         run: /usr/bin/python3 -m compileall -q timesheet
+      - name: Check launcher syntax
+        run: sh -n install.sh uninstall.sh run-timesheet run-collector

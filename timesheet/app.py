@@ -372,7 +372,7 @@ class TimeSheet(Adw.Application):
             self.row(b,'Start with a project','Create a client, project and task. Then add time manually or assign captured activity. Review drafts in History before creating a client report.',[('Create your first project',self.quick_setup)])
         health=desktop.read_health(self.store); state=health['status']
         if state=='setup_required':
-            description='The GNOME helper is installed. Save your work, then sign out and back in when convenient. Tracking will start automatically.' if desktop.supported_desktop() else 'Automatic capture currently requires GNOME 50 Wayland. Manual task timers and timesheets are available on this desktop.'
+            description='Desktop capture needs setup. Check docs/INSTALL.md for your desktop, install its dependencies and helper, then sign out and back in.' if desktop.supported_desktop() else 'Automatic capture is unavailable. Check desktop dependencies in docs/INSTALL.md. Manual timers and timesheets remain available.'
             self.row(b,'Finish automatic tracking setup',description,[('Check setup',lambda _:self.show_page('Settings'))])
         elif state=='paused':
             self.row(b,'Automatic tracking is paused','Resume when you are ready. Titles are stored only if you enable them in Settings.',[('Resume tracking',self.toggle_capture)])
@@ -817,9 +817,9 @@ class TimeSheet(Adw.Application):
     def refresh_settings(self):
         b=self.body_settings; self.clear(b); self.heading(b,'Settings','Control what is recorded and keep your data on this computer.')
         available=desktop.capture_available()
-        if available: self.row(b,'Automatic tracking is ready','The GNOME helper is connected. App names are recorded; window titles are optional.')
-        elif desktop.supported_desktop(): self.row(b,'Finish automatic tracking setup','The installed GNOME helper loads at sign-in. After installation, save your work and sign out and back in once.',[('Install / repair setup',lambda _:self.install_setup())])
-        else: self.row(b,'Manual timesheet mode','Automatic capture currently supports GNOME 50 on Wayland. You can use task timers, manual entries and reports on this desktop.')
+        if available: self.row(b,'Automatic tracking is ready','The desktop capture adapter is connected. App names are recorded; window titles are optional.')
+        elif desktop.supported_desktop(): self.row(b,'Finish automatic tracking setup','Check desktop dependencies and helper activation in docs/INSTALL.md. After installation, save your work and sign out and back in once.',[('Install / repair setup',lambda _:self.install_setup())])
+        else: self.row(b,'Manual timesheet mode','Capture needs GNOME 50, Plasma 6 with its helper and swayidle, or X11 with python-xlib. Other desktops support manual timers and reports.')
         tracking=Adw.PreferencesGroup(title='Tracking'); b.append(tracking)
         capture=Adw.SwitchRow(title='Track desktop usage automatically',subtitle='Record the foreground app, excluding idle and locked time'); capture.set_active(self.store.get('capture_enabled','0')=='1'); tracking.add(capture)
         titles=Adw.SwitchRow(title='Include window titles',subtitle='Titles can include document names and other sensitive information'); titles.set_active(self.store.get('capture_titles','0')=='1'); tracking.add(titles)
@@ -849,7 +849,7 @@ class TimeSheet(Adw.Application):
         b.append(label('Deletion removes captured app details from this database. Task entries, reports and older backups remain. Database files are not encrypted.','dim-label'))
         b.append(button('Stop background tracking',lambda _:self.confirm('Stop tracking?', 'Recording stops until you open the app or sign in again.',self.stop_collector)))
     def install_setup(self):
-        self.run_action(lambda:desktop.install(),lambda result:self.info('Setup installed','This desktop supports manual timesheets. Automatic capture currently requires GNOME 50 Wayland.' if result['manual_only'] else 'Sign out and back in once to activate the GNOME helper.' if result['needs_sign_in'] else 'Automatic tracking is ready.'))
+        self.run_action(lambda:desktop.install(),lambda result:self.info('Setup installed','Desktop capture dependencies are missing or this desktop is unsupported. See docs/INSTALL.md; manual timesheets remain available.' if result['manual_only'] else 'Sign out and back in once to activate your desktop helper; check tracking status afterwards.' if result['needs_sign_in'] else 'Automatic tracking is ready.'))
     def stop_collector(self): desktop.stop_collector()
     def delete_period_dialog(self):
         today=datetime.now().date()
@@ -922,6 +922,9 @@ class TimeSheet(Adw.Application):
 
 def main():
     parser=argparse.ArgumentParser(description='Private Linux desktop time tracking')
+    from . import __version__
+    parser.add_argument('--version',action='version',version=__version__)
+    parser.add_argument('--diagnose',action='store_true',help='Print privacy-safe Linux compatibility diagnostics')
     parser.add_argument('--install',action='store_true',help='Install desktop launcher, GNOME helper and background startup')
     parser.add_argument('--uninstall',action='store_true',help='Remove desktop integration, keeping timesheet data')
     parser.add_argument('--background',action='store_true',help='Start the background collector')
@@ -929,6 +932,9 @@ def main():
     parser.add_argument('--resume',action='store_true',help='Resume automatic tracking')
     parser.add_argument('--status',action='store_true',help='Print recording status')
     args=parser.parse_args()
+    if args.diagnose:
+        from .diagnostics import diagnose
+        print(json.dumps(diagnose(),indent=2)); return 0
     if args.install:
         result=desktop.install(); print(json.dumps(result,indent=2)); return 0
     if args.uninstall: print(desktop.uninstall()); return 0

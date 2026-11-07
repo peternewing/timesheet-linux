@@ -1,0 +1,12 @@
+{
+  "KPlugin": {
+    "Id": "timesheet-capture",
+    "Name": "Time Sheet Linux Capture",
+    "Description": "Send foreground application identity to your local timesheet collector",
+    "Version": "0.3.0",
+    "License": "MIT"
+  },
+  "KPackageStructure": "KWin/Script",
+  "X-Plasma-API": "javascript",
+  "X-Plasma-MainScript": "code/main.js"
+}

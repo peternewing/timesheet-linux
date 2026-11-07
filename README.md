@@ -19,22 +19,20 @@ A private Linux desktop app that records which applications you use, helps turn 
 
 Window titles are **off by default**. No account, server, subscription, keystroke logging or screenshots are required. The screenshots in this repository contain synthetic example data.
 
-## Linux compatibility research and next version
-
-A separate [0.3.0 compatibility candidate](https://github.com/peternewing/timesheet-linux/tree/linux-compatibility-0.3)
-adds experimental Plasma 6 Wayland and X11 adapters, safer reinstall behavior and
-diagnostics. The stable code on this branch remains unchanged. Read the
-[desktop compatibility matrix and PDF/AppImage/Flatpak roadmap](docs/LINUX_COMPATIBILITY.md)
-and [multi-distribution installation guide](docs/INSTALL.md) before trying it.
-Real Plasma/X11 acceptance is still required; universal Linux support is not claimed.
-
 ## Linux compatibility
 
-**Full automatic tracking currently targets GNOME Shell 50 on Wayland**, including Ubuntu 26.04. The included GNOME helper has been exercised in an isolated GNOME 50.1 Wayland session with a real foreground test window. Your current desktop needs a one-time sign-out/sign-in after installing the helper.
+Version **0.3.0 is a compatibility candidate**. It preserves the GNOME 50 Wayland
+adapter and adds experimental **Plasma 6 Wayland** (KWin helper + swayidle) and
+**X11** (python-xlib) adapters. Real Plasma/X11 acceptance testing is still required;
+these are not certified for every distribution. Other Wayland compositors remain
+manual-only. Missing idle, lock or focus data is never treated as active work.
 
-The interface requires Python 3.10 or newer, GTK 4 and libadwaita 1.5 or newer through the distribution's PyGObject packages. Manual timers and timesheets may work on other modern Linux desktops, but automatic capture adapters for KDE, other Wayland compositors and X11 are not included in this release. Do not assume universal Linux compatibility.
+The interface needs Python 3.10+, GTK 4 and libadwaita 1.5+. See the
+[compatibility matrix, research and roadmap](docs/LINUX_COMPATIBILITY.md) and
+[installation commands for Ubuntu/Debian, Fedora, Arch and openSUSE](docs/INSTALL.md).
+The existing GNOME helper was exercised in an isolated GNOME 50.1 session.
 
-## Install on Ubuntu GNOME
+## Install the candidate on Ubuntu GNOME
 
 Install the distribution packages:
 
@@ -46,12 +44,12 @@ sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1
 Clone the repository into a folder you intend to keep:
 
 ```sh
-git clone https://github.com/peternewing/timesheet-linux.git
+git clone --branch linux-compatibility-0.3 https://github.com/peternewing/timesheet-linux.git
 cd timesheet-linux
 ./install.sh
 ```
 
-Run the installer as your normal user, **not with sudo**. It installs a launcher, a command, a per-user background service and the local GNOME helper. It does not download Python packages or modify system-wide GNOME files.
+Keep your stable checkout and back up before installing this candidate; see [rollback](docs/INSTALL.md#roll-back-the-candidate). Run the installer as your normal user, **not with sudo**. It installs a launcher, a command, a per-user background service and the local GNOME helper. It does not download Python packages or modify system-wide GNOME files.
 
 Save your work and **sign out and back in once**. GNOME Wayland scans newly installed extensions at sign-in. The installer enables this app's helper while preserving your other extension settings. If GNOME globally disables user extensions, turn them on in the Extensions app.
 
@@ -94,6 +92,8 @@ Do not upload your database or real activity screenshots to public issues. See [
 ```sh
 ./run-timesheet                 # Open the app
 ./run-timesheet --status        # Print recording health
+./run-timesheet --diagnose      # Privacy-safe compatibility diagnostics
+./run-timesheet --version       # Print app version
 ./run-timesheet --pause         # Pause automatic capture
 ./run-timesheet --resume        # Resume capture
 ./run-timesheet --background    # Start the collector

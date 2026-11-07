@@ -12,11 +12,11 @@ No universal Wayland API exposes every application's foreground window.
 
 | Session | 0.2.0 | 0.3.0 candidate | Evidence / remaining validation |
 |---|---|---|---|
-| GNOME 50 Wayland | Automatic | Existing adapter preserved | Prior isolated GNOME 50.1 check; collector protocol regression |
+| GNOME 50 Wayland | Automatic | Existing adapter preserved | Real isolated GNOME Wayland fixture rechecked; collector protocol regression |
 | GNOME 45–49 / newer Shell | Manual | Manual until extension tested | Do not bypass extension version checks |
 | Plasma 6 Wayland | Manual | KWin helper + swayidle | Adapter unit/protocol tests; real Plasma session acceptance still required |
 | Plasma 5 Wayland | Manual | Manual | Helper targets Plasma 6 API |
-| KDE / Xfce / Cinnamon / MATE / GNOME on X11 | Manual | python-xlib adapter | Requires EWMH, XScreenSaver and supported lock service; real desktop acceptance still required |
+| KDE / Xfce / Cinnamon / MATE / GNOME on X11 | Manual | python-xlib adapter | Virtual X server test passed; requires EWMH, XScreenSaver and supported lock service; real desktop acceptance pending |
 | Sway / Hyprland / other Wayland | Manual | Manual | Need compositor-specific foreground adapters; never use Xwayland as a substitute |
 | Headless / SSH / unspecified session | Manual UI if available | Capture unavailable | No graphical activity inferred |
 

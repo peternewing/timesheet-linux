@@ -118,7 +118,7 @@ The app stays in the cloned source directory. The installer generates paths for 
 | `~/.local/share/kwin/scripts/timesheet-capture/` | Plasma 6 helper (candidate, KDE installs only) |
 | `~/.local/share/time-sheet-linux/` | Private database, status and backups |
 
-`XDG_DATA_HOME` and `XDG_CONFIG_HOME` override their corresponding locations. A file lock prevents duplicate collectors even when the app and sign-in startup overlap. Without a working user systemd instance, the app falls back to a detached collector; automatic restart supervision then needs systemd.
+`XDG_DATA_HOME` and `XDG_CONFIG_HOME` override their corresponding locations. The candidate starts its supervised unit from XDG graphical autostart after importing the current session environment, rather than enabling a second target-based startup. A file lock prevents duplicate collectors even when the app and sign-in startup overlap. Without a working user systemd instance, the app falls back to a detached collector; automatic restart supervision then needs systemd.
 
 ## One-time GNOME activation
 
