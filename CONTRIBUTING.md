@@ -33,3 +33,22 @@ Maintain these invariants:
 - Privacy filters apply before data is stored. Logs must not contain titles or URLs.
 
 Describe the desktop and GNOME versions used for integration changes. A mocked D-Bus test is not proof of compatibility with a different desktop.
+
+## Desktop UI regression checks
+
+`tests/verify_ui.py` opens the real GTK application with a temporary database and
+uses X11 mouse/keyboard events to exercise navigation, forms, validation, bulk
+review, billing, archived records, rules and assignment. It never starts the real
+collector. Run it on a private Xvfb display so synthetic input does not interfere
+with your desktop (GNOME Wayland may block XTest on its shared Xwayland server):
+
+```sh
+# In addition to the app dependencies: xvfb, xauth, libxtst6
+GDK_BACKEND=x11 PYTHONPATH=. xvfb-run -a -s '-screen 0 1280x1000x24' \
+  /usr/bin/python3 tests/verify_ui.py
+```
+
+Screenshots use synthetic data and are written to `/tmp/timesheet-ui-audit`.
+The test needs GTK 4 and libadwaita 1.5 or newer; its screenshot path was verified
+with GTK 4.22.4 / libadwaita 1.9.1. Keep GUI checks separate from headless core
+unit tests. See `docs/USABILITY_AUDIT_2026-11-07.md` for tested workflows and limits.
