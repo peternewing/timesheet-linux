@@ -2,6 +2,8 @@ name: Candidate Linux packages
 on:
   push:
     branches: [linux-compatibility-0.3]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

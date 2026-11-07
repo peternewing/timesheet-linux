@@ -266,6 +266,32 @@ Open a saved report and choose **PDF** or **Invoice PDF**. Invoice PDFs are clea
 marked drafts, do not calculate tax, and do not mark entries billed. Check details and
 local invoicing requirements before issuing them. You can also print HTML to PDF.
 
+## Updating packaged builds
+
+For an AppImage, download a new successful candidate artifact, verify its checksum,
+and close the app. Stop the old background service (`systemctl --user stop time-sheet-linux.service` on systems with user systemd). Replace the old image at the
+same persistent path, make it executable, then run the new image with `--install`.
+Keep a copy of the older image for rollback. The local Ubuntu 26.04 test image in the
+workspace is built on that host; the GitHub artifact is the Ubuntu 24.04-based build.
+
+For Flatpak, download and verify the newer bundle, then run:
+
+```sh
+flatpak install --user --reinstall ./TimeSheetLinux-x86_64.flatpak
+```
+
+Update the host source checkout separately with `git pull --ff-only` followed by
+`./run-host --install`. These single-file bundles are not connected to an app update
+repository, so `flatpak update` will not obtain new candidate builds automatically.
+Back up first; reinstalling the Flatpak does not intentionally delete the shared host
+database, but backups protect against mistakes and disk failure.
+
+To remove the Flatpak interface, run `flatpak uninstall --user org.local.TimeSheetLinux`.
+This does not remove the separate host collector or the shared database. For an
+AppImage, run `./TimeSheetLinux-x86_64.AppImage --uninstall` before deleting the image;
+this removes the app's per-user integration but keeps its data. If returning to an older
+native checkout, reinstall that checkout's integration afterwards.
+
 ## Uninstall
 
 ```sh
