@@ -19,6 +19,15 @@ A private Linux desktop app that records which applications you use, helps turn 
 
 Window titles are **off by default**. No account, server, subscription, keystroke logging or screenshots are required. The screenshots in this repository contain synthetic example data.
 
+## Linux compatibility research and next version
+
+A separate [0.3.0 compatibility candidate](https://github.com/peternewing/timesheet-linux/tree/linux-compatibility-0.3)
+adds experimental Plasma 6 Wayland and X11 adapters, safer reinstall behavior and
+diagnostics. The stable code on this branch remains unchanged. Read the
+[desktop compatibility matrix and PDF/AppImage/Flatpak roadmap](docs/LINUX_COMPATIBILITY.md)
+and [multi-distribution installation guide](docs/INSTALL.md) before trying it.
+Real Plasma/X11 acceptance is still required; universal Linux support is not claimed.
+
 ## Linux compatibility
 
 **Full automatic tracking currently targets GNOME Shell 50 on Wayland**, including Ubuntu 26.04. The included GNOME helper has been exercised in an isolated GNOME 50.1 Wayland session with a real foreground test window. Your current desktop needs a one-time sign-out/sign-in after installing the helper.
@@ -31,7 +40,7 @@ Install the distribution packages:
 
 ```sh
 sudo apt update
-sudo apt install git python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
+sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1
 ```
 
 Clone the repository into a folder you intend to keep:
