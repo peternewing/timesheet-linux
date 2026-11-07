@@ -62,7 +62,7 @@ Flatpak build. The AppImage is built on Ubuntu 24.04, requires glibc 2.39+ and k
 its launcher/service tied to the persistent image path. The Flatpak uses a separate
 host collector/helper and a narrow permission to the existing default data directory;
 it does not escape the sandbox to install host files. See [installation](INSTALL.md).
-The [0.3.0-rc1 prerelease](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc1) provides the tested packages and checksums. It is not a signed release or a Flathub listing. ARM64 Flatpak sources are specified but have not
+The [0.3.0-rc2 prerelease](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc2) provides the tested AppImage and checksum. It is not a signed release or a Flathub listing. ARM64 Flatpak sources are specified but have not
 been built or tested; no ARM64 AppImage is currently produced.
 
 Saved reports export directly to PDF or to clearly labelled invoice draft PDFs, in
