@@ -68,4 +68,12 @@ class AuditRegressionTests(unittest.TestCase):
         with self.store.db: self.store.db.execute('UPDATE reports SET snapshot=? WHERE id=?',(json.dumps(original),report))
         self.assertTrue(self.store.validate())
 
+    def test_live_assigned_total_clips_to_day_and_avoids_double_counting(self):
+        self.store.add_entry(self.task,1100,1200)
+        self.store.start_timer(self.task,now=1000)
+        self.assertEqual(self.store.day_summary(1050,1300,include_running=True,now=1250)['assigned'],200)
+        self.assertEqual(self.store.day_summary(1050,1300)['assigned'],100)
+        self.assertEqual(self.store.day_summary(1250,1300,include_running=True,now=1400)['assigned'],50)
+        self.store.stop_timer(now=1100)
+
 if __name__=='__main__': unittest.main()
