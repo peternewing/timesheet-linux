@@ -29,7 +29,15 @@ for item in ('glib-2.0/schemas','icons/Adwaita','icons/hicolor'):
     src=Path('/usr/share')/item
     if src.exists():cp(src,app/'usr/share'/item)
 loaderdir=Path('/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders')
-if (loaderdir/'libpixbufloader_svg.so').exists():cp(loaderdir/'libpixbufloader_svg.so',app/'usr/lib/gdk-pixbuf/libpixbufloader_svg.so')
+# librsvg renamed this loader; Ubuntu 24.04 uses the hyphenated name.
+loader=next((loaderdir/name for name in ('libpixbufloader_svg.so','libpixbufloader-svg.so') if (loaderdir/name).is_file()),None)
+if loader is None: raise SystemExit('SVG pixbuf loader missing; install librsvg2-common')
+cp(loader,app/'usr/lib/gdk-pixbuf/libpixbufloader_svg.so')
+# Keep GIO modules compatible with the GLib shipped in the image.
+giomod=app/'usr/lib/gio/modules';giomod.mkdir(parents=True)
+for name in ('libdconfsettings.so','libgiognutls.so','libgiolibproxy.so'):
+    src=Path('/usr/lib/x86_64-linux-gnu/gio/modules')/name
+    if src.is_file(): cp(src,giomod/name)
 # Resolve all ELF dependencies and typelib-declared libraries via the build host's ldconfig.
 lookup={}
 for line in subprocess.check_output(['ldconfig','-p'],text=True).splitlines():

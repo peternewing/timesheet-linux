@@ -30,9 +30,13 @@ jobs:
       - name: Smoke test AppImage
         run: |
           APPIMAGE_EXTRACT_AND_RUN=1 dist/TimeSheetLinux-x86_64.AppImage --version
-          APPIMAGE_EXTRACT_AND_RUN=1 dist/TimeSheetLinux-x86_64.AppImage --diagnose
+          APPIMAGE_EXTRACT_AND_RUN=1 dist/TimeSheetLinux-x86_64.AppImage --diagnose 2> /tmp/appimage-diagnostic.log
+          cat /tmp/appimage-diagnostic.log
+          ! grep -E "Failed to load module|g_module_open\(\) failed|undefined symbol" /tmp/appimage-diagnostic.log
           export APPIMAGE_EXTRACT_AND_RUN=1 TIMESHEET_TESTING=1 XDG_DATA_HOME=/tmp/appimage-data GDK_BACKEND=x11
-          xvfb-run -a timeout 10 dist/TimeSheetLinux-x86_64.AppImage || test "$?" = 124
+          xvfb-run -a timeout 10 dist/TimeSheetLinux-x86_64.AppImage 2> /tmp/appimage-ui.log || test "$?" = 124
+          cat /tmp/appimage-ui.log
+          ! grep -E "Failed to load module|g_module_open\(\) failed|undefined symbol|Theme parser error" /tmp/appimage-ui.log
       - uses: actions/upload-artifact@v4
         with:
           name: TimeSheetLinux-AppImage-x86_64

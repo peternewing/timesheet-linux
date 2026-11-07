@@ -12,7 +12,7 @@ from gi.repository import Gio, GLib
 def host_environment():
     env=os.environ.copy()
     if env.get('APPIMAGE'):
-        for name in ('LD_LIBRARY_PATH','PYTHONHOME','PYTHONPATH','GI_TYPELIB_PATH','GSETTINGS_SCHEMA_DIR','GDK_PIXBUF_MODULE_FILE'):
+        for name in ('LD_LIBRARY_PATH','PYTHONHOME','PYTHONPATH','GI_TYPELIB_PATH','GSETTINGS_SCHEMA_DIR','GDK_PIXBUF_MODULE_FILE','GIO_MODULE_DIR'):
             env.pop(name,None)
     return env
 
