@@ -41,8 +41,8 @@ def button(text,callback,primary=False):
     if primary: w.add_css_class('suggested-action')
     return w
 
-def label(text,css=None):
-    w=Gtk.Label(label=str(text),xalign=0,wrap=True,selectable=True)
+def label(text,css=None,*,selectable=True):
+    w=Gtk.Label(label=str(text),xalign=0,wrap=True,selectable=selectable)
     if css: w.add_css_class(css)
     return w
 
@@ -127,7 +127,7 @@ class TimeSheet(Adw.Application):
         sidebar=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); sidebar.add_css_class('sidebar'); margins(sidebar,12); sidebar.set_size_request(172,-1); split.append(sidebar)
         sidebar.append(margins(label('TIME SHEET','brand'),8)); self.nav={}
         for name,icon in zip(PAGES,PAGE_ICONS):
-            b=Gtk.Button(); inner=Gtk.Box(spacing=10); inner.append(Gtk.Image.new_from_icon_name(icon)); inner.append(label(name)); b.set_child(inner)
+            b=Gtk.Button(); inner=Gtk.Box(spacing=10); inner.append(Gtk.Image.new_from_icon_name(icon)); inner.append(label(name,selectable=False)); b.set_child(inner)
             b.add_css_class('flat'); b.connect('clicked',lambda _,n=name:self.show_page(n)); sidebar.append(b); self.nav[name]=b
         spacer=Gtk.Box(); spacer.set_vexpand(True); sidebar.append(spacer); sidebar.append(label('Private • on this computer','dim-label'))
         self.stack=Gtk.Stack(hexpand=True,vexpand=True); split.append(self.stack)
