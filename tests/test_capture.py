@@ -171,3 +171,29 @@ class WaylandIPCTests(unittest.TestCase):
         adapter=CompositorCapture('sway')
         with patch('timesheet.capture.subprocess.run',side_effect=subprocess.TimeoutExpired('swaymsg',2)):
             self.assertIsNone(adapter.sample())
+
+    def test_host_uninstall_preserves_native_launcher_and_rejects_other_service(self):
+        from timesheet import desktop
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);launcher=root/'share/applications'/(desktop.APP_ID+'.desktop')
+            launcher.parent.mkdir(parents=True);launcher.write_text('native launcher')
+            service=root/'config/service';service.parent.mkdir(parents=True);service.write_text('unrelated service')
+            with patch.object(desktop,'SERVICE',service),patch.object(desktop,'SHARE',root/'share'),patch.object(desktop,'FLATPAK',False),patch.object(desktop,'stop_collector'),patch.object(desktop,'set_autostart'),patch.object(desktop,'run_systemd'),patch.object(desktop,'shell_settings',return_value=None):
+                with self.assertRaises(ValueError):desktop.uninstall(host_only=True)
+                self.assertTrue(service.exists())
+                service.write_text('Description=Time Sheet Linux host companion\nWorkingDirectory='+str(desktop.ROOT))
+                desktop.uninstall(host_only=True)
+                self.assertEqual(launcher.read_text(),'native launcher')
+                self.assertFalse(service.exists())
+
+    def test_flatpak_restore_requires_host_collector_to_be_stopped(self):
+        import fcntl
+        from timesheet import desktop
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            with patch.object(desktop,'DATA_DIR',root),patch.object(desktop,'FLATPAK',True):
+                with open(root/'collector.lock','a+') as lock:
+                    fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                    with self.assertRaisesRegex(ValueError,'Stop the host collector'):
+                        desktop.stop_collector()
+                desktop.stop_collector()

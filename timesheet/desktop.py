@@ -55,7 +55,14 @@ def start_collector():
 
 
 def stop_collector(wait=True):
-    if FLATPAK: raise ValueError('Stop or restart the host collector using the installation guide.')
+    if FLATPAK:
+        import fcntl
+        DATA_DIR.mkdir(parents=True,exist_ok=True,mode=0o700)
+        with open(DATA_DIR/'collector.lock','a+') as lock:
+            try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError: raise ValueError('Stop the host collector before restoring a backup; see the installation guide.')
+            finally: fcntl.flock(lock,fcntl.LOCK_UN)
+        return
     if os.environ.get('TIMESHEET_TESTING')!='1' and SERVICE.exists(): run_systemd('stop','time-sheet-linux.service')
     p=DATA_DIR/'collector.pid'
     try:
@@ -192,7 +199,7 @@ def install(enable_capture=True,host_only=False):
     working=str(Path(APPIMAGE).parent if APPIMAGE else ROOT).replace('%','%%')
     collector_exec=(quote(APPIMAGE).replace('%','%%')+' --collector-direct') if APPIMAGE else '/usr/bin/python3 -m timesheet.collector'
     SERVICE.write_text('''[Unit]
-Description=Time Sheet Linux activity collector
+Description=Time Sheet Linux '''+('host companion' if host_only else 'activity collector')+'''
 PartOf=graphical-session.target
 After=graphical-session.target
 
@@ -248,14 +255,21 @@ WantedBy=graphical-session.target
                 needs_sign_in=(gnome or kde) and not capture_available(),manual_only=not compatible)
 
 
-def uninstall():
+def uninstall(host_only=False):
+    if FLATPAK: raise ValueError('Remove the host companion outside Flatpak; see the installation guide.')
+    if host_only:
+        if not SERVICE.exists(): raise ValueError('No host companion service is installed.')
+        service=SERVICE.read_text()
+        if 'Description=Time Sheet Linux host companion' not in service or str(ROOT) not in service:
+            raise ValueError('The installed collector does not belong to this host companion checkout.')
     stop_collector()
     set_autostart(False)
     SERVICE.unlink(missing_ok=True); run_systemd('daemon-reload')
-    (SHARE/'applications'/(APP_ID+'.desktop')).unlink(missing_ok=True)
-    (SHARE/'icons/hicolor/scalable/apps'/(APP_ID+'.svg')).unlink(missing_ok=True)
-    command=Path.home()/'.local/bin/time-sheet-linux'
-    if command.exists() and str(EXECUTABLE) in command.read_text(): command.unlink()
+    if not host_only:
+        (SHARE/'applications'/(APP_ID+'.desktop')).unlink(missing_ok=True)
+        (SHARE/'icons/hicolor/scalable/apps'/(APP_ID+'.svg')).unlink(missing_ok=True)
+        command=Path.home()/'.local/bin/time-sheet-linux'
+        if command.exists() and str(EXECUTABLE) in command.read_text(): command.unlink()
     try:
         settings=shell_settings()
         if settings is None: raise ValueError('No GNOME settings')

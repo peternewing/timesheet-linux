@@ -45,7 +45,7 @@ See [desktop release gates](LINUX_COMPATIBILITY.md#acceptance-gate-before-promot
 
 ### Local candidate evidence (2026-11-07)
 
-- 64 unit/regression tests passed on system Python 3.14.
+- 66 unit/regression tests passed on system Python 3.14.
 - Real GNOME 50 headless Wayland helper loaded; idle/lock and a real foreground
   fixture window were detected successfully.
 - Private-bus GNOME collector test passed (idle cutoff and disabled title storage).
@@ -69,7 +69,7 @@ wire reply directly, so the optional high-level extension module is unnecessary.
   focus. Hardware lock, suspend and full sign-in are not covered by headless KWin.
 - Mouse coordinate conversion was reproduced failing at 200% and corrected; the
   isolated X11 mouse/keyboard workflow runs at 100% and 200% scale.
-- 64 automated tests include immutable PDF/invoice snapshot amounts and billing
+- 66 automated tests include immutable PDF/invoice snapshot amounts and billing
   state, multi-page output, currency validation and packaging paths. PDF samples
   were rendered and visually inspected; ReportLab and DejaVu fonts are required.
 - AppImage GUI/diagnostics were run with disposable data on Ubuntu 26.04; the
