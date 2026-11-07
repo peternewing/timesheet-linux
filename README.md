@@ -61,7 +61,7 @@ For detailed requirements, diagnostics, update and removal instructions, see [In
 5. **Export.** Select a client and period in Reports. Create a saved snapshot, inspect it, then save CSV or a printable HTML report. Print the HTML from your browser to PDF if needed.
 6. **Mark billed separately.** Enter your external invoice reference after invoicing. Repeated exports do not bill work twice. If you cancel or revise the external invoice, record the reason through the report's correction action; the original snapshot stays in history.
 
-You can use a task timer for focused work or add a call, reading or offline work manually. Idle detection is an estimate: genuine reading and meetings can be recovered from away time. Foreground app usage alone does not prove that time is billable.
+You can use a task timer for focused work or add a call, reading or offline work manually. Running timers, project and task totals, daily summaries and live activity counters update as each second is recorded. A running task is included in the assigned total; finished entries and saved reports stay fixed. Idle detection is an estimate: genuine reading and meetings can be recovered from away time. Foreground app usage alone does not prove that time is billable.
 
 Mark unassigned personal activity as **Personal** to keep it in usage totals while clearing it from the work-assignment queue. You can return it to review later. History's **View** selector switches between task entries and retained desktop activity.
 
