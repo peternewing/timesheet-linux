@@ -126,7 +126,7 @@ Do not add an untrusted repository or upgrade your OS just to satisfy this app.
 ## Install the app
 
 ```sh
-git clone https://github.com/peternewing/timesheet-linux.git
+git clone --branch linux-compatibility-0.3 https://github.com/peternewing/timesheet-linux.git
 cd timesheet-linux
 ./install.sh
 ```
