@@ -58,10 +58,11 @@ def main():
             assert ok and widget.get_mapped() and widget.get_sensitive(),'Click target must be mapped and enabled'
             surface=win.get_surface(); xid=surface.get_xid()
             sx,sy=win.get_surface_transform()
+            scale=surface.get_scale_factor()
             rx=ctypes.c_int(); ry=ctypes.c_int(); child=ctypes.c_ulong()
             x.XTranslateCoordinates(display,xid,x.XDefaultRootWindow(display),0,0,ctypes.byref(rx),ctypes.byref(ry),ctypes.byref(child))
             x.XRaiseWindow(display,xid); x.XSetInputFocus(display,xid,1,0)
-            xt.XTestFakeMotionEvent(display,-1,rx.value+int(rect.get_x()+rect.get_width()/2+sx),ry.value+int(rect.get_y()+rect.get_height()/2+sy),0)
+            xt.XTestFakeMotionEvent(display,-1,rx.value+int((rect.get_x()+rect.get_width()/2+sx)*scale),ry.value+int((rect.get_y()+rect.get_height()/2+sy)*scale),0)
             xt.XTestFakeButtonEvent(display,1,1,0); xt.XTestFakeButtonEvent(display,1,0,0); x.XFlush(display)
         def key(keysym):
             code=x.XKeysymToKeycode(display,keysym); xt.XTestFakeKeyEvent(display,code,1,0); xt.XTestFakeKeyEvent(display,code,0,0); x.XFlush(display)
@@ -89,6 +90,9 @@ def main():
             fields=entries(); fields[0].set_text('Example Studio'); fields[1].set_text('Website'); fields[3].set_text('60.00'); yield
             snapshot('03-project-form',app.dialogs[-1]); save(); yield
             check(len(app.store.tasks())==1,'Project form saves client, project and task')
+            for _ in range(12):
+                if len(app.dialogs)==1 and app.dialogs[-1].get_title()=='Add time': break
+                yield
             check(len(app.dialogs)==1 and app.dialogs[-1].get_title()=='Add time','First-project setup continues into the original Add time action')
             key(0xff1b); yield
             base=int(time.time())-7200
@@ -125,6 +129,19 @@ def main():
             report=app.store.create_report(client_id,base-1,base+1801)
             app.preview_report(report); yield
             preview=app.dialogs[-1]
+            with patch.object(app,'save_file',side_effect=lambda title,name,handler:handler(str(Path(directory)/name))):
+                click(find_button(preview,'PDF')); yield
+                check((Path(directory)/f'timesheet-{report}.pdf').read_bytes().startswith(b'%PDF'),'Report PDF saves from the report preview')
+                click(find_button(preview,'Invoice PDF')); yield
+                invoice_fields=entries()
+                invoice_fields[0].set_text('INV-TEST');invoice_fields[1].set_text('Example seller')
+                invoice_fields[2].set_text('Example client');invoice_fields[3].set_text('2026-11-07');invoice_fields[4].set_text('2026-12-07')
+                save();yield
+                for _ in range(12):
+                    if (Path(directory)/f'invoice-draft-{report}.pdf').exists():break
+                    yield
+                check((Path(directory)/f'invoice-draft-{report}.pdf').read_bytes().startswith(b'%PDF'),'Invoice draft PDF saves without billing the report')
+                check(app.report_state(report)=='Ready to bill','PDF export does not mark work billed')
             click(find_button(preview,'Mark billed')); yield
             check(app.dialogs[-1].get_transient_for()==preview,'Billing form is attached to the report preview')
             entries()[0].set_text('TEST-001'); save(); yield

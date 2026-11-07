@@ -1,0 +1,60 @@
+id: org.local.TimeSheetLinux
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+command: timesheet-linux
+build-options:
+  no-debuginfo: true
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --filesystem=xdg-data/time-sheet-linux:create
+  - --talk-name=org.local.TimeSheetCapture
+  - --env=FLATPAK_ID=org.local.TimeSheetLinux
+  - --env=PYTHONPATH=/app/lib/python3/site-packages:/app/share/time-sheet-linux
+modules:
+  - name: pillow
+    buildsystem: simple
+    build-commands:
+      - python3 -m pip install --no-index --no-deps --prefix=/app pillow*.whl
+    sources:
+      - type: file
+        only-arches: [x86_64]
+        url: https://files.pythonhosted.org/packages/ea/94/8fad659bcdbf86ed70099cb60ae40be6acca434bbc8c4c0d4ef356d7e0de/pillow-12.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+        sha256: a6597ff2b61d121172f5844b53f21467f7082f5fb385a9a29c01414463f93b07
+      - type: file
+        only-arches: [aarch64]
+        url: https://files.pythonhosted.org/packages/fc/bd/69ed99fd46a8dba7c1887156d3572fe4484e3f031405fcc5a92e31c04035/pillow-12.0.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+        sha256: bde737cff1a975b70652b62d626f7785e0480918dece11e8fef3c0cf057351c3
+  - name: reportlab
+    buildsystem: simple
+    build-commands:
+      - install -d /app/lib/python3/site-packages
+      - cp -a src/reportlab /app/lib/python3/site-packages/
+    sources:
+      - type: archive
+        url: https://files.pythonhosted.org/packages/1a/39/42cf24aee570a80e1903221ae3a92a2e34c324794a392eb036cbb6dc3839/reportlab-4.4.9.tar.gz
+        sha256: 7cf487764294ee791a4781f5a157bebce262a666ae4bbb87786760a9676c9378
+  - name: dejavu-fonts
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 ttf/DejaVuSans.ttf /app/share/time-sheet-linux/resources/fonts/DejaVuSans.ttf
+      - install -Dm644 ttf/DejaVuSans-Bold.ttf /app/share/time-sheet-linux/resources/fonts/DejaVuSans-Bold.ttf
+      - install -Dm644 LICENSE /app/share/time-sheet-linux/resources/fonts/LICENSE-DejaVu.txt
+    sources:
+      - type: archive
+        url: https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2
+        sha256: fa9ca4d13871dd122f61258a80d01751d603b4d3ee14095d65453b4e846e17d7
+  - name: time-sheet-linux
+    buildsystem: simple
+    build-commands:
+      - install -d /app/share/time-sheet-linux /app/bin
+      - cp -a timesheet resources /app/share/time-sheet-linux/
+      - install -Dm755 packaging/flatpak/launch /app/bin/timesheet-linux
+      - install -Dm644 packaging/flatpak/org.local.TimeSheetLinux.desktop /app/share/applications/org.local.TimeSheetLinux.desktop
+      - install -Dm644 resources/timesheet.svg /app/share/icons/hicolor/scalable/apps/org.local.TimeSheetLinux.svg
+    sources:
+      - type: dir
+        path: ../..

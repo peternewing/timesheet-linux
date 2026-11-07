@@ -24,3 +24,61 @@ A disposable systemd service was used to verify restart after a process crash. T
 - Screen-reader workflows, high text scaling and additional Linux desktop environments.
 
 Do not equate passing unit tests with universal desktop compatibility. The UI and README distinguish pending capture setup, paused recording and actual capture availability.
+
+## 0.3.0 compatibility candidate
+
+The candidate adds adapter selection, KDE sender authentication/heartbeat expiry,
+Wayland idle failures, unknown lock behavior, and upgrade preference/report snapshot
+regressions. Run the full suite and protocol checks:
+
+```sh
+/usr/bin/python3 -m unittest discover -s tests -v
+XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=GNOME PYTHONPATH=. dbus-run-session -- /usr/bin/python3 tests/verify_collector.py
+PYTHONPATH=. dbus-run-session -- /usr/bin/python3 tests/verify_kde_capture.py
+```
+
+The KDE protocol test uses a simulated compositor on a real private D-Bus session.
+It does not test the KWin JavaScript runtime or swayidle against an actual compositor.
+CI runs core/protocol tests on Ubuntu 22.04 and 24.04; those jobs do not certify
+that their GNOME Shell versions support the capture extension.
+See [desktop release gates](LINUX_COMPATIBILITY.md#acceptance-gate-before-promoting-030).
+
+### Local candidate evidence (2026-11-07)
+
+- 66 unit/regression tests passed on system Python 3.14.
+- Real GNOME 50 headless Wayland helper loaded; idle/lock and a real foreground
+  fixture window were detected successfully.
+- Private-bus GNOME collector test passed (idle cutoff and disabled title storage).
+- Private-bus KDE bridge test passed (simulated KWin sender, delivery and expiry).
+- All seven GTK pages rendered and their navigation handlers worked using synthetic
+  data (`PYTHONPATH=. /usr/bin/python3 tests/verify_pages.py`).
+- The physical-mouse test originally failed at 200% scaling. Coordinate conversion
+  was corrected; all 53 mouse/keyboard workflows now pass at 200% in isolated X11.
+- Real X11 virtual-server test passed: EWMH focus, Unicode title, XScreenSaver idle,
+  unknown lock and destroyed-window handling (`tests/verify_x11_capture.py`).
+  The lock service is mocked; real Plasma 6/full X11 desktop acceptance remains pending.
+
+The initial Ubuntu 22.04 CI run exposed missing `Xlib.ext.screensaver` in its
+python-xlib 0.29 package. The adapter now reads the standard XScreenSaver QueryInfo
+wire reply directly, so the optional high-level extension module is unnecessary.
+
+## Follow-up validation
+
+- Real isolated KWin 6.6 Wayland: installed script delivered a real GTK foreground
+  window, the real swayidle observer advanced, and window/compositor exit cleared
+  focus. Hardware lock, suspend and full sign-in are not covered by headless KWin.
+- Mouse coordinate conversion was reproduced failing at 200% and corrected; the
+  isolated X11 mouse/keyboard workflow runs at 100% and 200% scale.
+- 66 automated tests include immutable PDF/invoice snapshot amounts and billing
+  state, multi-page output, currency validation and packaging paths. PDF samples
+  were rendered and visually inspected; ReportLab and DejaVu fonts are required.
+- AppImage GUI/diagnostics were run with disposable data on Ubuntu 26.04; the
+  automated distribution build targets Ubuntu 24.04. Flatpak GUI and PDF exporter
+  were run in a sandbox without the unavailable document portal. The host companion
+  remains required for background capture; portal-based Save must still be tested
+  on a full desktop with the document portal available.
+
+- Real headless Sway 1.11 passed foreground IPC and idle detection; a synthetic
+  screen-lock service verified lock-state propagation. Real Hyprland launch was
+  attempted, but its GPU allocator could not access the available render device;
+  its adapter has unit coverage but not real-compositor acceptance.

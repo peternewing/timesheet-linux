@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
-DATA_DIR = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) / 'time-sheet-linux'
+DATA_DIR = (Path.home()/'.local/share/time-sheet-linux' if os.environ.get('FLATPAK_ID') and os.environ.get('TIMESHEET_TESTING')!='1'
+            else Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) / 'time-sheet-linux')
 DB_PATH = DATA_DIR / 'timesheet.sqlite3'
 SCHEMA = '''
 PRAGMA foreign_keys=ON;

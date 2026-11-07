@@ -18,25 +18,14 @@ def shutdown(*_):
     stopping = True
 
 
+from .capture import Capture, screen_locked
+
+_capture = None
+
 def get_focus():
-    try:
-        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-        value = bus.call_sync('org.local.TimeSheetCapture', '/org/local/TimeSheetCapture',
-            'org.local.TimeSheetCapture', 'GetState', None, GLib.VariantType.new('(ssxb)'),
-            Gio.DBusCallFlags.NONE, 1000, None)
-        return value.unpack()
-    except GLib.Error:
-        return None
-
-
-def screen_locked():
-    try:
-        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-        return bus.call_sync('org.gnome.ScreenSaver','/org/gnome/ScreenSaver',
-            'org.gnome.ScreenSaver','GetActive',None,GLib.VariantType.new('(b)'),
-            Gio.DBusCallFlags.NONE,500,None).unpack()[0]
-    except GLib.Error:
-        return None
+    global _capture
+    if _capture is None: _capture = Capture()
+    return _capture.sample()
 
 
 class Collector:
@@ -187,7 +176,7 @@ def maintenance(store, now):
 
 
 def run():
-    global stopping
+    global stopping, _capture
     stopping=False
     DATA_DIR.mkdir(parents=True,exist_ok=True,mode=0o700)
     lock=open(DATA_DIR/'collector.lock','a+')
@@ -200,7 +189,10 @@ def run():
         while not stopping:
             now=time.time()
             try:
-                state=get_focus() if store.get('capture_enabled','0')=='1' or int(store.get('pause_until','0') or 0) else None
+                enabled=store.get('capture_enabled','0')=='1' or int(store.get('pause_until','0') or 0)
+                if not enabled and _capture is not None:
+                    _capture.close(); _capture=None
+                state=get_focus() if enabled else None
                 status=collector.step(now,time.monotonic(),state)
                 health(status)
                 if now-last_maintenance>3600:
@@ -223,5 +215,6 @@ def run():
             try: pidfile.unlink()
             except FileNotFoundError: pass
             lock.close()
+            if _capture is not None: _capture.close()
 
 if __name__=='__main__': run()
