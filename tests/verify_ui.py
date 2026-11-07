@@ -27,7 +27,7 @@ def descendants(widget):
 def main():
     with tempfile.TemporaryDirectory(prefix='timesheet-ui-') as directory:
         os.environ.update(XDG_DATA_HOME=directory,TIMESHEET_TESTING='1',GDK_BACKEND='x11')
-        from timesheet.app import TimeSheet,PAGES,Gtk,GLib,desktop,fmt_timer
+        from timesheet.app import TimeSheet,PAGES,Gtk,GLib,desktop,fmt_timer,fmt_duration
         import gi
         gi.require_version('GdkX11','4.0')
         from gi.repository import GdkX11
@@ -169,18 +169,67 @@ def main():
             app.win.set_default_size(900,650); yield
             click(app.nav['History'].get_child().get_last_child()); yield
             snapshot('09-smaller-window')
+            check(fmt_duration(3661)=='1h 01m 01s','Duration totals retain seconds beyond an hour')
+            sample_now=int(time.time())
+            with app.store.db:
+                live_id=app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,?,'active',0)",(sample_now-15,sample_now-1,'Live Editor')).lastrowid
+                app.store.db.execute("UPDATE runtime SET collector_seen=?,capture_status='active',app='Live Editor',activity_state='active' WHERE id=1",(sample_now,))
+            def sample():
+                now=int(time.time())
+                with app.store.db:
+                    app.store.db.execute('UPDATE activity SET end=? WHERE id=?',(now,live_id))
+                    app.store.db.execute('UPDATE runtime SET collector_seen=? WHERE id=1',(now,))
+                return True
+            sample_source=GLib.timeout_add(1000,sample)
+            click(app.nav['Today'].get_child().get_last_child()); yield
+            active_before=app.today_metrics['active'].get_text(); unassigned_before=app.today_metrics['unassigned'].get_text(); app_before=app.today_apps['Live Editor'][0].get_text()
+            for _ in range(4): yield
+            check(app.today_metrics['active'].get_text()!=active_before,'Active desktop total updates as new activity is recorded')
+            check(app.today_metrics['unassigned'].get_text()!=unassigned_before,'Unassigned total updates as new activity is recorded')
+            check(app.today_apps['Live Editor'][0].get_text()!=app_before,'Per-app usage counter updates as new activity is recorded')
+            app.day=datetime.now().date(); app.activity_filter='all'
+            click(app.nav['Calendar'].get_child().get_last_child()); yield
+            live_before=app.calendar_live[live_id][0].get_text(); summary_before=app.calendar_summary.get_text()
+            for _ in range(4): yield
+            check(app.calendar_live[live_id][0].get_text()!=live_before,'Calendar live activity updates without rebuilding the page')
+            check(app.calendar_summary.get_text()!=summary_before,'Calendar duration totals update with recorded activity')
+            app.history_kind='usage'; app.history_period='all'; app.show_page('History'); yield
+            history_before=app.history_live[live_id][0].get_text()
+            for _ in range(4): yield
+            check(app.history_live[live_id][0].get_text()!=history_before,'History live usage duration updates')
+            sample_now=int(time.time())
+            with app.store.db:
+                app.store.db.execute('UPDATE activity SET closed=1 WHERE id=?',(live_id,))
+                live_id=app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,?,'active',0)",(sample_now-1,sample_now,'Next Editor')).lastrowid
+                app.store.db.execute("UPDATE runtime SET collector_seen=?,app='Next Editor' WHERE id=1",(sample_now,))
+            for _ in range(4): yield
+            check(live_id in app.history_live,'History follows the new live activity when the foreground app changes')
+            GLib.source_remove(sample_source)
+            click(app.nav['Today'].get_child().get_last_child()); yield
+            frozen=app.today_metrics['active'].get_text()
+            for _ in range(4): yield
+            check(app.today_metrics['active'].get_text()==frozen,'Activity total stops when no new observation is recorded')
+            with app.store.db: app.store.db.execute('UPDATE activity SET closed=1 WHERE id=?',(live_id,))
+            app.history_kind='tasks'
             check(fmt_timer(3661)=='01:01:01' and fmt_timer(90061)=='25:01:01' and fmt_timer(-1)=='00:00:00','Timer formatting keeps seconds beyond an hour and a day')
             task=app.store.tasks()[0]['id']; timer_start=int(time.time())-3661
             app.store.start_timer(task,now=timer_start)
             click(app.nav['Today'].get_child().get_last_child()); yield
-            before=app.timer_label.get_text()
+            before=app.timer_label.get_text(); assigned_before=app.today_metrics['assigned'].get_text()
             for _ in range(4): yield
             after=app.timer_label.get_text()
             def seconds(text):
                 h,m,s=map(int,text.split(':')); return h*3600+m*60+s
             check(seconds(after)>seconds(before),'Running timer advances second by second')
+            check(app.today_metrics['assigned'].get_text()!=assigned_before,'Running task is reflected in the assigned total every second')
             check(abs(seconds(after)-int(time.time()-timer_start))<=1,'Timer is derived from actual elapsed time, not accumulated UI ticks')
             snapshot('10-live-timer')
+            click(app.nav['Projects'].get_child().get_last_child()); yield
+            project_id=app.task_projects[task]
+            project_before=app.project_live[project_id][0].get_text(); task_before=app.task_live[task][0].get_text()
+            for _ in range(4): yield
+            check(app.project_live[project_id][0].get_text()!=project_before,'Project spent time updates while its task timer runs')
+            check(app.task_live[task][0].get_text()!=task_before,'Task recorded time updates while its timer runs')
             click(app.nav['History'].get_child().get_last_child()); yield
             check(app.timer_button.get_visible(),'Live timer remains visible while browsing other pages')
             click(app.timer_button); yield
