@@ -30,6 +30,10 @@ def fmt_duration(seconds):
     if seconds<60: return f'{seconds}s'
     return f'{seconds//3600}h {(seconds%3600)//60:02d}m' if seconds>=3600 else f'{seconds//60}m {seconds%60:02d}s'
 
+def fmt_timer(seconds):
+    seconds=max(0,int(seconds))
+    return f'{seconds//3600:02d}:{(seconds%3600)//60:02d}:{seconds%60:02d}'
+
 def fmt_time(ts): return datetime.fromtimestamp(ts).strftime('%d %b %H:%M')
 def money(minor): return f'{Decimal(minor)/100:,.2f}'
 def day_bounds(day):
@@ -42,15 +46,26 @@ def button(text,callback,primary=False):
     return w
 
 def label(text,css=None,*,selectable=True):
+    if css in ('title-1','title-3','heading','metric','brand','field-label'): selectable=False
     w=Gtk.Label(label=str(text),xalign=0,wrap=True,selectable=selectable)
     if css: w.add_css_class(css)
     return w
 
 def field(box,title,default='',placeholder=''):
-    box.append(label(title,'field-label')); w=Gtk.Entry(); w.set_text(str(default)); w.set_placeholder_text(placeholder); box.append(w); return w
+    group=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6,hexpand=True); box.append(group)
+    caption=label(title,'field-label',selectable=False); group.append(caption)
+    w=Gtk.Entry(); w.set_text(str(default)); w.set_placeholder_text(placeholder); w.set_activates_default(True)
+    w.update_property([Gtk.AccessibleProperty.LABEL],[title]); caption.set_mnemonic_widget(w); group.append(w); return w
 
 def dropdown(box,title,values):
-    box.append(label(title,'field-label')); w=Gtk.DropDown.new_from_strings([name for _,name in values] or ['No choices yet']); w._values=values; box.append(w); return w
+    group=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6,hexpand=True); box.append(group)
+    caption=label(title,'field-label',selectable=False); group.append(caption)
+    w=Gtk.DropDown.new_from_strings([name for _,name in values] or ['No choices yet']); w._values=values
+    w.update_property([Gtk.AccessibleProperty.LABEL],[title]); caption.set_mnemonic_widget(w); group.append(w); return w
+
+def action_bar():
+    return Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE,column_spacing=8,row_spacing=8,
+                       homogeneous=False,min_children_per_line=1,max_children_per_line=8)
 
 def selected(w):
     i=w.get_selected(); return w._values[i][0] if i<len(w._values) else None
@@ -105,6 +120,8 @@ class TimeSheet(Adw.Application):
         super().__init__(application_id=APP_ID)
         self.store=Store(); self.win=None; self.day=datetime.now().date(); self.page='Today'
         self.dialog_count=0; self.last_refresh=0; self.history_search=''; self.history_period='month'; self.history_status='all'
+        self.dialogs=[]
+        self.timer_label=None; self.timer_started=None
         self.history_kind='tasks'
         self.activity_filter='all'; self.selected_entries=set(); self.selected_blocks=[]; self.rendered_signature=None
 
@@ -120,15 +137,25 @@ class TimeSheet(Adw.Application):
         layout=Gtk.Box(orientation=Gtk.Orientation.VERTICAL); self.toasts.set_child(layout)
         header=Adw.HeaderBar(); layout.append(header)
         self.status=Gtk.Label(label='Starting…'); self.status.add_css_class('status-pill'); header.pack_start(self.status)
+        self.timer_button=button('00:00:00',lambda _:self.show_page('Today'))
+        self.timer_button.add_css_class('timer-digits'); self.timer_button.set_tooltip_text('Running task timer · hours:minutes:seconds · Open Today')
+        self.timer_button.set_visible(False); header.pack_start(self.timer_button)
         self.capture_button=button('Pause',self.toggle_capture); header.pack_end(self.capture_button)
         self.undo_button=button('Undo',lambda _:self.run_action(self.store.undo,lambda action:self.toast(action+' undone'))); header.pack_end(self.undo_button)
         header.pack_end(button('Refresh',lambda _:self.show_page(self.page)))
+        header.pack_end(button('Help',lambda _:self.info('From activity to a client report',
+            '1. Projects: create a client, project and task. Set an hourly rate for billable work.\n\n'
+            '2. Calendar: review captured activity and assign it to a task. Use Add time for work you recorded manually.\n\n'
+            '3. History: check your entries and approve the drafts. Approval freezes the rate.\n\n'
+            '4. Reports: create a report from approved work, export it, then mark it billed with your invoice reference.\n\n'
+            'Draft = editable work. Approved = reviewed and ready to report. Billed = locked to protect your invoice history.\n\n'
+            'Keyboard: Ctrl+1–7 opens pages, Ctrl+N creates a project, Ctrl+Z undoes an entry edit, Ctrl+R refreshes. Escape closes an edit form.')))
         split=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL); split.set_vexpand(True); layout.append(split)
         sidebar=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); sidebar.add_css_class('sidebar'); margins(sidebar,12); sidebar.set_size_request(172,-1); split.append(sidebar)
         sidebar.append(margins(label('TIME SHEET','brand'),8)); self.nav={}
         for name,icon in zip(PAGES,PAGE_ICONS):
             b=Gtk.Button(); inner=Gtk.Box(spacing=10); inner.append(Gtk.Image.new_from_icon_name(icon)); inner.append(label(name,selectable=False)); b.set_child(inner)
-            b.add_css_class('flat'); b.connect('clicked',lambda _,n=name:self.show_page(n)); sidebar.append(b); self.nav[name]=b
+            b.add_css_class('flat'); b.update_property([Gtk.AccessibleProperty.LABEL],[name]); b.set_tooltip_text(f'{name} (Ctrl+{len(self.nav)+1})'); b.connect('clicked',lambda _,n=name:self.show_page(n)); sidebar.append(b); self.nav[name]=b
         spacer=Gtk.Box(); spacer.set_vexpand(True); sidebar.append(spacer); sidebar.append(label('Private • on this computer','dim-label'))
         self.stack=Gtk.Stack(hexpand=True,vexpand=True); split.append(self.stack)
         for name in PAGES:
@@ -137,11 +164,16 @@ class TimeSheet(Adw.Application):
             body=margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=16),24)
             clamp.set_child(body); scroll.set_child(clamp); self.stack.add_named(scroll,name); setattr(self,'body_'+name.lower(),body)
         desktop.start_collector(); self.show_page('Today'); self.tick()
-        self.tick_source=GLib.timeout_add_seconds(2,self.tick); self.win.present()
+        self.tick_source=GLib.timeout_add_seconds(1,self.tick)
+        self.timer_source=GLib.timeout_add(200,self.update_timer_display); self.win.present()
         for name,callback,keys in [
             ('today',lambda *_:self.show_page('Today'),['<Control>1']),
             ('calendar',lambda *_:self.show_page('Calendar'),['<Control>2']),
             ('history',lambda *_:self.show_page('History'),['<Control>3']),
+            ('projects',lambda *_:self.show_page('Projects'),['<Control>4']),
+            ('rules',lambda *_:self.show_page('Rules'),['<Control>5']),
+            ('reports',lambda *_:self.show_page('Reports'),['<Control>6']),
+            ('settings',lambda *_:self.show_page('Settings'),['<Control>7']),
             ('new-project',self.quick_setup,['<Control>n']),
             ('undo',lambda *_:self.run_action(self.store.undo),['<Control>z']),
             ('refresh',lambda *_:self.show_page(self.page),['<Control>r'])]:
@@ -149,6 +181,7 @@ class TimeSheet(Adw.Application):
 
     def close_window(self,*_):
         if getattr(self,'tick_source',None): GLib.source_remove(self.tick_source); self.tick_source=None
+        if getattr(self,'timer_source',None): GLib.source_remove(self.timer_source); self.timer_source=None
         self.store.close(); self.win=None
         return False
 
@@ -156,19 +189,28 @@ class TimeSheet(Adw.Application):
     def info(self,title,message): self.message(title,message)
     def error(self,message): self.message('Could not complete that action',str(message))
     def message(self,title,message):
-        d=Adw.AlertDialog(heading=title,body=str(message)); d.add_response('close','Close'); d.set_default_response('close'); d.present(self.win)
+        d=Adw.AlertDialog(heading=title,body=str(message)); d.add_response('close','Close'); d.set_default_response('close'); d.present(self.dialogs[-1] if self.dialogs else self.win)
     def confirm(self,title,body,action):
         d=Adw.AlertDialog(heading=title,body=body); d.add_response('cancel','Cancel'); d.add_response('confirm','Continue'); d.set_response_appearance('confirm',Adw.ResponseAppearance.DESTRUCTIVE); d.set_close_response('cancel')
-        d.connect('response',lambda _,r:self.run_action(action) if r=='confirm' else None); d.present(self.win)
+        d.connect('response',lambda _,r:self.run_action(action) if r=='confirm' else None); d.present(self.dialogs[-1] if self.dialogs else self.win)
     def run_action(self,fn,success=None):
         try:
             result=fn()
             if success: success(result)
-            self.show_page(self.page)
-        except (ValueError,sqlite3.Error,OSError) as exc: self.error(exc)
+            # Finish the click/keyboard event before replacing its focused widget.
+            GLib.idle_add(self.refresh_after_action)
+        except (ValueError,sqlite3.Error,OSError,OverflowError) as exc: self.error(self.friendly_error(exc))
+    def refresh_after_action(self):
+        if self.win: self.show_page(self.page)
+        return False
+    def friendly_error(self,exc):
+        if isinstance(exc,sqlite3.IntegrityError) and 'UNIQUE constraint' in str(exc): return 'That name is already in use here. Choose a different name or edit the existing item.'
+        if isinstance(exc,OverflowError): return 'That number is too large. Enter a smaller value.'
+        return str(exc)
     def dialog(self,title,build,save):
-        d=Adw.Window(title=title,transient_for=self.win,modal=True,default_width=480,default_height=480)
+        d=Adw.Window(title=title,transient_for=self.dialogs[-1] if self.dialogs else self.win,modal=True,default_width=480,default_height=620)
         self.dialog_count+=1
+        self.dialogs.append(d)
         box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL); d.set_content(box)
         head=Adw.HeaderBar(); box.append(head)
         content=margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10),20)
@@ -176,12 +218,21 @@ class TimeSheet(Adw.Application):
         fields=build(content)
         def commit(_):
             try: save(fields)
-            except (ValueError,sqlite3.Error,OSError) as exc: self.error(exc); return
+            except (ValueError,sqlite3.Error,OSError,OverflowError) as exc: self.error(self.friendly_error(exc)); return
             d.close(); self.show_page(self.page)
-        head.pack_start(button('Cancel',lambda _:d.close())); head.pack_end(button('Save',commit,True))
-        d.connect('close-request',lambda *_:self.dialog_closed()); d.present()
-    def dialog_closed(self): self.dialog_count=max(0,self.dialog_count-1); return False
+        head.pack_start(button('Cancel',lambda _:d.close())); save_button=button('Save',commit,True); head.pack_end(save_button); d.set_default_widget(save_button)
+        keys=Gtk.EventControllerKey()
+        def key_pressed(_,key,*args):
+            if key==Gdk.KEY_Escape: d.close(); return True
+            return False
+        keys.connect('key-pressed',key_pressed); d.add_controller(keys)
+        d.connect('close-request',lambda *_:self.dialog_closed(d)); d.present()
+    def dialog_closed(self,d):
+        if d in self.dialogs: self.dialogs.remove(d)
+        self.dialog_count=len(self.dialogs); return False
     def clear(self,box):
+        focus=self.win.get_focus()
+        if focus and (focus==box or focus.is_ancestor(box)): self.win.set_focus(None)
         while box.get_first_child(): box.remove(box.get_first_child())
     def heading(self,box,title,subtitle=''):
         box.append(label(title,'title-1'))
@@ -189,7 +240,7 @@ class TimeSheet(Adw.Application):
     def row(self,box,main,detail,actions=()):
         row=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); row.add_css_class('card'); row.append(label(main,'heading')); row.append(label(detail,'dim-label'))
         if actions:
-            controls=Gtk.Box(spacing=6)
+            controls=action_bar()
             for text,cb in actions: controls.append(button(text,cb,text in ('Approve','Assign','Open report')))
             row.append(controls)
         box.append(row); return row
@@ -210,6 +261,8 @@ class TimeSheet(Adw.Application):
         if not self.win: return False
         try:
             health=desktop.read_health(self.store); status=health['status']; rt=self.store.runtime()
+            self.timer_started=rt['started'] if rt['state']=='running' else None
+            self.update_timer_display()
             names={'active':'Tracking automatically','paused':'Tracking paused','setup_required':'Finish setup','stopped':'Tracking stopped','error':'Recording failed','degraded':'Tracking needs attention'}
             self.status.set_text(names.get(status,'Starting…'))
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
@@ -221,23 +274,36 @@ class TimeSheet(Adw.Application):
                 self.refresh_calendar_details(); self.last_refresh=time.monotonic()
         except (sqlite3.Error,OSError) as exc: self.status.set_text('Recording needs attention')
         return True
+    def update_timer_display(self):
+        if not self.win: return False
+        self.timer_button.set_visible(self.timer_started is not None)
+        if self.timer_started is not None:
+            text=fmt_timer(time.time()-self.timer_started)
+            if self.timer_button.get_label()!=text: self.timer_button.set_label(text)
+            if self.timer_label is not None and self.timer_label.get_text()!=text: self.timer_label.set_text(text)
+        return True
     def toggle_capture(self,*_):
         paused=self.store.get('capture_enabled','0')!='1'
         desktop.set_paused(self.store,not paused); desktop.start_collector(); self.tick(); self.show_page(self.page)
         self.toast('Automatic tracking resumed' if paused else 'Automatic tracking paused')
     def pause_for(self,minutes):
         desktop.set_paused(self.store,True,minutes); self.show_page(self.page); self.toast(f'Paused for {minutes} minutes')
-    def quick_setup(self,*_):
+    def quick_setup(self,*_,after=None):
         def build(b):
-            b.append(label('Set up one project. Tracking works even before you assign time to a client.','dim-label'))
+            b.append(label('Create a client, project and first task together. For an existing client with different billing settings, use Add project in Projects.','dim-label'))
             return (field(b,'Client',''),field(b,'Project',''),field(b,'First task','General'),field(b,'Hourly rate (optional)','','e.g. 60.00'),dropdown(b,'Currency',[(x,x) for x in ('GBP','EUR','USD')]),field(b,'Project budget in hours (optional)'))
         def save(f):
             c,p,t,r,cur,b=f; self.store.quick_project(c.get_text(),p.get_text(),t.get_text(),parse_money(r.get_text()),selected(cur),parse_hours(b.get_text())); self.toast('Project ready')
+            if after: GLib.idle_add(lambda:(after(),False)[1])
         self.dialog('New project',build,save)
 
     def refresh_today(self):
+        self.timer_label=None
         b=self.body_today; self.clear(b); now=int(time.time()); start,end=day_bounds(datetime.now().date()); rt=self.store.runtime(); summary=self.store.day_summary(start,end)
-        self.heading(b,'Today',datetime.now().strftime('%A, %d %B')+' · Your working day, captured automatically')
+        self.timer_started=rt['started'] if rt['state']=='running' else None; self.update_timer_display()
+        self.heading(b,'Today',datetime.now().strftime('%A, %d %B')+' · Review your day and record your work')
+        if not self.task_choices():
+            self.row(b,'Start with a project','Create a client, project and task. Then add time manually or assign captured activity. Review drafts in History before creating a client report.',[('Create your first project',self.quick_setup)])
         health=desktop.read_health(self.store); state=health['status']
         if state=='setup_required':
             description='The GNOME helper is installed. Save your work, then sign out and back in when convenient. Tracking will start automatically.' if desktop.supported_desktop() else 'Automatic capture currently requires GNOME 50 Wayland. Manual task timers and timesheets are available on this desktop.'
@@ -252,23 +318,31 @@ class TimeSheet(Adw.Application):
         for value,title in [(summary['active'],'Active desktop use'),(summary['assigned'],'Assigned to tasks'),(summary['unassigned'],'Needs assignment')]:
             card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); card.add_css_class('card'); card.append(label(fmt_duration(value),'metric')); card.append(label(title,'dim-label')); metrics.append(card)
         b.append(metrics)
-        bar=Gtk.Box(spacing=8); b.append(bar)
+        bar=action_bar(); b.append(bar)
         bar.append(button('Review today',lambda _:self.review_today(),True)); bar.append(button('Add time',lambda _:self.entry_dialog())); bar.append(button('New project',self.quick_setup))
         if rt['state']=='running':
             task=next((r for r in self.store.tasks() if r['id']==rt['task_id']),None)
-            self.row(b,'Focused task: '+(task['task'] if task else 'Task'),fmt_duration(now-rt['started'])+' · Desktop usage continues to be recorded independently.',[('Stop task timer',lambda _:self.run_action(self.store.stop_timer))])
+            timer=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); timer.add_css_class('card'); b.append(timer)
+            timer.append(label('Running timer · '+(task['task'] if task else 'Task'),'heading'))
+            self.timer_started=rt['started']; self.timer_label=label(fmt_timer(time.time()-rt['started']),'metric')
+            self.timer_label.add_css_class('timer-digits'); timer.append(self.timer_label)
+            timer.append(label('Hours : minutes : seconds · Updates every second','dim-label'))
+            timer.append(button('Stop and save time',lambda _:self.run_action(self.store.stop_timer,lambda _:self.toast('Timer stopped; time saved as draft'))))
         elif self.task_choices():
             with_task=Gtk.Expander(label='Optional: focus on a task with a timer'); with_task.set_expanded(getattr(self,'focus_expanded',False)); with_task.connect('notify::expanded',lambda w,*_:setattr(self,'focus_expanded',w.get_expanded()))
             inner=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); choices=dropdown(inner,'Task',self.task_choices()); select_id(choices,getattr(self,'focus_task',None)); choices.connect('notify::selected',lambda *_:setattr(self,'focus_task',selected(choices)))
             inner.append(button('Start task timer',lambda _:self.run_action(lambda:self.start_timer(selected(choices))))); with_task.set_child(inner); b.append(with_task)
-        if not self.task_choices(): self.empty(b,'Start with a project','Your app usage appears below. Create a project when you want to turn it into a client timesheet.',('Create a project',self.quick_setup))
+        if summary['drafts']:
+            self.row(b,f"{summary['drafts']} draft entries today",'Review the task, description and rate, then approve time for client reports.',[('Review drafts',lambda _:self.review_drafts())])
+        for notice in self.store.rows('SELECT id,message FROM notices WHERE read=0 ORDER BY id DESC LIMIT 3'):
+            self.row(b,'Tracking notice',notice['message'],[('Dismiss',lambda _,i=notice['id']:self.run_action(lambda:self.dismiss_notice(i)))])
         b.append(label('Apps today','title-3'))
         if not summary['apps']: b.append(label('Usage appears here as soon as automatic tracking is available.','dim-label'))
         for app,duration in summary['apps'][:8]:
             card=self.row(b,app,fmt_duration(duration),[('Assign usage',lambda _,a=app:self.assign_app(a,start,end))])
             progress=Gtk.ProgressBar(fraction=duration/max(1,summary['active'])); card.append(progress)
-        if summary['drafts']:
-            self.row(b,f"{summary['drafts']} entries ready for review",'Check the client and description before approving time for billing.',[('Review timesheet',lambda _:self.show_page('History'))])
+    def dismiss_notice(self,notice_id):
+        with self.store.db: self.store.db.execute('UPDATE notices SET read=1 WHERE id=?',(notice_id,))
     def review_today(self): self.day=datetime.now().date(); self.activity_filter='unassigned'; self.show_page('Calendar')
     def start_timer(self,task):
         rt=self.store.runtime()
@@ -280,7 +354,11 @@ class TimeSheet(Adw.Application):
     def entry_row(self,box,row,selectable=False):
         eid=row['id']; title=f"{row['client']} / {row['project']} / {row['task']}"
         start=datetime.fromtimestamp(row['start']); end=datetime.fromtimestamp(row['end'])
-        detail=f"{start:%d %b %H:%M} – {end:%H:%M} · {fmt_duration(row['end']-row['start'])} · {row['status'].capitalize()} · "+('Billable' if row['billable'] else 'Non-billable')
+        end_text=end.strftime('%d %b %H:%M' if start.date()!=end.date() else '%H:%M')
+        detail=f"{start:%d %b %H:%M} – {end_text} · {fmt_duration(row['end']-row['start'])} · {row['status'].capitalize()} · "+('Billable' if row['billable'] else 'Non-billable')
+        if row['billable']:
+            rate=row['suggested_rate'] if row['status']=='draft' else row['rate']
+            detail+=' · '+('Set an hourly rate before approval' if rate is None else f"{row['currency'] or row['client_currency']} {money(rate)}/hour")
         if row['description']: detail+='\n'+row['description']
         actions=[]
         if row['status']!='billed':
@@ -290,7 +368,13 @@ class TimeSheet(Adw.Application):
         card=self.row(box,title,detail,actions)
         if selectable and row['status']!='billed':
             cb=Gtk.CheckButton(label='Select entry'); cb.set_active(eid in self.selected_entries)
-            cb.connect('toggled',lambda w,i=eid:self.selected_entries.add(i) if w.get_active() else self.selected_entries.discard(i)); card.prepend(cb)
+            cb.update_property([Gtk.AccessibleProperty.LABEL],[f'Select {title}, {start:%d %b %H:%M}'])
+            def changed(w,i=eid):
+                if w.get_active(): self.selected_entries.add(i)
+                else: self.selected_entries.discard(i)
+                self.update_history_selection()
+            cb.connect('toggled',changed); card.prepend(cb)
+            self.history_checks.append(cb)
     def entry_dialog(self,eid=None,start=None,end=None,task_id=None):
         entry=self.store.db.execute('SELECT * FROM entries WHERE deleted=0 AND id=?',(eid,)).fetchone() if eid else None
         choices=self.task_choices()
@@ -298,7 +382,7 @@ class TimeSheet(Adw.Application):
             old=self.store.entries(entry['start'],entry['end'])
             old=next((x for x in old if x['id']==eid),None)
             if old: choices.append((entry['task_id'],f"{old['client']} / {old['project']} / {old['task']} (archived)"))
-        if not choices: self.quick_setup(); return
+        if not choices: self.quick_setup(after=lambda:self.entry_dialog(eid,start,end,task_id)); return
         if entry and entry['status']=='billed': self.error('Billed time is locked.'); return
         now=int(time.time()); a=entry['start'] if entry else (start if start is not None else now-1800); z=entry['end'] if entry else (end if end is not None else now)
         def build(b):
@@ -320,7 +404,7 @@ class TimeSheet(Adw.Application):
         self.dialog('Split time',build,lambda w:self.store.split_entry(row['id'],parse_local(w.get_text())))
     def assign_dialog(self,blocks,app=None):
         if not blocks: self.toast('No completed, unassigned activity yet. Live usage becomes assignable when you switch apps.'); return
-        if not self.task_choices(): self.quick_setup(); return
+        if not self.task_choices(): self.quick_setup(after=lambda:self.assign_dialog(blocks,app)); return
         seconds=sum(b['end']-b['start'] for b in blocks)
         def build(b):
             b.append(label(f'{fmt_duration(seconds)} of activity. Time already assigned to a task will be skipped.'))
@@ -360,7 +444,9 @@ class TimeSheet(Adw.Application):
             for row in self.store.activity_for(start,end): c.mark_day(datetime.fromtimestamp(row['start']).day)
         def changed(c):
             dt=c.get_date(); self.day=datetime(dt.get_year(),dt.get_month(),dt.get_day_of_month()).date(); self.selected_blocks=[]; self.refresh_calendar_details()
-        cal.connect('day-selected',changed); cal.connect('next-month',marks); cal.connect('prev-month',marks); marks(cal)
+        cal.connect('day-selected',changed)
+        for signal in ('next-month','prev-month','next-year','prev-year'): cal.connect(signal,marks)
+        marks(cal)
         self.calendar_detail=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12); b.append(self.calendar_detail); self.refresh_calendar_details()
     def set_activity_filter(self,value): self.activity_filter=value; self.selected_blocks=[]; self.refresh_calendar_details()
     def jump_today(self): self.day=datetime.now().date(); self.show_page('Calendar')
@@ -379,8 +465,10 @@ class TimeSheet(Adw.Application):
         source=self.store.activity_for(start,end,self.activity_filter=='unassigned')
         groups=group_activity(source)
         if not groups: b.append(label('No activity to show for this date.','dim-label')); return
-        bar=Gtk.Box(spacing=8); b.append(bar)
-        bar.append(button('Assign selected',lambda _:self.assign_dialog([x for group in self.selected_blocks for x in group]),True))
+        self.selected_blocks=[]
+        bar=action_bar(); b.append(bar)
+        assign_selected=button('Assign selected',lambda _:self.assign_dialog([x for group in self.selected_blocks for x in group]),True)
+        assign_selected.set_sensitive(False); bar.append(assign_selected)
         bar.append(button('Apply saved rules to this day',lambda _:self.run_action(lambda:self.store.apply_rules(start=start,end=end),lambda count:self.toast(f'{count} entries assigned'))))
         for group in groups[:250]:
             name=group['app'] if group['state']=='active' else 'Personal · '+group['app'] if group['state']=='personal' else {'away':'Away from keyboard','locked':'Screen locked','unknown':'Capture gap','excluded':'Excluded application','paused':'Paused'}.get(group['state'],group['state'])
@@ -392,16 +480,17 @@ class TimeSheet(Adw.Application):
             if group['state'] in ('active','away') and not live:
                 if remaining:
                     actions=[('Assign' if group['state']=='active' else 'Recover as work',lambda _,g=group:self.assign_dialog(g['blocks']))]
-                    if group['state']=='active': actions.append(('Mark personal',lambda _,g=group:self.run_action(lambda:self.store.set_personal([r['id'] for r in g['blocks']]),lambda _:self.toast('Personal usage removed from assignment queue'))))
+                    if group['state']=='active' and all(sum(z-a for a,z in self.store.uncovered(r['start'],r['end']))==r['end']-r['start'] for r in group['blocks']): actions.append(('Mark personal',lambda _,g=group:self.run_action(lambda:self.store.set_personal([r['id'] for r in g['blocks']]),lambda _:self.toast('Personal usage removed from assignment queue'))))
                     detail+=' · '+fmt_duration(remaining)+' unassigned'
                 else: detail+=' · Assigned'
             elif group['state']=='personal': actions=[('Return to review',lambda _,g=group:self.run_action(lambda:self.store.set_personal([r['id'] for r in g['blocks']],False)))]
             card=self.row(b,name or 'Desktop',detail,actions)
-            if actions:
+            if group['state'] in ('active','away') and not live and remaining:
                 cb=Gtk.CheckButton(label='Select activity')
                 def changed(w,g=group['blocks']):
                     if w.get_active(): self.selected_blocks.append(g)
                     elif g in self.selected_blocks: self.selected_blocks.remove(g)
+                    assign_selected.set_sensitive(bool(self.selected_blocks)); assign_selected.set_label(f'Assign selected ({len(self.selected_blocks)})' if self.selected_blocks else 'Assign selected')
                 cb.connect('toggled',changed); card.prepend(cb)
         if len(groups)>250: b.append(label('Showing the first 250 groups. Use Unassigned to narrow the view.'))
     def history_bounds(self):
@@ -415,15 +504,25 @@ class TimeSheet(Adw.Application):
         period=dropdown(bar,'Period',[('today','Today'),('week','This week'),('month','This month'),('all','All time')]); select_id(period,self.history_period)
         status=dropdown(bar,'Status',[('all','All entries'),('draft','Needs review'),('approved','Approved'),('billed','Billed')]); select_id(status,self.history_status)
         search=Gtk.SearchEntry(hexpand=True); search.set_placeholder_text('Search client, task or description'); search.set_text(self.history_search); b.append(search)
-        controls=Gtk.Box(spacing=8); b.append(controls)
-        controls.append(button('Approve selected',lambda _:self.run_action(lambda:self.store.approve_many(sorted(self.selected_entries)),lambda _:self.toast('Selected time approved')),True))
-        controls.append(button('Merge selected',lambda _:self.run_action(lambda:self.store.merge_entries(sorted(self.selected_entries)),lambda _:self.toast('Entries merged'))))
+        controls=action_bar(); b.append(controls)
+        approve=button('Approve selected drafts',lambda _:self.run_action(lambda:self.store.approve_many(sorted(self.selected_entries & self.history_draft_ids)),lambda _:self.toast('Selected drafts approved')),True); controls.append(approve)
+        merge=button('Merge selected',lambda _:self.run_action(lambda:self.store.merge_entries(sorted(self.selected_entries)),lambda _:self.toast('Entries merged'))); controls.append(merge)
         controls.append(button('Add time',lambda _:self.entry_dialog()))
         controls.append(button('Undo last edit',lambda _:self.run_action(self.store.undo,lambda a:self.toast(a+' undone'))))
+        selection_bar=action_bar(); b.append(selection_bar)
+        selection_bar.append(button('Select visible entries',lambda _:[c.set_active(True) for c in self.history_checks]))
+        selection_bar.append(button('Clear selection',lambda _:[c.set_active(False) for c in self.history_checks]))
+        selection_count=label('No entries selected','dim-label'); b.append(selection_count)
+        def selection_changed():
+            count=len(self.selected_entries); drafts=len(self.selected_entries & self.history_draft_ids)
+            approve.set_sensitive(drafts>0); approve.set_label(f'Approve selected drafts ({drafts})' if drafts else 'Approve selected drafts')
+            merge.set_sensitive(count>=2); selection_count.set_text(f'{count} selected · {drafts} draft' if count else 'Select entries below to approve drafts or merge adjacent time for the same task.')
+        self.update_history_selection=selection_changed
         results=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); b.append(results)
         def update(*_):
-            self.history_kind=selected(kind);self.history_period=selected(period); self.history_status=selected(status); self.history_search=search.get_text(); self.selected_entries=set(); self.clear(results)
-            usage=self.history_kind=='usage';controls.set_visible(not usage);status.set_sensitive(not usage)
+            self.history_kind=selected(kind);self.history_period=selected(period); self.history_status=selected(status); self.history_search=search.get_text(); self.selected_entries=set(); self.history_checks=[]; self.history_draft_ids=set(); self.clear(results)
+            usage=self.history_kind=='usage';controls.set_visible(not usage);selection_bar.set_visible(not usage);selection_count.set_visible(not usage);status.set_sensitive(not usage)
+            search.set_placeholder_text('Search app, window title or activity state' if usage else 'Search client, project, task or description')
             a,z=self.history_bounds(); rows=self.store.entries(a,z,status=None if self.history_status=='all' else self.history_status,search=self.history_search)
             if usage:
                 source=self.store.activity_for(a,z);needle=self.history_search.casefold()
@@ -436,6 +535,7 @@ class TimeSheet(Adw.Application):
                 if not groups:self.empty(results,'No matching usage','Try another app name or period.')
                 if len(groups)>200:results.append(label('Showing the first 200 groups. Narrow the search or period.'))
                 return
+            self.history_draft_ids={r['id'] for r in rows[:200] if r['status']=='draft'}; selection_changed()
             results.append(label(f'{len(rows)} entries · '+fmt_duration(sum(min(z,r['end'])-max(a,r['start']) for r in rows)),'heading'))
             for r in rows[:200]: self.entry_row(results,r,True)
             if not rows: self.empty(results,'No matching time','Try another period or record your first task.')
@@ -452,7 +552,9 @@ class TimeSheet(Adw.Application):
         for client in clients:
             title=client['name']+(' · Archived' if client['archived'] else '')
             rate='No default rate' if client['rate'] is None else client['currency']+' '+money(client['rate'])+'/hour'
-            self.row(b,title,rate,[('Edit client',lambda _,r=client:self.client_dialog(r)),('Add project',lambda _:self.project_dialog())])
+            actions=[('Edit client',lambda _,r=client:self.client_dialog(r))]
+            if not client['archived']: actions.append(('Add project',lambda _,i=client['id']:self.project_dialog(client_id=i)))
+            self.row(b,title,rate,actions)
             for project in self.store.rows('SELECT * FROM projects WHERE client_id=? ORDER BY archived,name',(client['id'],)):
                 seconds=self.store.db.execute('SELECT COALESCE(SUM(e.end-e.start),0) FROM entries e JOIN tasks t ON e.task_id=t.id WHERE e.deleted=0 AND t.project_id=?',(project['id'],)).fetchone()[0]
                 detail='Spent '+fmt_duration(seconds)
@@ -478,12 +580,15 @@ class TimeSheet(Adw.Application):
             with self.store.db:
                 self.store.db.execute('UPDATE clients SET name=?,currency=?,rate=?,archived=? WHERE id=?',(name,currency,rate,int(a.get_active()),row['id'])); self.store.audit('client edited',{'id':row['id']})
         self.dialog('Edit client' if row else 'Add client',build,save)
-    def project_dialog(self,row=None):
+    def project_dialog(self,row=None,client_id=None):
         choices=self.client_choices()
+        if row and not any(i==row['client_id'] for i,_ in choices):
+            parent=self.store.db.execute('SELECT name FROM clients WHERE id=?',(row['client_id'],)).fetchone(); choices.append((row['client_id'],parent['name']+' (archived)'))
         if not choices: self.error('Create a client first.'); return
         def build(b):
             c=dropdown(b,'Client',choices)
             if row: select_id(c,row['client_id']); c.set_sensitive(False)
+            elif client_id: select_id(c,client_id)
             n=field(b,'Project name',row['name'] if row else ''); bud=field(b,'Time budget in hours (optional)',str(row['budget']/3600) if row and row['budget'] is not None else '')
             rate=field(b,'Hourly rate override (optional)',f"{row['rate']/100:.2f}" if row and row['rate'] is not None else '')
             a=Gtk.CheckButton(label='Archived'); a.set_active(bool(row['archived']) if row else False); b.append(a); return c,n,bud,rate,a
@@ -496,6 +601,8 @@ class TimeSheet(Adw.Application):
         self.dialog('Edit project' if row else 'Add project',build,save)
     def task_dialog(self,row=None):
         choices=self.project_choices()
+        if row and not any(i==row['project_id'] for i,_ in choices):
+            parent=self.store.db.execute('SELECT p.name,c.name client FROM projects p JOIN clients c ON c.id=p.client_id WHERE p.id=?',(row['project_id'],)).fetchone(); choices.append((row['project_id'],parent['client']+' / '+parent['name']+' (archived)'))
         if not choices: self.error('Create a project first.'); return
         def build(b):
             p=dropdown(b,'Project',choices)
@@ -545,8 +652,11 @@ class TimeSheet(Adw.Application):
     def refresh_reports(self):
         b=self.body_reports; self.clear(b); self.heading(b,'Client reports','Reviewed time, clear amounts and a saved billing history.')
         choices=self.client_choices()
+        # Archived clients can still have approved work and saved billing history.
+        choices += [(r['id'],r['name']+' (archived)') for r in self.store.rows('SELECT id,name FROM clients WHERE archived=1 ORDER BY name')]
         if not choices: self.empty(b,'Create a client first','Once you approve billable time, it can be included in a client report.',('New project',self.quick_setup)); return
         today=datetime.now().date(); client=dropdown(b,'Client',choices)
+        b.append(label('Reports include approved, billable time only. Drafts must be approved in History first. Exporting a report does not mark time as billed.','dim-label'))
         dates=Gtk.Box(spacing=12); b.append(dates)
         start=field(dates,'From',today.replace(day=1).isoformat(),'YYYY-MM-DD'); end=field(dates,'Through',today.isoformat(),'YYYY-MM-DD')
         def create(_):
@@ -558,12 +668,15 @@ class TimeSheet(Adw.Application):
                 return self.store.create_report(selected(client),day_bounds(a)[0],day_bounds(z)[1])
             self.run_action(action,self.preview_report)
         b.append(button('Create report from approved time',create,True))
+        b.append(button('Review drafts in History',lambda _:self.review_drafts()))
         b.append(label('Saved reports','title-3'))
         rows=self.store.rows('SELECT r.*,c.name client FROM reports r JOIN clients c ON c.id=r.client_id ORDER BY r.id DESC')
         if not rows: b.append(label('No reports yet. Review and approve time in History first.','dim-label'))
         for r in rows:
             items=self.store.report(r['id']); amount=sum(x['amount'] for x in items); state=self.report_state(r['id'])
             self.row(b,f"{r['client']} · {items[0]['currency']} {money(amount)}",f"Report #{r['id']} · {len(items)} entries · {datetime.fromtimestamp(r['start']):%d %b} – {datetime.fromtimestamp(r['end']-1):%d %b %Y} · {state}",[('Open report',lambda _,i=r['id']:self.preview_report(i))])
+    def review_drafts(self):
+        self.history_kind='tasks'; self.history_status='draft'; self.history_period='all'; self.history_search=''; self.show_page('History')
     def report_state(self,rid):
         billing=self.store.db.execute('SELECT * FROM report_billing WHERE report_id=?',(rid,)).fetchone()
         if billing: return 'Billed · '+billing['invoice'] if billing['state']=='billed' else 'Corrected · retained snapshot'
@@ -573,11 +686,13 @@ class TimeSheet(Adw.Application):
         return 'Ready to bill'
     def preview_report(self,rid):
         rows=self.store.report(rid); w=Adw.Window(title=f'Timesheet report {rid}',transient_for=self.win,modal=True,default_width=760,default_height=650)
+        self.dialogs.append(w); self.dialog_count=len(self.dialogs)
+        w.connect('close-request',lambda *_:self.dialog_closed(w))
         box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL); w.set_content(box); head=Adw.HeaderBar(); box.append(head)
         head.pack_start(button('CSV',lambda _:self.export_report(rid,'csv'))); head.pack_start(button('Printable report',lambda _:self.export_report(rid,'html')))
-        if self.report_state(rid)=='Ready to bill': head.pack_end(button('Mark billed',lambda _:self.bill_dialog(rid),True))
+        if self.report_state(rid)=='Ready to bill': head.pack_end(button('Mark billed',lambda _:self.bill_dialog(rid,w),True))
         billing=self.store.db.execute('SELECT * FROM report_billing WHERE report_id=?',(rid,)).fetchone()
-        if billing and billing['state']=='billed': head.pack_end(button('Record correction',lambda _:self.correct_report_dialog(rid)))
+        if billing and billing['state']=='billed': head.pack_end(button('Record correction',lambda _:self.correct_report_dialog(rid,w)))
         scroll=Gtk.ScrolledWindow(vexpand=True); box.append(scroll); body=margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12),24); scroll.set_child(body)
         self.heading(body,rows[0]['client'],f'Report #{rid} · '+self.report_state(rid))
         body.append(label(rows[0]['currency']+' '+money(sum(r['amount'] for r in rows)),'metric'))
@@ -585,7 +700,7 @@ class TimeSheet(Adw.Application):
         for r in rows:
             self.row(body,f"{r['project']} / {r['task']}",f"{r.get('report_date','')} · {fmt_duration(r['end']-r['start'])} · {r['currency']} {money(r['rate'])}/h · {money(r['amount'])}\n{r['description']}")
         w.present()
-    def correct_report_dialog(self,rid):
+    def correct_report_dialog(self,rid,preview=None):
         def build(b):
             b.append(label('Use this after correcting or cancelling the invoice in your invoicing system. The original report remains in history, and its entries return to draft for review.'))
             reason=field(b,'Reason for correction')
@@ -594,14 +709,18 @@ class TimeSheet(Adw.Application):
         def save(f):
             if not f[1].get_active(): raise ValueError('Confirm that the invoice has been handled externally.')
             self.store.reopen_report(rid,f[0].get_text()); self.toast('Correction recorded; entries need review')
+            if preview: GLib.idle_add(lambda:(preview.close(),False)[1])
         self.dialog('Record billing correction',build,save)
-    def bill_dialog(self,rid):
+    def bill_dialog(self,rid,preview=None):
         def build(b):
             b.append(label('Billed entries are locked and excluded from future billing reports.'))
             return field(b,'Invoice reference','','e.g. INV-2026-001')
-        self.dialog('Mark report billed',build,lambda w:self.store.mark_billed(rid,w.get_text()))
+        def save(w):
+            self.store.mark_billed(rid,w.get_text()); self.toast('Report marked billed')
+            if preview: GLib.idle_add(lambda:(preview.close(),False)[1])
+        self.dialog('Mark report billed',build,save)
     def save_file(self,title,name,handler):
-        chooser=Gtk.FileChooserNative(title=title,transient_for=self.win,action=Gtk.FileChooserAction.SAVE,accept_label='Save',cancel_label='Cancel'); chooser.set_current_name(name)
+        chooser=Gtk.FileChooserNative(title=title,transient_for=self.dialogs[-1] if self.dialogs else self.win,action=Gtk.FileChooserAction.SAVE,accept_label='Save',cancel_label='Cancel'); chooser.set_current_name(name)
         def response(c,r):
             if r==Gtk.ResponseType.ACCEPT:
                 f=c.get_file()
