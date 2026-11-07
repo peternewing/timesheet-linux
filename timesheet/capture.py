@@ -146,14 +146,31 @@ class KDECapture:
 class X11Capture:
     def __init__(self):
         from Xlib import display
-        from Xlib.ext import screensaver  # Registers the extension methods.
+        from Xlib.protocol import rq
         self.display = display.Display()
         self.root = self.display.screen().root
+        # QueryInfo wire layout is standard XScreenSaver 1.0. Older distro
+        # python-xlib versions (e.g. 0.29) lack Xlib.ext.screensaver entirely.
+        class IdleQuery(rq.ReplyRequest):
+            _request = rq.Struct(rq.Card8('opcode'), rq.Opcode(1),
+                                 rq.RequestLength(), rq.Card32('drawable'))
+            _reply = rq.Struct(rq.ReplyCode(), rq.Pad(1),
+                               rq.Card16('sequence_number'), rq.ReplyLength(),
+                               rq.Pad(8), rq.Card32('idle'), rq.Pad(12))
+        try:
+            extension = self.display.query_extension('MIT-SCREEN-SAVER')
+            if extension is None or not extension.present:
+                raise OSError('XScreenSaver is unavailable')
+            self.query_idle = lambda: IdleQuery(display=self.display.display,
+                opcode=extension.major_opcode, drawable=self.root.id).idle
+        except Exception:
+            self.display.close()
+            raise
 
     def sample(self):
         from Xlib import X, error
         try:
-            idle = int(self.root.screensaver_query_info().idle)
+            idle = int(self.query_idle())
             locked = screen_locked()
             prop = self.root.get_full_property(self.display.intern_atom('_NET_ACTIVE_WINDOW'), X.AnyPropertyType)
             if prop is None or not len(prop.value) or not prop.value[0]:

@@ -58,3 +58,7 @@ See [desktop release gates](LINUX_COMPATIBILITY.md#acceptance-gate-before-promot
 - Real X11 virtual-server test passed: EWMH focus, Unicode title, XScreenSaver idle,
   unknown lock and destroyed-window handling (`tests/verify_x11_capture.py`).
   The lock service is mocked; real Plasma 6/full X11 desktop acceptance remains pending.
+
+The initial Ubuntu 22.04 CI run exposed missing `Xlib.ext.screensaver` in its
+python-xlib 0.29 package. The adapter now reads the standard XScreenSaver QueryInfo
+wire reply directly, so the optional high-level extension module is unnecessary.
