@@ -7,7 +7,9 @@ For the stable source install, follow the [stable README](https://github.com/pet
 
 ## Requirements and release status
 
-Python 3.10+, PyGObject, GTK 4 and libadwaita 1.5+ are required. GNOME 50
+A source install requires Python 3.10+, PyGObject, GTK 4 and libadwaita 1.5+.
+The AppImage and Flatpak bundle the UI libraries; the Flatpak host companion
+still needs system Python and PyGObject. GNOME 50
 Wayland is the previously exercised automatic-capture target. The 0.3.0 candidate
 adds Plasma 6, Sway and Hyprland Wayland adapters and an X11 adapter. Real
 headless Plasma and Sway focus/idle tests have passed; Hyprland and full hardware
@@ -19,15 +21,18 @@ See the [compatibility matrix and research](LINUX_COMPATIBILITY.md).
 The candidate's successful [package workflow](https://github.com/peternewing/timesheet-linux/actions/workflows/packages.yml?query=branch%3Alinux-compatibility-0.3)
 provides **TimeSheetLinux-AppImage-x86_64** and **TimeSheetLinux-Flatpak-x86_64**
 artifacts. Open a successful run, download and unzip the artifact and its checksum.
-GitHub requires you to sign in to download Actions artifacts. These are candidate
-builds, not signed releases or a Flathub listing. Read the desktop setup below and
+GitHub requires you to sign in to download Actions artifacts; artifacts expire after
+their configured retention period, so a maintainer may need to rerun the workflow.
+These are candidate builds, not signed releases or a Flathub listing. Read the desktop setup below and
 back up your existing database before switching. Source installation remains available.
 
 ### AppImage (x86-64)
 
 Built on Ubuntu 24.04 with bundled Python, GTK, libadwaita, PDF and X11 libraries.
 It requires a compatible x86-64 Linux host with glibc 2.39 or newer and a desktop
-session; it is not guaranteed on older systems. Move the image to a folder you intend
+session; it is not guaranteed on older systems. AppImages run with your normal user
+permissions. Systems such as NixOS may require an AppImage compatibility launcher;
+Flatpak is another option. Move the image to a folder you intend
 to keep, then from that folder:
 
 ```sh
