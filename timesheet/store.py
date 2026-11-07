@@ -110,9 +110,17 @@ class Store:
             elif not unassigned: result.append(record)
         return result
 
-    def day_summary(self,start,end):
+    def day_summary(self,start,end,include_running=False,now=None):
         entries=self.entries(start,end)
         assigned=sum(min(end,r['end'])-max(start,r['start']) for r in entries)
+        if include_running:
+            rt=self.runtime()
+            if rt['state']=='running' and rt['started'] is not None:
+                a=max(start,rt['started']); z=min(end,int(time.time() if now is None else now))
+                if z>a:
+                    # Future manual entries may overlap a still-running timer. Do
+                    # not count that time twice; stop_timer will clip it too.
+                    assigned+=z-a-sum(max(0,min(z,r['end'])-max(a,r['start'])) for r in entries)
         active=0; away=0; unassigned=0; apps={}
         for r in self.activity_for(start,end):
             seconds=r['end']-r['start']
