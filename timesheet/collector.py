@@ -210,7 +210,7 @@ def run():
                 collector.failed=True
                 health('error','Storage unavailable. Unsaved time will need review.')
                 # Error text intentionally excludes paths, titles and content.
-            time.sleep(2)
+            time.sleep(1)
     finally:
         try:
             collector.close()
