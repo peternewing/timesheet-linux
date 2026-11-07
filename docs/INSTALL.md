@@ -82,8 +82,9 @@ if needed. The companion installs the per-user service, startup and applicable
 compositor helper; it does not replace an existing application-menu launcher. Startup
 is managed on the host. To restore an older native installation, rerun `./install.sh`
 from its original checkout. Flatpak removal retains the shared host data and the host
-companion; remove the companion from its source checkout using `./uninstall.sh` only
-if you also want to remove the native desktop integration.
+companion; remove the companion from its own source checkout with `./run-host --uninstall`.
+This removes the shared capture service and helpers but leaves any native launcher and
+your data. Reinstall the original checkout if you still use the native app.
 
 ## Install distribution dependencies
 
@@ -272,6 +273,13 @@ marked drafts, do not calculate tax, and do not mark entries billed. Check detai
 local invoicing requirements before issuing them. You can also print HTML to PDF.
 
 ## Updating packaged builds
+
+For a Flatpak backup restore, first stop the host collector with
+`systemctl --user stop time-sheet-linux.service` (or stop its detached process if
+systemd is unavailable), then restore from Settings. Restart the host collector with
+`./run-host --background` from its checkout afterwards. Never restore while another
+collector is writing to the database.
+
 
 For an AppImage, download a new successful candidate artifact, verify its checksum,
 and close the app. Stop the old background service (`systemctl --user stop time-sheet-linux.service` on systems with user systemd). Replace the old image at the
