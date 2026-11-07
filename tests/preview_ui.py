@@ -10,7 +10,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-preview-') as directory:
     from gi.repository import Gtk,GLib
     start,_=day_bounds(datetime.now().date()); fake_now=start+13*3600
     with patch('time.time',return_value=fake_now),patch.object(desktop,'start_collector'),patch.object(desktop,'read_health',return_value=dict(status='active',at=fake_now,error='')):
-        app=TimeSheet();s=app.store;t=s.quick_project('Example Studio','Website','Design',6000,budget=21600)
+        app=TimeSheet();app.set_application_id('org.local.TimeSheetPreview');s=app.store;t=s.quick_project('Example Studio','Website','Design',6000,budget=21600)
         s.set('capture_enabled','1')
         entry=s.add_entry(t,start+9*3600,start+10*3600,'Designed the homepage layout');s.approve(entry)
         s.add_entry(t,start+10*3600,start+10*3600+900,'Reviewed navigation options')
