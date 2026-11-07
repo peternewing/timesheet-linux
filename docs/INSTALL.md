@@ -1,5 +1,10 @@
 # Installation and troubleshooting
 
+**Versions:** Stable `main` is 0.2.0. The AppImage, Flatpak, PDF and expanded
+desktop capture instructions on this page describe the separate 0.3.0 candidate.
+For the stable source install, follow the [stable README](https://github.com/peternewing/timesheet-linux/blob/main/README.md).
+
+
 ## Requirements and release status
 
 Python 3.10+, PyGObject, GTK 4 and libadwaita 1.5+ are required. GNOME 50
