@@ -1,319 +1,191 @@
-# Installation and troubleshooting
+# Install Time Sheet Linux
 
-**Versions:** Stable `main` is 0.2.0. The AppImage, Flatpak, PDF and expanded
-desktop capture instructions on this page describe the separate 0.3.0 candidate.
-For the stable source install, follow the [stable README](https://github.com/peternewing/timesheet-linux/blob/main/README.md).
+Choose a version and installation method, then follow the desktop setup and verification steps. No root access is needed for the app installer itself.
 
+- **[0.3.0 release candidate](#install-the-030-release-candidate):** AppImage, Flatpak or source. Includes additional desktop adapters and PDF export. These are unsigned test builds.
+- **[0.2.0 stable source](#install-stable-020-from-source):** the existing GNOME 50 Wayland version on `main`.
+- [Desktop setup](#desktop-setup) · [Check tracking](#check-tracking) · [Troubleshooting](#troubleshooting) · [Backup and restore](#backup-and-restore) · [Update and uninstall](#update-and-uninstall)
 
-## Requirements and release status
+Back up important data before changing versions. Version 0.3.0 uses the same database schema and report snapshots as 0.2.0; it does not deliberately erase your work.
 
-A source install requires Python 3.10+, PyGObject, GTK 4 and libadwaita 1.5+.
-The AppImage and Flatpak bundle the UI libraries; the Flatpak host companion
-still needs system Python and PyGObject. GNOME 50
-Wayland is the previously exercised automatic-capture target. The 0.3.0 candidate
-adds Plasma 6, Sway and Hyprland Wayland adapters and an X11 adapter. Real
-headless Plasma and Sway focus/idle tests have passed; Hyprland and full hardware
-lock/suspend testing remain pending. Other Wayland desktops retain manual mode.
-See the [compatibility matrix and research](LINUX_COMPATIBILITY.md).
+## Before you start
 
-## Choose an installation method
-
-The candidate's successful [package workflow](https://github.com/peternewing/timesheet-linux/actions/workflows/packages.yml?query=branch%3Alinux-compatibility-0.3)
-provides **TimeSheetLinux-AppImage-x86_64** and **TimeSheetLinux-Flatpak-x86_64**
-artifacts. Open a successful run, download and unzip the artifact and its checksum.
-GitHub requires you to sign in to download Actions artifacts; artifacts expire after
-their configured retention period, so a maintainer may need to rerun the workflow.
-These are candidate builds, not signed releases or a Flathub listing. Read the desktop setup below and
-back up your existing database before switching. Source installation remains available.
-
-### AppImage (x86-64)
-
-Built on Ubuntu 24.04 with bundled Python, GTK, libadwaita, PDF and X11 libraries.
-It requires a compatible x86-64 Linux host with glibc 2.39 or newer and a desktop
-session; it is not guaranteed on older systems. AppImages run with your normal user
-permissions. Systems such as NixOS may require an AppImage compatibility launcher;
-Flatpak is another option. Move the image to a folder you intend
-to keep, then from that folder:
+You need a Linux graphical session. To see the architecture and session type:
 
 ```sh
-sha256sum -c AppImage-SHA256SUMS
+uname -m
+printf 'Session: %s\nDesktop: %s\n' "$XDG_SESSION_TYPE" "$XDG_CURRENT_DESKTOP"
+```
+
+The published AppImage and Flatpak are for **x86-64** (`x86_64`). The AppImage needs glibc 2.39 or newer; check with `getconf GNU_LIBC_VERSION`. It runs with your normal user permissions. NixOS may require an AppImage compatibility launcher. Flatpak installs the GNOME 49 runtime from Flathub and needs an internet connection for that runtime.
+
+The source install needs Python 3.10+, PyGObject, GTK 4 and libadwaita 1.5+. AppImage and Flatpak bundle their UI libraries. The Flatpak host collector still needs system Python and PyGObject.
+
+## Install the 0.3.0 release candidate
+
+Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc1/TimeSheetLinux-x86_64.AppImage) or [Flatpak](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc1/TimeSheetLinux-x86_64.flatpak), plus [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc1/SHA256SUMS). The [release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc1) contains release notes and all assets. Open a terminal in the folder containing those files. No GitHub account is required to download release assets.
+
+### Option A: AppImage
+
+```sh
+sha256sum --ignore-missing -c SHA256SUMS
 chmod +x TimeSheetLinux-x86_64.AppImage
 ./TimeSheetLinux-x86_64.AppImage --diagnose
-./TimeSheetLinux-x86_64.AppImage
-# Optional: install launcher and background service for the current user
 ./TimeSheetLinux-x86_64.AppImage --install
 ```
 
-The service and launcher point to this **persistent AppImage path**, not its temporary
-mount. Do not move or delete the image after `--install`; if you do, rerun `--install`
-from its new location. If FUSE is unavailable, run the same commands with
-`APPIMAGE_EXTRACT_AND_RUN=1` before `./TimeSheetLinux-x86_64.AppImage`. Automatic
-capture still needs the relevant GNOME extension or KWin helper and `swayidle` on the
-host (see below). The image contains PDF dependencies. It uses the existing database.
+The checksum command must report the downloaded AppImage as `OK`. The installer creates a user launcher and collector; open **Time Sheet Linux** from Applications. Keep the image in a permanent location: the launcher and service point to that file. If you move it, run `--install` again from the new location.
 
-### Flatpak (x86-64)
+If your system cannot mount AppImages, `APPIMAGE_EXTRACT_AND_RUN=1 ./TimeSheetLinux-x86_64.AppImage` can run it temporarily. The installed launcher and service still need working AppImage mounting; use FUSE support or choose the source/Flatpak method for background startup.
 
-Install Flatpak using your distribution's official instructions, then from the
-folder containing the downloaded files:
+### Option B: Flatpak
+
+Install Flatpak using your distribution's official instructions, then:
 
 ```sh
-sha256sum -c Flatpak-SHA256SUMS
+sha256sum --ignore-missing -c SHA256SUMS
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak install --user ./TimeSheetLinux-x86_64.flatpak
 flatpak run --user org.local.TimeSheetLinux
 ```
 
-The bundle downloads the GNOME 49 runtime from Flathub. It contains the interface and
-PDF dependencies. It accesses the existing **default** data folder
-`~/.local/share/time-sheet-linux` through a narrow filesystem permission. Do not use
-this bundle with a customised `XDG_DATA_HOME` until you have explicitly migrated and
-verified a backup: it will otherwise see a different database. Run one UI at a time.
+The checksum command must report the Flatpak as `OK`. The bundle contains the interface and PDF dependencies. It accesses the existing **default** host data directory, `~/.local/share/time-sheet-linux/`. If you use a custom `XDG_DATA_HOME`, do not assume it sees the same database; make and verify a backup before migrating. Run one UI at a time.
 
-For automatic tracking, a host companion is required because a sandbox cannot install
-or supervise desktop helpers on your behalf. Keep a source checkout in a permanent
-folder and install the GTK-free host collector from your normal desktop session:
+**Automatic tracking requires a host companion.** From your desktop session, keep a source checkout in a permanent folder and run:
 
 ```sh
-git clone --branch linux-compatibility-0.3 https://github.com/peternewing/timesheet-linux.git timesheet-linux-host
+git clone --branch v0.3.0-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-host
 cd timesheet-linux-host
-# Ubuntu/Debian; use the equivalent python3-gi package on other distributions
+# Ubuntu/Debian; install equivalent Python/PyGObject packages on other distros
 sudo apt install python3-gi
 ./run-host --install
 ```
 
-Plasma also needs `swayidle` and `kwriteconfig6`; Sway or Hyprland needs
-`swayidle` and its compositor IPC command (`swaymsg` or `hyprctl`); X11 needs python-xlib. Sign out/in
-if needed. The companion installs the per-user service, startup and applicable
-compositor helper; it does not replace an existing application-menu launcher. Startup
-is managed on the host. To restore an older native installation, rerun `./install.sh`
-from its original checkout. Flatpak removal retains the shared host data and the host
-companion; remove the companion from its own source checkout with `./run-host --uninstall`.
-This removes the shared capture service and helpers but leaves any native launcher and
-your data. Reinstall the original checkout if you still use the native app.
+The companion installs a per-user collector, startup entry and applicable desktop helper; it does not replace an existing app-menu launcher. The checkout is pinned to the release tag. For other distributions install system Python 3.10+ and PyGObject; add the desktop-specific packages below. Startup is controlled on the host, not in Flatpak settings.
 
-## Install distribution dependencies
+### Option C: source
 
-Use your distribution's system Python packages; do not install GTK with pip.
-These commands provide the UI, not universal automatic-capture support.
+Install your distribution's packages first. These package names are for current releases; older distributions may not provide libadwaita 1.5 or newer.
 
-Ubuntu 24.04+ / Debian 13+ (older releases may lack libadwaita 1.5):
+**Ubuntu 24.04+ / Debian 13+:**
 
 ```sh
 sudo apt update
 sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 python3-reportlab fonts-dejavu-core
-# Optional: for the 0.3.0 X11 adapter
-sudo apt install python3-xlib
-# Optional: for the 0.3.0 Plasma 6 Wayland adapter
-sudo apt install swayidle
 ```
 
-Fedora (supported release):
+**Fedora:**
 
 ```sh
 sudo dnf install git python3-gobject python3-cairo gtk4 libadwaita python3-reportlab dejavu-sans-fonts
-# For X11: sudo dnf install python3-xlib
-# For Plasma 6 Wayland: sudo dnf install swayidle
 ```
 
-Arch / EndeavourOS:
+**Arch / EndeavourOS:**
 
 ```sh
 sudo pacman -Syu git python-gobject python-cairo gtk4 libadwaita python-reportlab ttf-dejavu
-# For X11: sudo pacman -S python-xlib
-# For Plasma 6 Wayland: sudo pacman -S swayidle
 ```
 
-openSUSE Tumbleweed:
+**openSUSE Tumbleweed:**
 
 ```sh
 sudo zypper install git python3-gobject python3-gobject-Gdk python3-cairo typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1 python3-reportlab dejavu-fonts
-# For Plasma 6 Wayland: sudo zypper install swayidle
 ```
 
-openSUSE may use versioned Python package names. Ensure bindings match
-`/usr/bin/python3`; use `zypper search gobject` / `zypper search xlib` if needed.
-Do not add an untrusted repository or upgrade your OS just to satisfy this app.
-
-## Install the app
+On openSUSE, package names can be Python-version-specific. The bindings must match `/usr/bin/python3`; use `zypper search` if needed. PDF export requires ReportLab and DejaVu Sans. If PDF export says fonts are missing even though they are installed, see [PDF font troubleshooting](#troubleshooting). Then install the tagged candidate:
 
 ```sh
-git clone --branch linux-compatibility-0.3 https://github.com/peternewing/timesheet-linux.git
+git clone --branch v0.3.0-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.3
+cd timesheet-linux-0.3
+/usr/bin/python3 -m timesheet.diagnostics
+./install.sh
+```
+
+Run the installer as your normal user, **not `sudo`**. Keep this folder: the launcher and service reference it. Git may say the tagged checkout is in a detached state; that is expected for a fixed release. Open **Time Sheet Linux** from Applications and complete the desktop setup below.
+
+## Install stable 0.2.0 from source
+
+The stable source targets GNOME Shell 50 Wayland. On Ubuntu GNOME:
+
+```sh
+sudo apt update
+sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1
+git clone https://github.com/peternewing/timesheet-linux.git
 cd timesheet-linux
 ./install.sh
 ```
 
-Run as your normal desktop user, **not sudo**. Keep this folder: launchers reference
-it. Open Time Sheet Linux from Applications after the desktop-specific setup below.
-For a downloaded source ZIP, extract it first and run `sh install.sh` from its folder;
-restore launcher permissions with `chmod +x run-timesheet run-collector uninstall.sh`.
+Use your normal user account. Save your work and sign out and back in once to load the GNOME helper. This version exports CSV and printable HTML; it does not include the candidate's PDF or non-GNOME capture adapters.
 
-To evaluate the candidate separately without changing your stable clone:
+## Desktop setup
 
-```sh
-git clone --branch linux-compatibility-0.3 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.3
-cd timesheet-linux-0.3
-/usr/bin/python3 -m timesheet.diagnostics
-```
+The distro alone does not determine capture support. Open **Settings → About** or use `printf '%s / %s\n' "$XDG_CURRENT_DESKTOP" "$XDG_SESSION_TYPE"` to identify your session.
 
-Do not install the candidate over your working integration until you have backed up
-and are ready to test. For an isolated manual UI trial without touching real data:
+- **GNOME 50 Wayland:** the installer copies and enables the local GNOME helper. Save work and sign out/in once. If GNOME globally disables user extensions, enable them in the Extensions app. The helper's panel clock opens the app and offers pause/resume.
+- **Plasma 6 Wayland, 0.3 candidate:** install `swayidle` and the Plasma package containing `kwriteconfig6`. Run the installer or host companion in the Plasma session. Check **System Settings → Window Management → KWin Scripts** for *Time Sheet Linux Capture*. Sign out/in if needed. Move the pointer, then leave it still briefly for the idle observer to initialise.
+- **Sway or Hyprland Wayland, 0.3 candidate:** install `swayidle` and the compositor's IPC tool (`swaymsg` or `hyprctl`). A supported D-Bus lock service must accurately reflect your actual screen locker. Sway was exercised headlessly; Hyprland remains experimental.
+- **X11, 0.3 candidate:** install `python3-xlib` (Arch: `python-xlib`) on the host when using source or the Flatpak companion. The AppImage bundles it. The window manager must support EWMH, the X server must expose XScreenSaver, and a supported D-Bus lock service must reflect your actual locker. App names can differ from Wayland, so review exclusions and assignment rules.
+- **Other Wayland sessions:** use manual timers and entries. Do not force an X11 session variable to bypass compositor restrictions.
 
-```sh
-XDG_DATA_HOME="$(mktemp -d)" TIMESHEET_TESTING=1 ./run-timesheet
-```
+On Ubuntu/Debian, `sudo apt install swayidle` adds the idle observer; `sudo apt install python3-xlib` adds X11 bindings. Capture is unavailable or degraded when required focus, idle or lock evidence is missing; unknown time is not treated as active work. See the [compatibility matrix](LINUX_COMPATIBILITY.md).
 
-This is temporary test data, not your production database. Do not run the installer
-with this temporary environment. Installation switches the per-user launchers/service
-to whichever checkout you install last.
+## Check tracking
 
-## Plasma 6 Wayland setup (0.3.0 candidate)
-
-Install `swayidle` and ensure `kwriteconfig6` is available from your Plasma packages.
-Run `./install.sh`; it installs/enables the local **Time Sheet Linux Capture** KWin
-script. Save work and sign out/in, or verify it in System Settings → Window
-Management → KWin Scripts. Move the pointer, then leave it still briefly so the idle
-observer can initialise. Check `./run-timesheet --status` before trusting capture.
-The KWin helper is not a GNOME extension. It supports native Wayland and Xwayland
-windows. No global input logging is used. If idle/lock information is missing,
-tracking is degraded and activity remains unknown.
-
-## Sway and Hyprland Wayland setup (0.3.0 candidate)
-
-Install `swayidle` and the compositor's IPC command (`swaymsg` or `hyprctl`).
-Run `./install.sh` from that graphical session, then check `./run-timesheet --status`.
-A supported D-Bus screen-lock service must reflect your actual locker: if lock state
-is unavailable, the app records unknown time instead of assuming active work.
-Sway focus and idle were tested in headless Sway; Hyprland's adapter has unit tests
-but requires a real GPU-backed session for acceptance testing.
-
-## X11 setup (0.3.0 candidate)
-
-Install python-xlib using your package manager. Run `./install.sh` within the X11
-desktop session, then check status. The window manager must implement EWMH and the
-X server must expose XScreenSaver. A supported D-Bus lock service must be running;
-standalone lockers are not assumed safe. Do not force `XDG_SESSION_TYPE=x11` in a
-Wayland session. Capture rules may need updating because app identifiers differ
-between desktops.
-
-## Installed files
-
-The app stays in the cloned source directory. The installer generates paths for that directory, including paths containing spaces.
-
-| Location | Purpose |
-|---|---|
-| `~/.local/share/applications/org.local.TimeSheetLinux.desktop` | Applications-menu launcher and pause/resume actions |
-| `~/.local/share/icons/hicolor/scalable/apps/org.local.TimeSheetLinux.svg` | App icon |
-| `~/.local/bin/time-sheet-linux` | Command launcher |
-| `~/.config/autostart/time-sheet-linux.desktop` | Start at graphical sign-in |
-| `~/.config/systemd/user/time-sheet-linux.service` | Collector supervision and restart after failure |
-| `~/.local/share/gnome-shell/extensions/timesheet-capture@local/` | Local GNOME capture helper |
-| `~/.local/share/kwin/scripts/timesheet-capture/` | Plasma 6 helper (candidate, KDE installs only) |
-| `~/.local/share/time-sheet-linux/` | Private database, status and backups |
-
-`XDG_DATA_HOME` and `XDG_CONFIG_HOME` override their corresponding locations. The candidate starts its supervised unit from XDG graphical autostart after importing the current session environment, rather than enabling a second target-based startup. A file lock prevents duplicate collectors even when the app and sign-in startup overlap. Without a working user systemd instance, the app falls back to a detached collector; automatic restart supervision then needs systemd.
-
-## One-time GNOME activation
-
-A newly installed local extension loads at the next GNOME session. Save your work and sign out and back in once. The app never forces logout or restart.
-
-Verify:
+Open the app and confirm the header says **Tracking automatically**; app names should appear in Today after you use different windows. If paused, choose **Resume**. For source installs, run:
 
 ```sh
-gnome-extensions info timesheet-capture@local
-systemctl --user status time-sheet-linux.service
 ./run-timesheet --status
+# 0.3 candidate only:
+./run-timesheet --diagnose
 ```
 
-The app should report `active` and show app usage in Today. If extensions are globally disabled, enable user extensions in the GNOME Extensions app. On an unsupported Shell version, the helper stays unavailable; do not disable GNOME's extension version checks to force compatibility.
+For an AppImage, replace `./run-timesheet` with the path to the image. The Flatpak interface depends on the host companion; use the commands from its checkout or inspect the UI. The status should be `active`; `paused`, `setup_required`, `degraded`, `error` or `stopped` need attention. A partial setup or an inactive tracker must not be used as proof of billable work.
 
-## Tracking says Finish setup
+## Troubleshooting
 
-1. Check your session and required adapter in the compatibility matrix. For GNOME automatic capture, confirm GNOME 50 Wayland.
-2. Run `./install.sh` to repair the local integration.
-3. Save work and sign out/in once.
-4. Open the app and Resume if paused.
+- **GNOME says Finish setup:** confirm GNOME 50 Wayland, run the relevant installer, enable user extensions, then sign out/in. Check `gnome-extensions info timesheet-capture@local`.
+- **Plasma / Sway / Hyprland:** confirm the host tools above are installed and the session is the intended Wayland compositor. For Plasma, enable the KWin script. If the lock service is missing or does not represent your real locker, use manual time.
+- **Tracker stopped:** open Settings and restart it, or on a system with user systemd run `systemctl --user restart time-sheet-linux.service`. Without user systemd, opening the native app starts a detached collector.
+- **Missing GTK or libadwaita:** use a supported distro version or the packaged interface. Do not force GNOME extension version checks or install GTK with `pip`.
+- **PDF says DejaVu fonts are missing:** the 0.3.0 candidate searches its `resources/fonts` folder and `/usr/share/fonts/truetype/dejavu/`. Some distributions use a different font directory. From the source checkout, check `fc-match 'DejaVu Sans'` selects DejaVu Sans, then copy the system font files into the app's folder:
 
-On the candidate, run `/usr/bin/python3 -m timesheet.diagnostics` for a privacy-safe dependency/session report. If you cannot activate the helper, use manual time and report the desktop version and a sanitised error description. Never attach your activity database or titles to an issue.
+  ```sh
+  mkdir -p resources/fonts
+  cp "$(fc-match -f '%{file}' 'DejaVu Sans:style=Book')" resources/fonts/DejaVuSans.ttf
+  cp "$(fc-match -f '%{file}' 'DejaVu Sans:style=Bold')" resources/fonts/DejaVuSans-Bold.ttf
+  ```
 
-## Tracking stopped or failed
+  Install your distribution's `fontconfig` package if `fc-match` is unavailable. AppImage and Flatpak include the fonts.
+- **Storage error:** free space or correct permissions, then restart. Review gaps and add genuine work manually; the app does not invent missing activity.
 
-Open Settings and restart the tracker, or:
-
-```sh
-systemctl --user restart time-sheet-linux.service
-./run-timesheet --status
-```
-
-For a storage failure, free disk space or fix permissions before restarting. The tracker does not invent the missing period. Check Calendar for gaps and add genuine work manually. If systemd is unavailable, opening the app starts the detached collector.
+When reporting a problem, include your distribution, desktop/session, version and a sanitised error. Never upload your database or sensitive window titles to a public issue.
 
 ## Backup and restore
 
-Settings offers checked backup and restore. Restore validates a temporary copy before replacing the working database, stops the collector and keeps a `pre-restore-*.sqlite3` recovery copy. A prior interrupted timer is not restarted from a historical backup. Make a separate external copy if disk-loss protection matters to you.
+The default data folder is `~/.local/share/time-sheet-linux/`; source/AppImage installations honour `XDG_DATA_HOME`. The main file is `timesheet.sqlite3` and local daily backups are in `backups/`. Files are user-only but not encrypted. Copy backups to separate storage for disk-loss protection.
 
-A restore can reintroduce deleted activity. Existing report exports and older backups are outside raw-activity deletion.
+Settings offers a checked backup and restore and keeps a pre-restore recovery copy. Restoring an older backup can reintroduce deleted activity and replace newer work. For Flatpak, first stop the **host** collector with `systemctl --user stop time-sheet-linux.service` or stop its detached process; restore from Settings, then start it with `./run-host --background` from the host checkout. Keep any newer test data separately before restoring an older database.
 
-## Update
+## Update and uninstall
 
-Back up important data first. From the same clone:
+### Source
 
-```sh
-git pull --ff-only
-./install.sh
-```
+For a `main` checkout, back up, then run `git pull --ff-only` and `./install.sh` from the same folder. A `v0.3.0-rc1` checkout is pinned to a tag: download/clone a newer release into a separate folder, back up, and run that version's installer. To return to the older source checkout, run its `./install.sh`. GNOME helper updates may require sign-out/in.
 
-Version 0.3.0 does not change the database schema or saved report formats. Its installer preserves pause, title and autostart preferences. Database migrations keep a pre-upgrade backup when entries exist. Updates to GNOME extension code may require another sign-out/in because the running Shell caches loaded modules. If you move the repository, reinstall from its new directory.
+To remove source integration while retaining the database and backups, run `./uninstall.sh` from the installed checkout. Remove personal data separately only if you intend to erase it.
 
-## Roll back the candidate
+### AppImage
 
-Quit the UI and run `./install.sh` from your retained stable checkout. This stops the
-collector and repoints launchers/service to that checkout. Version 0.3.0 uses the
-same schema as 0.2.0; retain a backup regardless. On KDE, disable Time Sheet Linux
-Capture in KWin Scripts when returning to 0.2.0, which has no KDE adapter. Never
-restore an older backup over newer work without reviewing what would be lost.
+Download the newer image and its checksums, verify them, close the app and stop the old service (`systemctl --user stop time-sheet-linux.service` when user systemd is available). Replace the image at the same persistent path, make it executable and run `--install`. Keep the older image and a data backup for rollback.
 
-## PDF and easier distribution
-
-Open a saved report and choose **PDF** or **Invoice PDF**. Invoice PDFs are clearly
-marked drafts, do not calculate tax, and do not mark entries billed. Check details and
-local invoicing requirements before issuing them. You can also print HTML to PDF.
-
-## Updating packaged builds
-
-For a Flatpak backup restore, first stop the host collector with
-`systemctl --user stop time-sheet-linux.service` (or stop its detached process if
-systemd is unavailable), then restore from Settings. Restart the host collector with
-`./run-host --background` from its checkout afterwards. Never restore while another
-collector is writing to the database.
-
-
-For an AppImage, download a new successful candidate artifact, verify its checksum,
-and close the app. Stop the old background service (`systemctl --user stop time-sheet-linux.service` on systems with user systemd). Replace the old image at the
-same persistent path, make it executable, then run the new image with `--install`.
-Keep a copy of the older image for rollback. The local Ubuntu 26.04 test image in the
-workspace is built on that host; the GitHub artifact is the Ubuntu 24.04-based build.
-
-For Flatpak, download and verify the newer bundle, then run:
+To remove its user integration while retaining data, run:
 
 ```sh
-flatpak install --user --reinstall ./TimeSheetLinux-x86_64.flatpak
+./TimeSheetLinux-x86_64.AppImage --uninstall
 ```
 
-Update the host source checkout separately with `git pull --ff-only` followed by
-`./run-host --install`. These single-file bundles are not connected to an app update
-repository, so `flatpak update` will not obtain new candidate builds automatically.
-Back up first; reinstalling the Flatpak does not intentionally delete the shared host
-database, but backups protect against mistakes and disk failure.
+### Flatpak and host companion
 
-To remove the Flatpak interface, run `flatpak uninstall --user org.local.TimeSheetLinux`.
-This does not remove the separate host collector or the shared database. For an
-AppImage, run `./TimeSheetLinux-x86_64.AppImage --uninstall` before deleting the image;
-this removes the app's per-user integration but keeps its data. If returning to an older
-native checkout, reinstall that checkout's integration afterwards.
+Download and verify a newer bundle, then run `flatpak install --user --reinstall ./TimeSheetLinux-x86_64.flatpak`. These single-file bundles are not connected to an app update repository, so `flatpak update` will not fetch later candidate builds automatically. To update the tagged host companion, install the newer release's source in a separate persistent folder and run `./run-host --install` there.
 
-## Uninstall
-
-```sh
-./uninstall.sh
-```
-
-This stops the collector and removes its launcher, startup, service and helper integration. It keeps the activity database and backups. You can delete the source clone after uninstalling. Remove personal data separately only when you intend to erase it.
+Remove the interface with `flatpak uninstall --user org.local.TimeSheetLinux`. To also remove its shared host capture service and helpers, run `./run-host --uninstall` from the host companion checkout. This keeps your data and any native launcher, but removes shared capture integration; reinstall the native checkout if you still use it.
