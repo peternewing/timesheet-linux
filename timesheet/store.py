@@ -67,13 +67,17 @@ class Store:
                         (int(time.time()),action,json.dumps([dict(r) for r in before]),json.dumps(after)))
 
     def quick_project(self,client,project,task='General',rate=None,currency='GBP',budget=None):
-        if not client.strip() or not project.strip() or not task.strip(): raise ValueError('Enter a client and project name.')
+        if not client.strip() or not project.strip() or not task.strip(): raise ValueError('Enter a client, project and task name.')
         if currency not in ('GBP','EUR','USD'): raise ValueError('Choose GBP, EUR or USD.')
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
-            c=self.db.execute('SELECT id FROM clients WHERE name=?',(client.strip(),)).fetchone()
+            c=self.db.execute('SELECT * FROM clients WHERE name=?',(client.strip(),)).fetchone()
+            if c and c['archived']: raise ValueError('This client is archived. Unarchive it in Projects or choose another client name.')
+            if c and (c['currency']!=currency or (rate is not None and c['rate']!=rate)):
+                raise ValueError('This client already has different billing settings. Use Add project under that client in Projects, or choose a new client name.')
             cid=c[0] if c else self.db.execute('INSERT INTO clients(name,currency,rate) VALUES(?,?,?)',(client.strip(),currency,rate)).lastrowid
             p=self.db.execute('SELECT id FROM projects WHERE client_id=? AND name=?',(cid,project.strip())).fetchone()
+            if p: raise ValueError('This project already exists for the client. Edit it or add a task in Projects.')
             pid=p[0] if p else self.db.execute('INSERT INTO projects(client_id,name,budget) VALUES(?,?,?)',(cid,project.strip(),budget)).lastrowid
             existing=self.db.execute('SELECT id FROM tasks WHERE project_id=? AND name=?',(pid,task.strip())).fetchone()
             tid=existing[0] if existing else self.db.execute('INSERT INTO tasks(project_id,name) VALUES(?,?)',(pid,task.strip())).lastrowid
@@ -215,7 +219,7 @@ class Store:
         self.audit('entry approved',{'id':entry})
 
     def merge_entries(self,ids):
-        if len(ids)<2: raise ValueError('Select at least two adjacent entries.')
+        if len(set(ids))<2: raise ValueError('Select at least two adjacent entries.')
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
             rows=[self.db.execute('SELECT * FROM entries WHERE deleted=0 AND id=?',(i,)).fetchone() for i in set(ids)]
@@ -423,8 +427,17 @@ class Store:
         for r in self.rows('SELECT id,snapshot FROM reports'):
             try:
                 lines=json.loads(r['snapshot'])
-                if not lines or any(not {'id','start','end','rate','amount','currency','client','project','task','description'}.issubset(x) for x in lines): raise ValueError()
-            except (ValueError,TypeError): raise ValueError('A saved report is malformed.')
+                required={'id','start','end','rate','amount','currency','client','project','task','description'}
+                if not isinstance(lines,list) or not lines: raise ValueError()
+                for line in lines:
+                    if not isinstance(line,dict) or not required.issubset(line): raise ValueError()
+                    if any(type(line[key]) is not int for key in ('id','start','end','rate','amount')): raise ValueError()
+                    if line['id']<=0 or line['end']<=line['start'] or line['rate']<0 or line['amount']<0: raise ValueError()
+                    if line['currency'] not in ('GBP','EUR','USD'): raise ValueError()
+                    if any(not isinstance(line[key],str) for key in ('client','project','task','description')): raise ValueError()
+                    datetime.fromtimestamp(line['start']); datetime.fromtimestamp(line['end'])
+                    if 'report_date' in line: datetime.strptime(line['report_date'],'%Y-%m-%d')
+            except (ValueError,TypeError,OverflowError,OSError): raise ValueError('A saved report is malformed.')
         return True
     def create_report(self,client,start,end):
         with self.db:
@@ -485,17 +498,17 @@ def parse_money(text):
     if not text.strip(): return None
     try:
         value=Decimal(text.strip())
-        if not value.is_finite() or value<0 or value.as_tuple().exponent < -2: raise ValueError()
+        if not value.is_finite() or value<0 or value>Decimal('1000000000') or value.as_tuple().exponent < -2: raise ValueError()
         return int(value*100)
-    except Exception: raise ValueError('Enter a non-negative rate with at most two decimal places.')
+    except Exception: raise ValueError('Enter a rate between 0 and 1,000,000,000 with at most two decimal places.')
 
 def parse_hours(text):
     if not text.strip(): return None
     try:
         value=Decimal(text.strip())
-        if not value.is_finite() or value<0: raise ValueError()
+        if not value.is_finite() or value<0 or value>Decimal('1000000000'): raise ValueError()
         return int(value*3600)
-    except Exception: raise ValueError('Enter a non-negative number of hours.')
+    except Exception: raise ValueError('Enter hours between 0 and 1,000,000,000.')
 
 def local_timestamp(text):
     """Parse unambiguous local wall time; reject DST gaps and repeated hours."""
