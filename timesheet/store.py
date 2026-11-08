@@ -7,7 +7,7 @@ import json
 import os
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
@@ -133,6 +133,20 @@ class Store:
         return dict(active=active,away=away,assigned=assigned,approved=approved,unassigned=unassigned,
                     drafts=sum(r['status']=='draft' for r in entries),apps=sorted(apps.items(),key=lambda pair:pair[1],reverse=True))
 
+    def period_summary(self,start,end):
+        """Summarise recorded entries and observed gaps, clipped to the period."""
+        if end<=start: raise ValueError('End must be after start.')
+        entries=self.entries(start,end)
+        result=dict(recorded=0,approved=0,billable=0,drafts=0,gaps=0)
+        for r in entries:
+            seconds=min(end,r['end'])-max(start,r['start'])
+            result['recorded']+=seconds
+            if r['status'] in ('approved','billed'): result['approved']+=seconds
+            if r['billable']: result['billable']+=seconds
+            if r['status']=='draft': result['drafts']+=1
+        result['gaps']=sum(r['end']-r['start'] for r in self.activity_for(start,end) if r['state']=='unknown')
+        return result
+
     def set_personal(self,ids,personal=True):
         if not ids: raise ValueError('Select completed activity first.')
         with self.db:
@@ -159,12 +173,27 @@ class Store:
         rule=self.matching_rule(app,title)
         return rule['task_id'] if rule else None
 
+    def validate_rule_target(self,task):
+        valid=self.db.execute('''SELECT 1 FROM tasks t JOIN projects p ON p.id=t.project_id
+            JOIN clients c ON c.id=p.client_id WHERE t.id=? AND t.archived=0 AND p.archived=0 AND c.archived=0''',(task,)).fetchone()
+        if not valid: raise ValueError('Choose an active task.')
+
     def add_rule(self,app,title,task,priority=0):
         if not app.strip(): raise ValueError('Choose an application.')
+        self.validate_rule_target(task)
         with self.db:
             rid=self.db.execute('INSERT INTO rules(app,title,task_id,priority,created) VALUES(?,?,?,?,?)',(app.strip(),title.strip(),task,int(priority),int(time.time()))).lastrowid
             self.audit('rule created',{'id':rid})
             return rid
+
+    def update_rule(self,rule_id,app,title,task,priority=0):
+        if not app.strip(): raise ValueError('Choose an application.')
+        self.validate_rule_target(task)
+        with self.db:
+            cur=self.db.execute('UPDATE rules SET app=?,title=?,task_id=?,priority=?,created=? WHERE id=?',
+                (app.strip(),title.strip(),task,int(priority),int(time.time()),rule_id))
+            if not cur.rowcount: raise ValueError('Rule not found.')
+            self.audit('rule edited',{'id':rule_id})
 
     def apply_rules(self,now=None,start=None,end=None):
         now=int(time.time() if now is None else now)
@@ -190,6 +219,7 @@ class Store:
         count=0
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
+            self.validate_rule_target(task)
             before=[]; ids=[]
             for block in blocks:
                 original=self.db.execute('SELECT * FROM activity WHERE id=?',(block['id'],)).fetchone()
@@ -487,6 +517,38 @@ class Store:
             self.db.executemany("UPDATE entries SET status='draft',invoice=NULL,rate=NULL,currency=NULL,revision=revision+1 WHERE id=?",[(r['id'],) for r in rows])
             self.db.execute("UPDATE report_billing SET state='corrected',reason=? WHERE report_id=?",(reason.strip(),rid))
             self.audit('billing corrected',{'report_id':rid,'invoice':billing['invoice'],'reason':reason.strip()})
+    def internal_csv(self,start,end,client=None,group='entries'):
+        """Export current task time, including non-billable work, without billing it."""
+        if int(end)<=int(start): raise ValueError('End must be after start.')
+        if group not in ('entries','client','project','task','week'): raise ValueError('Choose a valid grouping.')
+        out=io.StringIO(newline=''); w=csv.writer(out)
+        safe=lambda x: "'"+x if x.lstrip().startswith(('=','+','-','@','\t','\r','\n')) else x
+        rows=self.entries(start,end,client=client)
+        if group=='entries':
+            w.writerow(['Start','End','Client','Project','Task','Description','Hours in period','Billable','Status'])
+            for r in rows:
+                a=max(int(start),r['start']); z=min(int(end),r['end'])
+                w.writerow([datetime.fromtimestamp(a).isoformat(sep=' '),datetime.fromtimestamp(z).isoformat(sep=' '),
+                            *[safe(str(r[k])) for k in ('client','project','task','description')],
+                            f"{Decimal(z-a)/Decimal(3600):.6f}",'Yes' if r['billable'] else 'No',r['status']])
+        else:
+            totals={}
+            for r in rows:
+                a=max(int(start),r['start']); z=min(int(end),r['end'])
+                while a<z:
+                    if group=='week':
+                        day=datetime.fromtimestamp(a).date(); monday=day-timedelta(days=day.weekday())
+                        key=monday.isoformat(); boundary=int(datetime.combine(monday+timedelta(days=7),datetime.min.time()).timestamp())
+                        finish=min(z,boundary)
+                    else:
+                        key=' / '.join(str(r[k]) for k in ('client','project','task')[:{'client':1,'project':2,'task':3}[group]])
+                        finish=z
+                    values=totals.setdefault(key,[0,0]); values[0 if r['billable'] else 1]+=finish-a; a=finish
+            w.writerow(['Week beginning' if group=='week' else group.capitalize(),'Billable hours','Non-billable hours','Total hours'])
+            for key,(billable,nonbillable) in sorted(totals.items()):
+                w.writerow([safe(key),*[f"{Decimal(seconds)/Decimal(3600):.6f}" for seconds in (billable,nonbillable,billable+nonbillable)]])
+        return out.getvalue()
+
     def csv_report(self,rid):
         out=io.StringIO(newline=''); w=csv.writer(out)
         w.writerow(['Date','Client','Project','Task','Description','Actual hours','Billed hours','Hourly rate','Currency','Amount'])

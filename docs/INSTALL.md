@@ -72,7 +72,7 @@ sudo pacman -Syu git python-gobject python-cairo gtk4 libadwaita python-reportla
 sudo zypper install git python3-gobject python3-gobject-Gdk python3-cairo typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1 python3-reportlab dejavu-fonts
 ```
 
-On openSUSE, package names can be Python-version-specific. The bindings must match `/usr/bin/python3`; use `zypper search` if needed. PDF export requires ReportLab and DejaVu Sans. If PDF export says fonts are missing even though they are installed, see [PDF font troubleshooting](#troubleshooting). Then install the tagged release (the default branch still contains older source code):
+On openSUSE, package names can be Python-version-specific. The bindings must match `/usr/bin/python3`; use `zypper search` if needed. PDF export requires ReportLab and DejaVu Sans. If PDF export says fonts are missing even though they are installed, see [PDF font troubleshooting](#troubleshooting). Then install the fixed release tag:
 
 ```sh
 git clone --branch v0.4.0-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.4

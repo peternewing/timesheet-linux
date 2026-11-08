@@ -162,6 +162,21 @@ def health(status, error=''):
         pass
 
 
+def should_notify(previous,status,enabled):
+    return enabled and previous=='active' and status in ('degraded','setup_required','stopped','error')
+
+def notify_tracking_problem():
+    """Best-effort, content-free desktop alert from the background collector."""
+    try:
+        bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
+        bus.call_sync('org.freedesktop.Notifications','/org/freedesktop/Notifications',
+            'org.freedesktop.Notifications','Notify',
+            GLib.Variant('(susssasa{sv}i)',('Time Sheet Linux',0,'','Tracking needs attention',
+                'Automatic tracking may be incomplete. Open Time Sheet Linux to check its status.',[],{},-1)),
+            GLib.VariantType.new('(u)'),Gio.DBusCallFlags.NONE,500,None)
+    except GLib.Error:
+        pass
+
 def maintenance(store, now):
     with store.db:
         store.db.execute('DELETE FROM activity WHERE closed=1 AND end<?',(int(now)-int(store.get('retention_days','30'))*86400,))
@@ -184,23 +199,28 @@ def run():
     except BlockingIOError: return
     pidfile=DATA_DIR/'collector.pid'; pidfile.write_text(str(os.getpid())); os.chmod(pidfile,0o600)
     signal.signal(signal.SIGTERM,shutdown); signal.signal(signal.SIGINT,shutdown)
-    store=Store(); collector=Collector(store); last_maintenance=0
+    store=Store(); collector=Collector(store); last_maintenance=0; last_status=None; notifications_enabled=False
     try:
         while not stopping:
             now=time.time()
             try:
+                notifications_enabled=store.get('tracking_notifications','0')=='1'
                 enabled=store.get('capture_enabled','0')=='1' or int(store.get('pause_until','0') or 0)
                 if not enabled and _capture is not None:
                     _capture.close(); _capture=None
                 state=get_focus() if enabled else None
                 status=collector.step(now,time.monotonic(),state)
                 health(status)
+                if should_notify(last_status,status,notifications_enabled): notify_tracking_problem()
+                last_status=status
                 if now-last_maintenance>3600:
                     maintenance(store,now); last_maintenance=now
             except (sqlite3.Error,OSError) as exc:
                 if store.db.in_transaction: store.db.rollback()
                 collector.failed=True
                 health('error','Storage unavailable. Unsaved time will need review.')
+                if should_notify(last_status,'error',notifications_enabled): notify_tracking_problem()
+                last_status='error'
                 # Error text intentionally excludes paths, titles and content.
             time.sleep(1)
     finally:
