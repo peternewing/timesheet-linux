@@ -2,7 +2,7 @@
 
 ## Everyday use
 
-Choose **Review suggestions** on Today or Calendar. The local review shows
+Choose **Review today** on Today, or **Review suggestions** in Calendar. The local review shows
 nearby unassigned blocks as proposed sessions, sorted to bring unfamiliar and
 longer sessions forward. Grouping never fills the gaps between blocks. Select
 individual blocks to split or combine sessions; assignment, personal marking
@@ -48,7 +48,7 @@ AI section and choose a request cap. The confirmation lists every application
 and task/category name to be sent. Each request is limited to 32,000 bytes;
 actual costs depend on the provider's token accounting. There are no automatic
 retries. Cancel stops later requests; an in-flight request may still finish.
-Results stay in the review window and each must be opened and saved separately.
+Results stay in the review window and each must be opened and saved separately. Saving refreshes the remaining activity and keeps unused results for that review without another request. Closing the review clears these temporary results.
 No title or optional context is included in batch mode.
 
 ## Status and limits
@@ -56,7 +56,7 @@ No title or optional context is included in batch mode.
 Core tracking and local review work offline. TypeSafe requests go directly to
 `https://api.typesafe.ai/v1/systemone` after confirmation and can incur charges
 on the user's own account. The prototype requires libsecret and an unlocked
-keyring. AppImage and Flatpak package configurations include libsecret; Flatpak uses network access and the Secret portal. Package builds and desktop portal compatibility need further testing. Removing the database
+keyring. AppImage and Flatpak package configurations include libsecret; Flatpak uses network access and the Secret portal. Package builds and isolated encrypted-storage checks pass in CI; real desktop portal compatibility still benefits from broader testing. Removing the database
 or uninstalling the app does not remove the keyring entry; remove it in Settings.
 
 Unit and isolated GUI tests use fake credentials and fake API responses. No real

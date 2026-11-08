@@ -38,9 +38,13 @@ with tempfile.TemporaryDirectory(prefix='timesheet-rules-ui-') as tmp:
             assert any('When the application is “Editor”' in s and 'as draft time' in s for s in texts(app.body_rules))
             screenshot(app.win,'rules')
             app.rule_dialog(); form=app.dialogs[-1]; state['form']=form
-            entries=[w for w in descendants(form) if isinstance(w,Gtk.Entry)]
-            assert entries[0].get_text()==''
-            entries[0].set_text('Editor')
+            custom=find(form,Gtk.Expander,'App not listed? Enter its exact name')
+            app_entry=next(w for w in descendants(custom.get_child()) if isinstance(w,Gtk.Entry))
+            assert app_entry.get_text()==''
+            known=next(w for w in descendants(form) if isinstance(w,Gtk.DropDown) and w._values[0][1]=='Choose an application…')
+            known.set_selected(next(i for i,(v,_) in enumerate(known._values) if v=='Editor'))
+            assert app_entry.get_text()=='Editor'
+            assert not find(form,Gtk.Expander,'App not listed? Enter its exact name').get_expanded()
             dropdown=next(w for w in descendants(form) if isinstance(w,Gtk.DropDown) and w._values[0][1]=='Choose a task…')
             dropdown.set_selected(next(i for i,(v,_) in enumerate(dropdown._values) if v==first))
             advanced=find(form,Gtk.Expander,'Advanced: priority'); assert not advanced.get_expanded(); advanced.set_expanded(True)
@@ -49,7 +53,9 @@ with tempfile.TemporaryDirectory(prefix='timesheet-rules-ui-') as tmp:
             assert messages and 'same filter, target and priority' in messages[-1] and len(app.store.rows('SELECT * FROM rules'))==1
             dropdown.set_selected(next(i for i,(v,_) in enumerate(dropdown._values) if v==second)); find(form,Gtk.Button,'Save').emit('clicked')
             assert 'same application, title filter and priority' in messages[-1] and len(app.store.rows('SELECT * FROM rules'))==1
-            entries[1].set_text('Example')
+            title_options=find(form,Gtk.Expander,'Optional: match a window title');title_options.set_expanded(True)
+            next(w for w in descendants(title_options.get_child()) if isinstance(w,Gtk.Entry)).set_text('Example')
+            find(form,Gtk.Expander,'Preview: recorded matches and conflicts').set_expanded(True)
             GLib.timeout_add(350,verify_preview)
         except Exception: errors.append(traceback.format_exc()); app.quit()
         return False
@@ -58,9 +64,11 @@ with tempfile.TemporaryDirectory(prefix='timesheet-rules-ui-') as tmp:
             form=state['form']; content=texts(form)
             assert any('Window titles are off' in s for s in content)
             assert any('Preview of up to 2,000' in s and 'Example document' in s for s in content)
+            find(form,Gtk.Button,'Save').emit('clicked')
+            assert 'Window titles are off' in messages[-1] and len(app.store.rows('SELECT * FROM rules'))==1
             screenshot(form,'rule-form')
             # Schedule a new debounce, then close before it can run.
-            next(w for w in descendants(form) if isinstance(w,Gtk.Entry)).set_text('Other')
+            next(w for w in descendants(find(form,Gtk.Expander,'App not listed? Enter its exact name').get_child()) if isinstance(w,Gtk.Entry)).set_text('Other')
             form.close(); GLib.timeout_add(350,finish)
         except Exception: errors.append(traceback.format_exc()); app.quit()
         return False

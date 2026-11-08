@@ -40,3 +40,5 @@ jobs:
         run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_jev_ui.py
       - name: Exercise assignment rule explanations and validation
         run: GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 1280x1000x24' /usr/bin/python3 tests/verify_rules_ui.py
+      - name: Exercise guided rules and a complete daily review
+        run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_daily_review.py
