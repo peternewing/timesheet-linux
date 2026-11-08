@@ -7,7 +7,7 @@ import json
 import os
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
@@ -509,17 +509,36 @@ class Store:
             self.db.executemany("UPDATE entries SET status='draft',invoice=NULL,rate=NULL,currency=NULL,revision=revision+1 WHERE id=?",[(r['id'],) for r in rows])
             self.db.execute("UPDATE report_billing SET state='corrected',reason=? WHERE report_id=?",(reason.strip(),rid))
             self.audit('billing corrected',{'report_id':rid,'invoice':billing['invoice'],'reason':reason.strip()})
-    def internal_csv(self,start,end,client=None):
+    def internal_csv(self,start,end,client=None,group='entries'):
         """Export current task time, including non-billable work, without billing it."""
         if int(end)<=int(start): raise ValueError('End must be after start.')
+        if group not in ('entries','client','project','task','week'): raise ValueError('Choose a valid grouping.')
         out=io.StringIO(newline=''); w=csv.writer(out)
-        w.writerow(['Start','End','Client','Project','Task','Description','Hours in period','Billable','Status'])
-        for r in self.entries(start,end,client=client):
-            safe=lambda x: "'"+x if x.lstrip().startswith(('=','+','-','@','\t','\r','\n')) else x
-            a=max(int(start),r['start']); z=min(int(end),r['end'])
-            w.writerow([datetime.fromtimestamp(a).isoformat(sep=' '),datetime.fromtimestamp(z).isoformat(sep=' '),
-                        *[safe(str(r[k])) for k in ('client','project','task','description')],
-                        f"{Decimal(z-a)/Decimal(3600):.6f}",'Yes' if r['billable'] else 'No',r['status']])
+        safe=lambda x: "'"+x if x.lstrip().startswith(('=','+','-','@','\t','\r','\n')) else x
+        rows=self.entries(start,end,client=client)
+        if group=='entries':
+            w.writerow(['Start','End','Client','Project','Task','Description','Hours in period','Billable','Status'])
+            for r in rows:
+                a=max(int(start),r['start']); z=min(int(end),r['end'])
+                w.writerow([datetime.fromtimestamp(a).isoformat(sep=' '),datetime.fromtimestamp(z).isoformat(sep=' '),
+                            *[safe(str(r[k])) for k in ('client','project','task','description')],
+                            f"{Decimal(z-a)/Decimal(3600):.6f}",'Yes' if r['billable'] else 'No',r['status']])
+        else:
+            totals={}
+            for r in rows:
+                a=max(int(start),r['start']); z=min(int(end),r['end'])
+                while a<z:
+                    if group=='week':
+                        day=datetime.fromtimestamp(a).date(); monday=day-timedelta(days=day.weekday())
+                        key=monday.isoformat(); boundary=int(datetime.combine(monday+timedelta(days=7),datetime.min.time()).timestamp())
+                        finish=min(z,boundary)
+                    else:
+                        key=' / '.join(str(r[k]) for k in ('client','project','task')[:{'client':1,'project':2,'task':3}[group]])
+                        finish=z
+                    values=totals.setdefault(key,[0,0]); values[0 if r['billable'] else 1]+=finish-a; a=finish
+            w.writerow(['Week beginning' if group=='week' else group.capitalize(),'Billable hours','Non-billable hours','Total hours'])
+            for key,(billable,nonbillable) in sorted(totals.items()):
+                w.writerow([safe(key),*[f"{Decimal(seconds)/Decimal(3600):.6f}" for seconds in (billable,nonbillable,billable+nonbillable)]])
         return out.getvalue()
 
     def csv_report(self,rid):
