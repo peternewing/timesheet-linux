@@ -96,7 +96,7 @@ class UpgradeTests(unittest.TestCase):
         from timesheet import desktop
         service=Mock(); service.exists.return_value=True
         result=Mock(); result.returncode=0
-        with patch.dict(os.environ,{'XDG_SESSION_TYPE':'x11','XDG_CURRENT_DESKTOP':'KDE','DISPLAY':':1'},clear=True), patch.object(desktop,'SERVICE',service), patch.object(desktop,'run_systemd',return_value=result) as systemd:
+        with patch.dict(os.environ,{'XDG_SESSION_TYPE':'x11','XDG_CURRENT_DESKTOP':'KDE','DISPLAY':':1'},clear=True), patch.object(desktop,'SERVICE',service), patch.object(desktop,'start_automation'), patch.object(desktop,'run_systemd',return_value=result) as systemd:
             desktop.start_collector()
         calls=[call.args for call in systemd.call_args_list]
         self.assertIn('WAYLAND_DISPLAY',calls[0])

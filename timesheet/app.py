@@ -20,6 +20,7 @@ gi.require_version('Graphene','1.0')
 from gi.repository import Adw, Gdk, Gio, GLib, Graphene, Gtk, Pango
 from .store import Store, DATA_DIR, parse_money, parse_hours, local_timestamp
 from . import desktop, __version__
+from .automation_ui import AutomationUI
 
 APP_ID=desktop.APP_ID
 ROOT=desktop.ROOT
@@ -46,12 +47,14 @@ def day_bounds(day):
 def parse_local(text): return local_timestamp(text)
 def button(text,callback,primary=False):
     w=Gtk.Button(label=text); w.connect('clicked',callback)
+    child=w.get_child()
+    if isinstance(child,Gtk.Label):child.set_wrap(True);child.set_wrap_mode(Pango.WrapMode.WORD_CHAR);child.set_max_width_chars(60)
     if primary: w.add_css_class('suggested-action')
     return w
 
 def label(text,css=None,*,selectable=True):
     if css in ('title-1','title-3','heading','metric','brand','field-label'): selectable=False
-    w=Gtk.Label(label=str(text),xalign=0,wrap=True,selectable=selectable)
+    w=Gtk.Label(label=str(text),xalign=0,wrap=True,wrap_mode=Pango.WrapMode.WORD_CHAR,selectable=selectable)
     if css: w.add_css_class(css)
     return w
 
@@ -65,6 +68,11 @@ def dropdown(box,title,values):
     group=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6,hexpand=True); box.append(group)
     caption=label(title,'field-label',selectable=False); group.append(caption)
     w=Gtk.DropDown.new_from_strings([name for _,name in values] or ['No choices yet']); w._values=values
+    factory=Gtk.SignalListItemFactory()
+    def setup(_,item):item.set_child(Gtk.Label(xalign=0,ellipsize=Pango.EllipsizeMode.END,max_width_chars=60,hexpand=True))
+    def bind(_,item):
+        text=item.get_item().get_string();item.get_child().set_text(text);item.get_child().set_tooltip_text(text)
+    factory.connect('setup',setup);factory.connect('bind',bind);w.set_factory(factory)
     if len(values)>8: w.set_enable_search(True)
     w.update_property([Gtk.AccessibleProperty.LABEL],[title]); caption.set_mnemonic_widget(w); group.append(w); return w
 
@@ -134,10 +142,11 @@ class Timeline(Gtk.Widget):
             snapshot.save();snapshot.translate(point);snapshot.append_layout(layout,color);snapshot.restore()
 
 
-class TimeSheet(Adw.Application):
+class TimeSheet(AutomationUI,Adw.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID)
         self.store=Store(); self.win=None; self.day=datetime.now().date(); self.page='Today'
+        self.automation_repo()
         self.dialog_count=0; self.last_refresh=0; self.history_search=''; self.history_period='month'; self.history_status='all'
         self.dialogs=[]
         self.timer_label=None; self.timer_started=None
@@ -166,7 +175,7 @@ class TimeSheet(Adw.Application):
         self.start_timer_button=button('Start timer',lambda _:self.timer_dialog()); header.pack_start(self.start_timer_button)
         self.undo_button=button('Undo',lambda _:self.run_action(self.store.undo,lambda action:self.toast(action+' undone'))); header.pack_end(self.undo_button)
         header.pack_end(button('Refresh',lambda _:self.show_page(self.page)))
-        header.pack_end(button('About',lambda _:self.info('About Time Sheet Linux', 'Version '+__version__+'\n\nYour data stays on this computer.')) )
+        header.pack_end(button('About',lambda _:self.info('About Time Sheet Linux', 'Version '+__version__+'\n\nRecording stays local. Optional Jev requests send only the data permitted by your chosen policy.')) )
         header.pack_end(button('Help',lambda _:self.info('From activity to a client report',
             '1. Projects: create a client, project and task. Set an hourly rate for billable work.\n\n'
             '2. Calendar: review captured activity and assign it to a task. Use Add time for work you recorded manually.\n\n'
@@ -317,7 +326,9 @@ class TimeSheet(Adw.Application):
             self.status.set_text(names.get(status,'Starting…'))
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
             if self.page=='Today':
-                signature=(rt['state'],rt['capture_status'],rt['app'],datetime.now().date())
+                ai=self.store.db.execute('SELECT MAX(updated) FROM ai_jobs').fetchone()
+                focus=self.store.db.execute('SELECT task_id,end FROM ai_focus WHERE start<=? AND end>? ORDER BY start DESC LIMIT 1',(int(time.time()),int(time.time()))).fetchone()
+                signature=(rt['state'],rt['capture_status'],rt['app'],datetime.now().date(),tuple(ai),tuple(focus) if focus else None,self.store.get('ai_pause_reason'))
                 if signature!=self.rendered_signature and not self.dialog_count:
                     self.refresh_today(); self.rendered_signature=signature
             elif self.page=='Calendar' and not self.dialog_count and not self.selected_blocks and time.monotonic()-self.last_refresh>15:
@@ -412,6 +423,7 @@ class TimeSheet(Adw.Application):
         self.today_metrics={}; self.today_apps={}
         self.timer_started=rt['started'] if rt['state']=='running' else None; self.update_timer_display()
         self.heading(b,'Today',datetime.now().strftime('%A, %d %B')+' · Review your day and record your work')
+        if self.task_choices():self.automation_summary(b)
         if not self.task_choices():
             self.row(b,'Start with a project','Create a client, project and task. Then add time manually or assign captured activity. Review drafts in History before creating a client report.',[('Create your first project',self.quick_setup)])
             guide=Gtk.Expander(label='How to get started'); details=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8)
@@ -504,10 +516,12 @@ class TimeSheet(Adw.Application):
             rate=row['suggested_rate'] if row['status']=='draft' else row['rate']
             detail+=' · '+('Set an hourly rate before approval' if rate is None else f"{row['currency'] or row['client_currency']} {money(rate)}/hour")
         if row['description']: detail+='\n'+row['description']
+        if row['origin']=='jev':detail+='\nOriginally organised by Jev.'
         actions=[]
         if row['status']!='billed':
             actions=[('Edit',lambda _,i=eid:self.entry_dialog(i)),('Split',lambda _,r=row:self.split_dialog(r)),('Delete',lambda _,i=eid:self.confirm('Delete this time entry?','This can be undone until the entry changes again.',lambda:self.store.delete_entry(i)))]
             if row['status']=='draft': actions.insert(0,('Approve',lambda _,i=eid:self.run_action(lambda:self.store.approve(i),lambda _:self.toast('Time approved'))))
+            if row['origin']=='jev':actions.append(('Why Jev chose this task',lambda _,i=eid:self.entry_decision(i)))
         else: actions=[('View billing details',lambda _,r=row:self.info('Billed time',f"Invoice: {r['invoice']}\nRate: {r['currency']} {money(r['rate'] or 0)} per hour\nThis entry is locked to protect your billing history."))]
         card=self.row(box,title,detail,actions)
         if selectable and row['status']!='billed':
@@ -552,11 +566,11 @@ class TimeSheet(Adw.Application):
     def split_dialog(self,row):
         def build(b): return field(b,'Split at',datetime.fromtimestamp((row['start']+row['end'])//2).strftime('%Y-%m-%d %H:%M:%S'))
         self.dialog('Split time',build,lambda w:self.store.split_entry(row['id'],parse_local(w.get_text())))
-    def assign_dialog(self,blocks,app=None,suggested_task=None,review_result=False,after_save=None):
+    def assign_dialog(self,blocks,app=None,suggested_task=None,review_result=False,after_save=None,review_decision=None):
         if not blocks: self.toast('No completed, unassigned activity yet. Live usage becomes assignable when you switch apps.'); return
-        if not self.task_choices(): self.quick_setup(after=lambda:self.assign_dialog(blocks,app,suggested_task,review_result,after_save)); return
+        if not self.task_choices(): self.quick_setup(after=lambda:self.assign_dialog(blocks,app,suggested_task,review_result,after_save,review_decision)); return
         seconds=sum(b['end']-b['start'] for b in blocks)
-        ai_suggestion=[None]; ai_probability=[None]
+        ai_suggestion=[review_decision.get('task') if review_decision else None]; ai_probability=[review_decision.get('probability') if review_decision else None]
         def build(b):
             b.append(label(f'{fmt_duration(seconds)} of activity. Time already assigned to a task will be skipped.'))
             form=self.dialogs[-1]; closed=threading.Event(); revision=[0]
@@ -592,6 +606,14 @@ class TimeSheet(Adw.Application):
             context.connect('changed',lambda *_:revision.__setitem__(0,revision[0]+1))
             context_box.append(label('Only what you type here is sent. Window titles are never added automatically.','dim-label'))
             alternatives=action_bar(); b.append(alternatives)
+            if review_decision:
+                from .decision_policy import ambiguous
+                if ambiguous(review_decision):
+                    select_id(task,None);status.set_text('Jev needs your choice. These are alternatives, not an automatic assignment.')
+                    names=dict(self.task_choices())
+                    for option,_ in review_decision.get('alternatives',[])[:2]:
+                        if option in names:alternatives.append(button(names[option],lambda _,i=option:select_id(task,i)))
+                    alternatives.append(button('Neither',lambda _:select_id(task,None)))
             pending=[None]
             def cancel_suggestion(_):
                 if pending[0] is not None: pending[0].set()
@@ -752,9 +774,12 @@ class TimeSheet(Adw.Application):
             return False
         window.connect('close-request',close_batch)
         def display_result(block,result,error):
-            match=result[0] if result else None;active=dict(self.task_choices());name=active.get(match,'No match')
+            from .decision_policy import ambiguous
+            rich=result if isinstance(result,dict) else None
+            match=(None if ambiguous(rich) else rich['task']) if rich else result[0] if result else None
+            active=dict(self.task_choices());name=active.get(match,'Needs your choice')
             detail=error or ('Suggested: '+name+'. Review before assigning.')
-            result_actions=[] if error else [('Review' if match in active else 'Choose manually',lambda _,b=block,t=match:self.assign_dialog([b],suggested_task=t,review_result=True,after_save=reopen_review))]
+            result_actions=[] if error else [('Review' if match in active else 'Choose manually',lambda _,b=block,t=match,r=rich:self.assign_dialog([b],suggested_task=t,review_result=True,after_save=reopen_review,review_decision=r))]
             self.row(batch_results,block['app'],detail,result_actions)
         def ask_batch(_):
             from . import jev
@@ -798,7 +823,7 @@ class TimeSheet(Adw.Application):
                             return False
                         GLib.idle_add(display)
                     if key and not cancelled.is_set() and not closed_window.is_set():
-                        try: jev.suggest_batch(apps,candidates,key,cancelled.is_set,on_result)
+                        try: jev.suggest_batch(apps,candidates,key,cancelled.is_set,on_result,detailed=True)
                         except jev.JevError as exc:failure=str(exc)
                         except Exception:failure='The suggestion request failed.'
                     def done():
@@ -1028,7 +1053,10 @@ class TimeSheet(Adw.Application):
                     self.project_live[project['id']]=(card.get_first_child().get_next_sibling(),project['budget'],progress)
                     for task in visible_tasks:
                         detail=self.task_detail(task['spent'],task['budget'])
-                        card=self.row(results,'  '+task['name']+(' · Archived' if task['archived'] else ''),detail,[('Edit task',lambda _,r=task:self.task_dialog(r))])
+                        actions=[('Edit task',lambda _,r=task:self.task_dialog(r))]
+                        if not task['archived'] and not project['archived']:actions.append(('Describe for Jev',lambda _,i=task['id']:self.task_guidance_dialog(i)))
+                        if not task['archived'] and not project['archived']:actions.append(('Use as Jev focus',lambda _,i=task['id']:self.focus_dialog(i)))
+                        card=self.row(results,'  '+task['name']+(' · Archived' if task['archived'] else ''),detail,actions)
                         self.task_live[task['id']]=(card.get_first_child().get_next_sibling(),task['budget']); self.task_projects[task['id']]=project['id']
             if not shown: self.empty(results,'No matching projects','Try a client, project or task name.')
         search.connect('search-changed',render); render()
@@ -1315,6 +1343,8 @@ class TimeSheet(Adw.Application):
         from . import jev
         from .review import load_categories
         self.heading(b,'Optional Jev assistance')
+        b.append(button('Set up Jev automation',lambda _:self.automation_dialog(),True))
+        b.append(button('Describe work for Jev',lambda _:self.task_guidance_dialog()))
         b.append(label('Connect your own TypeSafe key to ask for task suggestions. Each suggestion has a data preview before you send it.','dim-label'))
         b.append(label('The key is held by your desktop keyring or the app’s secret portal, outside your timesheet database.','dim-label'))
         buttons=action_bar();b.append(buttons)
@@ -1342,7 +1372,10 @@ class TimeSheet(Adw.Application):
                 GLib.idle_add(done)
             threading.Thread(target=work,daemon=True).start()
         check_button=button('Check connection',check);buttons.append(check_button)
-        buttons.append(button('Remove TypeSafe key',lambda _:self.confirm('Remove TypeSafe key?','The saved key will be removed from this app’s secure storage.',lambda:jev.delete_key())))
+        def remove_key():
+            repo=self.automation_repo();repo.configure({**repo.config(),'mode':'off'})
+            jev.delete_key()
+        buttons.append(button('Remove TypeSafe key',lambda _:self.confirm('Remove TypeSafe key?','Background automation will turn off and the saved key will be removed from secure storage. An in-flight request may already have been sent.',remove_key)))
         expander=Gtk.Expander(label='Preferences and categories');b.append(expander)
         advanced=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);expander.set_child(advanced)
         advanced.append(label('These optional preferences stay in the local database and its backups.','dim-label'))
@@ -1389,7 +1422,7 @@ class TimeSheet(Adw.Application):
                 for label_name in ('0–49%','50–74%','75–89%','90–100%'):
                     value=bins.get(label_name,{})
                     if isinstance(value,dict):details.append(label(f"{label_name}: {value.get('accepted',0)} kept, {value.get('changed',0)} changed",'dim-label'))
-                details.append(label('Small, self-selected samples can be misleading. No automatic confidence threshold is set.','dim-label'))
+                details.append(label('Small, self-selected samples can be misleading. This feedback does not calibrate or change background automation thresholds.','dim-label'))
         except (ValueError,TypeError,AttributeError,OverflowError):advanced.append(label('Local feedback counts unavailable.','dim-label'))
         advanced.append(Gtk.LinkButton(uri='https://console.typesafe.ai/',label='Open TypeSafe console'))
         advanced.append(Gtk.LinkButton(uri='https://help.typesafe.ai/articles/5974925716',label='TypeSafe data handling information'))
@@ -1405,6 +1438,7 @@ class TimeSheet(Adw.Application):
             details=diagnose()
             self.info('Setup details',json.dumps(details,indent=2)+'\n\nThis diagnostic does not include activity or window titles.')
         b.append(button('View setup details',show_diagnostics))
+        b.append(button('Check for updates',lambda _:self.check_app_updates()))
         b.append(Gtk.LinkButton(uri='https://github.com/peternewing/timesheet-linux/blob/main/docs/INSTALL.md',label='Open installation and desktop setup guide'))
         tracking=Adw.PreferencesGroup(title='Tracking'); b.append(tracking)
         capture=Adw.SwitchRow(title='Track desktop usage automatically',subtitle='Record the foreground app, excluding idle and locked time'); capture.set_active(self.store.get('capture_enabled','0')=='1'); tracking.add(capture)
@@ -1484,6 +1518,7 @@ class TimeSheet(Adw.Application):
                     for a,z in ((row['start'],min(start,row['end'])),(max(end,row['start']),row['end'])):
                         if z>a: self.store.db.execute('INSERT INTO activity(start,end,app,title,state,closed,session) VALUES(?,?,?,?,?,1,?)',(a,z,row['app'],row['title'],row['state'],row['session']))
                 self.store.audit('activity period deleted',{'start':start,'end':end})
+            self.automation_repo().prune()
             self.toast('Activity deleted')
         finally: desktop.start_collector()
     def choose_backup(self):
@@ -1523,6 +1558,7 @@ class TimeSheet(Adw.Application):
                 dbpath=self.store.path; self.store.close()
                 try: os.replace(tempname,dbpath)
                 finally: self.store=Store(dbpath)
+                self.automation_repo().reset_after_restore()
                 with self.store.db:
                     self.store.db.execute("UPDATE runtime SET task_id=NULL,started=NULL,checkpoint=NULL,state='stopped',collector_seen=NULL,capture_status='restored' WHERE id=1")
                     self.store.audit('backup restored',{'recovery_file':recovery.name})
@@ -1540,6 +1576,8 @@ def main():
     parser.add_argument('--install',action='store_true',help='Install desktop launcher, GNOME helper and background startup')
     parser.add_argument('--uninstall',action='store_true',help='Remove desktop integration, keeping timesheet data')
     parser.add_argument('--collector-direct',action='store_true',help=argparse.SUPPRESS)
+    parser.add_argument('--automation-direct',action='store_true',help=argparse.SUPPRESS)
+    parser.add_argument('--automation-once',action='store_true',help='Process one permitted queued decision (requires saved consent)')
     parser.add_argument('--background',action='store_true',help='Start the background collector')
     parser.add_argument('--pause',action='store_true',help='Pause automatic tracking')
     parser.add_argument('--resume',action='store_true',help='Resume automatic tracking')
@@ -1554,6 +1592,9 @@ def main():
     if args.collector_direct:
         from .collector import run
         run(); return 0
+    if args.automation_direct or args.automation_once:
+        from .automation_worker import run
+        return run(once=args.automation_once)
     if args.background: desktop.start_collector(); return 0
     if args.pause or args.resume or args.status:
         store=Store()

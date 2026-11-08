@@ -48,7 +48,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-jev-ui-') as tmp:
         try:
             if not api.called: return True
             if not any(isinstance(w,Gtk.Label) and 'Suggested:' in w.get_text() for w in descendants(state['review'])): return True
-            api.assert_called_once_with(['Editor'],[(tid,'Example / Work / Design')],'example-key')
+            api.assert_called_once_with(['Editor'],[(tid,'Example / Work / Design')],'example-key',detailed=True)
             assert not app.store.entries(start,now)
             find(state['review'],Gtk.Button,'Review').emit('clicked'); assert app.dialogs[-1].get_title()=='Assign activity'; app.dialogs[-1].close()
             api.reset_mock(); key.reset_mock(); state['review'].close()

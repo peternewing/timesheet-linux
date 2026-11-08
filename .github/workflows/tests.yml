@@ -22,6 +22,10 @@ jobs:
         run: PYTHONPATH=. dbus-run-session -- /usr/bin/python3 tests/verify_kde_capture.py
       - name: X11 capture on a virtual X server
         run: PYTHONPATH=. /usr/bin/python3 tests/verify_x11_capture.py
+      - name: Separate decision worker and concurrent recording
+        run: PYTHONPATH=. /usr/bin/python3 tests/verify_worker_process.py
+      - name: Replay public synthetic held-out evidence without network
+        run: /usr/bin/python3 -m timesheet.evaluate tests/fixtures/jev_live_heldout_recorded.json
       - name: Compile Python modules
         run: /usr/bin/python3 -m compileall -q timesheet
       - name: Check launcher syntax
@@ -42,3 +46,5 @@ jobs:
         run: GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 1280x1000x24' /usr/bin/python3 tests/verify_rules_ui.py
       - name: Exercise guided rules and a complete daily review
         run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_daily_review.py
+      - name: Exercise standing consent, exception inbox and focus instructions
+        run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_automation_ui.py

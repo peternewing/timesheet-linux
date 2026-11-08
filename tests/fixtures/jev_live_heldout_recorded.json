@@ -1,0 +1,368 @@
+[
+  {
+    "applications": [
+      "PyCharm"
+    ],
+    "tasks": [
+      [
+        7,
+        "Synthetic Delta / Data pipeline | Develop Python ETL jobs in PyCharm"
+      ],
+      [
+        8,
+        "Synthetic Cedar / Illustration | Draw vector graphics and visual assets"
+      ]
+    ],
+    "expected_task": 7,
+    "seconds": 600,
+    "has_context": true,
+    "focus": 7,
+    "focus_default": true,
+    "result": {
+      "task": 7,
+      "probability": 0.85,
+      "alternatives": [
+        [
+          7,
+          0.85
+        ],
+        [
+          8,
+          0.0
+        ]
+      ],
+      "personal": 0.27,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 740,
+        "output_tokens": 140
+      },
+      "confidence": 0.77,
+      "none_probability": 0.15,
+      "enough_evidence": 0.52,
+      "work_kind": "development"
+    },
+    "model": "jev-1.14.0"
+  },
+  {
+    "applications": [
+      "Inkscape"
+    ],
+    "tasks": [
+      [
+        7,
+        "Synthetic Delta / Database | Implement SQL database migrations"
+      ],
+      [
+        8,
+        "Synthetic Cedar / Illustration | Create vector illustrations in Inkscape"
+      ]
+    ],
+    "expected_task": 8,
+    "seconds": 600,
+    "has_context": true,
+    "focus": 8,
+    "focus_default": true,
+    "result": {
+      "task": 8,
+      "probability": 0.9,
+      "alternatives": [
+        [
+          8,
+          0.9
+        ],
+        [
+          7,
+          0.0
+        ]
+      ],
+      "personal": 0.26,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 737,
+        "output_tokens": 140
+      },
+      "confidence": 0.85,
+      "none_probability": 0.1,
+      "enough_evidence": 0.53,
+      "work_kind": "design"
+    },
+    "model": "jev-1.14.0"
+  },
+  {
+    "applications": [
+      "Kdenlive"
+    ],
+    "tasks": [
+      [
+        7,
+        "Synthetic Delta / Video editing | Edit video footage in Kdenlive"
+      ],
+      [
+        8,
+        "Synthetic Cedar / Accounts | Reconcile bookkeeping transactions"
+      ]
+    ],
+    "expected_task": 7,
+    "seconds": 600,
+    "has_context": true,
+    "focus": 7,
+    "focus_default": true,
+    "result": {
+      "task": 7,
+      "probability": 0.95,
+      "alternatives": [
+        [
+          7,
+          0.95
+        ],
+        [
+          8,
+          0.0
+        ]
+      ],
+      "personal": 0.26,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 739,
+        "output_tokens": 140
+      },
+      "confidence": 0.92,
+      "none_probability": 0.05,
+      "enough_evidence": 0.73,
+      "work_kind": "other"
+    },
+    "model": "jev-1.14.0"
+  },
+  {
+    "applications": [
+      "Steam"
+    ],
+    "tasks": [
+      [
+        7,
+        "Synthetic Delta / Accounts | Reconcile business bookkeeping records"
+      ],
+      [
+        8,
+        "Synthetic Cedar / Legal research | Read legislation and write a report"
+      ]
+    ],
+    "expected_task": null,
+    "seconds": 600,
+    "has_context": true,
+    "focus": 7,
+    "focus_default": true,
+    "result": {
+      "task": null,
+      "probability": 0.74,
+      "alternatives": [
+        [
+          7,
+          0.25
+        ],
+        [
+          8,
+          0.01
+        ]
+      ],
+      "personal": 0.44,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 737,
+        "output_tokens": 138
+      },
+      "confidence": 0.61,
+      "none_probability": 0.74,
+      "enough_evidence": 0.57,
+      "work_kind": "other"
+    },
+    "model": "jev-1.14.0"
+  },
+  {
+    "applications": [
+      "Unspecified Desktop Application"
+    ],
+    "tasks": [
+      [
+        7,
+        "Synthetic Delta / General"
+      ],
+      [
+        8,
+        "Synthetic Cedar / General"
+      ]
+    ],
+    "expected_task": null,
+    "seconds": 600,
+    "has_context": false,
+    "result": {
+      "task": null,
+      "probability": 0.96,
+      "alternatives": [
+        [
+          7,
+          0.03
+        ],
+        [
+          8,
+          0.01
+        ]
+      ],
+      "personal": 0.21,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 697,
+        "output_tokens": 138
+      },
+      "confidence": 0.94,
+      "none_probability": 0.96,
+      "enough_evidence": 0.05,
+      "work_kind": "other"
+    },
+    "model": "jev-1.14.0"
+  },
+  {
+    "applications": [
+      "Firefox"
+    ],
+    "tasks": [
+      [
+        7,
+        "Synthetic Delta / Research | Research and read websites"
+      ],
+      [
+        8,
+        "Synthetic Cedar / Marketing research | Research and read websites"
+      ]
+    ],
+    "expected_task": null,
+    "seconds": 600,
+    "has_context": true,
+    "clues": [
+      {
+        "task": 7,
+        "matching_terms": 2
+      },
+      {
+        "task": 8,
+        "matching_terms": 2
+      }
+    ],
+    "result": {
+      "task": null,
+      "probability": 0.78,
+      "alternatives": [
+        [
+          7,
+          0.13
+        ],
+        [
+          8,
+          0.09
+        ]
+      ],
+      "personal": 0.31,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 742,
+        "output_tokens": 138
+      },
+      "confidence": 0.67,
+      "none_probability": 0.78,
+      "enough_evidence": 0.12,
+      "work_kind": "other"
+    },
+    "model": "jev-1.14.0"
+  },
+  {
+    "applications": [
+      "LibreOffice Calc"
+    ],
+    "tasks": [
+      [
+        7,
+        "Synthetic Delta / Budget | Work on budget spreadsheets in LibreOffice Calc"
+      ],
+      [
+        8,
+        "Synthetic Cedar / Software | Implement application code and tests"
+      ]
+    ],
+    "expected_task": 7,
+    "seconds": 600,
+    "has_context": true,
+    "focus": 7,
+    "focus_default": true,
+    "result": {
+      "task": 7,
+      "probability": 0.87,
+      "alternatives": [
+        [
+          7,
+          0.87
+        ],
+        [
+          8,
+          0.0
+        ]
+      ],
+      "personal": 0.21,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 744,
+        "output_tokens": 143
+      },
+      "confidence": 0.8,
+      "none_probability": 0.13,
+      "enough_evidence": 0.56,
+      "work_kind": "administration"
+    },
+    "model": "jev-1.14.0"
+  },
+  {
+    "applications": [
+      "Microsoft Teams"
+    ],
+    "tasks": [
+      [
+        7,
+        "Synthetic Delta / Meetings | Attend project meetings and calls in Teams"
+      ],
+      [
+        8,
+        "Synthetic Cedar / Bug fixing | Write code to fix software defects"
+      ]
+    ],
+    "expected_task": 7,
+    "seconds": 600,
+    "has_context": true,
+    "focus": 7,
+    "focus_default": true,
+    "result": {
+      "task": 7,
+      "probability": 0.79,
+      "alternatives": [
+        [
+          7,
+          0.79
+        ],
+        [
+          8,
+          0.0
+        ]
+      ],
+      "personal": 0.15,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 737,
+        "output_tokens": 140
+      },
+      "confidence": 0.68,
+      "none_probability": 0.21,
+      "enough_evidence": 0.63,
+      "work_kind": "meeting"
+    },
+    "model": "jev-1.14.0"
+  }
+]

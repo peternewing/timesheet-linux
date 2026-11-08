@@ -78,3 +78,38 @@ jobs:
           path: |
             dist/TimeSheetLinux-x86_64.flatpak
             dist/Flatpak-SHA256SUMS
+  provenance:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [appimage, flatpak]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: TimeSheetLinux-*-x86_64
+          merge-multiple: true
+          path: dist
+      - name: Attest the trusted main build
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: |
+            dist/TimeSheetLinux-x86_64.AppImage
+            dist/TimeSheetLinux-x86_64.flatpak
+      - name: Verify provenance against this workflow and source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          cp "$ATTESTATION_BUNDLE" dist/provenance.sigstore.json
+          gh attestation verify dist/TimeSheetLinux-x86_64.AppImage --repo "$GITHUB_REPOSITORY" --bundle dist/provenance.sigstore.json --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/packages.yml" --source-digest "$GITHUB_SHA" --source-ref refs/heads/main --deny-self-hosted-runners
+          gh attestation verify dist/TimeSheetLinux-x86_64.flatpak --repo "$GITHUB_REPOSITORY" --bundle dist/provenance.sigstore.json --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/packages.yml" --source-digest "$GITHUB_SHA" --source-ref refs/heads/main --deny-self-hosted-runners
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TimeSheetLinux-provenance
+          path: dist/provenance.sigstore.json

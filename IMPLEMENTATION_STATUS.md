@@ -1,3 +1,13 @@
+# 0.5.0-rc1 automation candidate
+
+The accepted source of truth is [AUTOMATION_ROADMAP.md](docs/AUTOMATION_ROADMAP.md).
+Use [AUTOMATION_GUIDE.md](docs/AUTOMATION_GUIDE.md) for user-facing setup and limitations,
+and [AUTOMATION_REVIEW_0.5.md](docs/AUTOMATION_REVIEW_0.5.md) for both scored passes.
+
+Core recording remains local. Background Jev is off until an explicit standing
+policy is enabled in the current installation. Each user supplies their own key.
+All AI allocations are reversible drafts; no automatic approval or billing.
+
 # Implementation status
 
 Last checked: 8 November 2026.
