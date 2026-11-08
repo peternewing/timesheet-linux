@@ -40,6 +40,21 @@ class StoreTests(unittest.TestCase):
         rid=self.db.create_report(self.client,0,10000)
         data=list(csv.reader(io.StringIO(self.db.csv_report(rid))))
         self.assertTrue(data[1][4].startswith("'=")); self.assertIn('&lt;script&gt;',self.db.html_report(rid)); self.assertNotIn('<script>',self.db.html_report(rid))
+    def test_internal_csv_includes_nonbillable_and_clips_period(self):
+        self.db.add_entry(self.task,1000,4600,'=unsafe',billable=False)
+        data=list(csv.reader(io.StringIO(self.db.internal_csv(1900,3700,self.client))))
+        self.assertEqual(data[1][5],"'=unsafe")
+        self.assertEqual(data[1][6:],['0.500000','No','draft'])
+        self.assertEqual(self.db.entries(0,10000)[0]['status'],'draft')
+        with self.assertRaises(ValueError): self.db.internal_csv(2,2)
+
+    def test_period_summary_clips_entries_and_separates_gap(self):
+        self.db.add_entry(self.task,1000,2000,billable=False)
+        eid=self.db.add_entry(self.task,2000,3000,billable=True); self.db.approve(eid)
+        with self.db.db: self.db.db.execute("INSERT INTO activity(start,end,app,state) VALUES(?,?,?,?)",(500,1700,'','unknown'))
+        summary=self.db.period_summary(1500,2500)
+        self.assertEqual(summary,dict(recorded=1000,approved=500,billable=500,drafts=1,gaps=200))
+
     def test_running_timer_stop_and_overlap(self):
         self.db.start_timer(self.task,1000)
         with self.assertRaises(ValueError): self.db.start_timer(self.task,1100)

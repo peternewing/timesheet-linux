@@ -18,7 +18,7 @@ gi.require_version('Adw','1')
 gi.require_version('Graphene','1.0')
 from gi.repository import Adw, Gdk, Gio, GLib, Graphene, Gtk, Pango
 from .store import Store, DATA_DIR, parse_money, parse_hours, local_timestamp
-from . import desktop
+from . import desktop, __version__
 
 APP_ID=desktop.APP_ID
 ROOT=desktop.ROOT
@@ -64,6 +64,7 @@ def dropdown(box,title,values):
     group=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6,hexpand=True); box.append(group)
     caption=label(title,'field-label',selectable=False); group.append(caption)
     w=Gtk.DropDown.new_from_strings([name for _,name in values] or ['No choices yet']); w._values=values
+    if len(values)>8: w.set_enable_search(True)
     w.update_property([Gtk.AccessibleProperty.LABEL],[title]); caption.set_mnemonic_widget(w); group.append(w); return w
 
 def action_bar():
@@ -76,6 +77,19 @@ def selected(w):
 def select_id(w,value):
     for i,(v,_) in enumerate(w._values):
         if v==value: w.set_selected(i); break
+
+def append_in_batches(container, items, render, size=50):
+    """Render a bounded number of rows at a time without hiding later results."""
+    rows=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); container.append(rows)
+    more=button('Show more',lambda _:load()); container.append(more)
+    offset=0
+    def load():
+        nonlocal offset
+        for item in items[offset:offset+size]: render(rows,item)
+        offset=min(len(items),offset+size)
+        more.set_visible(offset<len(items))
+        if offset<len(items): more.set_label(f'Show more ({len(items)-offset} remaining)')
+    load()
 
 def margins(w,n):
     for side in ('start','end','top','bottom'): getattr(w,'set_margin_'+side)(n)
@@ -128,6 +142,7 @@ class TimeSheet(Adw.Application):
         self.live_signature=None; self.today_metrics={}; self.today_apps={}; self.calendar_live={}; self.history_live={}
         self.project_live={}; self.task_live={}; self.task_projects={}
         self.history_kind='tasks'
+        self.history_from=datetime.now().date().replace(day=1); self.history_to=datetime.now().date(); self.history_billable='all'
         self.activity_filter='all'; self.selected_entries=set(); self.selected_blocks=[]; self.rendered_signature=None
 
     def do_activate(self):
@@ -146,8 +161,10 @@ class TimeSheet(Adw.Application):
         self.timer_button.add_css_class('timer-digits'); self.timer_button.set_tooltip_text('Running task timer · hours:minutes:seconds · Open Today')
         self.timer_button.set_visible(False); header.pack_start(self.timer_button)
         self.capture_button=button('Pause',self.toggle_capture); header.pack_end(self.capture_button)
+        self.start_timer_button=button('Start timer',lambda _:self.timer_dialog()); header.pack_start(self.start_timer_button)
         self.undo_button=button('Undo',lambda _:self.run_action(self.store.undo,lambda action:self.toast(action+' undone'))); header.pack_end(self.undo_button)
         header.pack_end(button('Refresh',lambda _:self.show_page(self.page)))
+        header.pack_end(button('About',lambda _:self.info('About Time Sheet Linux', 'Version '+__version__+'\n\nYour data stays on this computer.')) )
         header.pack_end(button('Help',lambda _:self.info('From activity to a client report',
             '1. Projects: create a client, project and task. Set an hourly rate for billable work.\n\n'
             '2. Calendar: review captured activity and assign it to a task. Use Add time for work you recorded manually.\n\n'
@@ -268,6 +285,7 @@ class TimeSheet(Adw.Application):
         try:
             health=desktop.read_health(self.store); status=health['status']; rt=self.store.runtime()
             self.timer_started=rt['started'] if rt['state']=='running' else None
+            self.start_timer_button.set_visible(self.timer_started is None)
             self.update_timer_display()
             names={'active':'Tracking automatically','paused':'Tracking paused','setup_required':'Finish setup','stopped':'Tracking stopped','error':'Recording failed','degraded':'Tracking needs attention'}
             self.status.set_text(names.get(status,'Starting…'))
@@ -384,6 +402,7 @@ class TimeSheet(Adw.Application):
         for key,title in [('active','Active desktop use'),('assigned','Assigned to tasks'),('unassigned','Needs assignment')]:
             card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); card.add_css_class('card'); value=label(fmt_duration(summary[key]),'metric'); card.append(value); self.today_metrics[key]=value; card.append(label(title,'dim-label')); metrics.append(card)
         b.append(metrics)
+        b.append(label('Active is desktop use; assigned includes task time, including manual entries. Unassigned is captured activity still to review. Neither total is automatically billable.', 'dim-label'))
         bar=action_bar(); b.append(bar)
         bar.append(button('Review today',lambda _:self.review_today(),True)); bar.append(button('Add time',lambda _:self.entry_dialog())); bar.append(button('New project',self.quick_setup))
         if rt['state']=='running':
@@ -398,6 +417,10 @@ class TimeSheet(Adw.Application):
             with_task=Gtk.Expander(label='Optional: focus on a task with a timer'); with_task.set_expanded(getattr(self,'focus_expanded',False)); with_task.connect('notify::expanded',lambda w,*_:setattr(self,'focus_expanded',w.get_expanded()))
             inner=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); choices=dropdown(inner,'Task',self.task_choices()); select_id(choices,getattr(self,'focus_task',None)); choices.connect('notify::selected',lambda *_:setattr(self,'focus_task',selected(choices)))
             inner.append(button('Start task timer',lambda _:self.run_action(lambda:self.start_timer(selected(choices))))); with_task.set_child(inner); b.append(with_task)
+        week_start=datetime.now().date()-timedelta(days=datetime.now().date().weekday())
+        weekly=self.store.period_summary(day_bounds(week_start)[0],end)
+        self.row(b,'This week (saved entries)',f"Recorded {fmt_duration(weekly['recorded'])} · Approved {fmt_duration(weekly['approved'])} · Billable {fmt_duration(weekly['billable'])} · Capture gaps {fmt_duration(weekly['gaps'])}",
+                 [('Review week',lambda _:self.review_week())])
         if summary['drafts']:
             self.row(b,f"{summary['drafts']} draft entries today",'Review the task, description and rate, then approve time for client reports.',[('Review drafts',lambda _:self.review_drafts())])
         for notice in self.store.rows('SELECT id,message FROM notices WHERE read=0 ORDER BY id DESC LIMIT 3'):
@@ -411,6 +434,16 @@ class TimeSheet(Adw.Application):
     def dismiss_notice(self,notice_id):
         with self.store.db: self.store.db.execute('UPDATE notices SET read=1 WHERE id=?',(notice_id,))
     def review_today(self): self.day=datetime.now().date(); self.activity_filter='unassigned'; self.show_page('Calendar')
+    def review_week(self): self.history_kind='tasks'; self.history_period='week'; self.history_status='all'; self.history_billable='all'; self.history_search=''; self.show_page('History')
+    def timer_dialog(self):
+        if not self.task_choices(): self.quick_setup(after=self.timer_dialog); return
+        def build(b):
+            b.append(label('Choose a task. The running timer stays visible in the header.'))
+            task=dropdown(b,'Task',self.task_choices()); select_id(task,getattr(self,'focus_task',None)); return task
+        def save(task):
+            self.focus_task=selected(task); self.start_timer(self.focus_task); self.toast('Timer started')
+        self.dialog('Start timer',build,save)
+
     def start_timer(self,task):
         rt=self.store.runtime()
         if not rt['collector_seen'] or time.time()-rt['collector_seen']>12: desktop.start_collector(); raise ValueError('The tracker is starting. Try again in a moment.')
@@ -522,11 +555,11 @@ class TimeSheet(Adw.Application):
         self.calendar_live={}; self.calendar_seen_live=self.current_live_id(start,end); self.heading(b,self.day.strftime('%A, %d %B'),self.calendar_summary_text(summary)); self.calendar_summary=b.get_last_child()
         records=self.store.activity_for(start,end)
         self.calendar_timeline=Timeline(start,end,records); b.append(self.calendar_timeline)
-        if self.activity_filter!='unassigned':
-            bar=Gtk.Box(spacing=8); b.append(bar); bar.append(label('Task entries','title-3')); bar.append(button('Add time',lambda _:self.entry_dialog(start=int(datetime.combine(self.day,datetime.min.time()).replace(hour=9).timestamp()),end=int(datetime.combine(self.day,datetime.min.time()).replace(hour=10).timestamp()))))
-            entries=self.store.entries(start,end)
-            for r in entries: self.entry_row(b,r)
-            if not entries: b.append(label('No task entries for this date.','dim-label'))
+        b.append(label('Timeline: blue active · green personal · grey away or locked · brown excluded · red capture gap. Exact states and times are listed below.', 'dim-label'))
+        bar=Gtk.Box(spacing=8); b.append(bar); bar.append(label('Task entries','title-3')); bar.append(button('Add time',lambda _:self.entry_dialog(start=int(datetime.combine(self.day,datetime.min.time()).replace(hour=9).timestamp()),end=int(datetime.combine(self.day,datetime.min.time()).replace(hour=10).timestamp()))))
+        entries=self.store.entries(start,end)
+        for r in entries: self.entry_row(b,r)
+        if not entries: b.append(label('No task entries for this date.','dim-label'))
         if self.activity_filter=='entries': return
         b.append(label('Captured activity','title-3'))
         source=self.store.activity_for(start,end,self.activity_filter=='unassigned')
@@ -537,7 +570,7 @@ class TimeSheet(Adw.Application):
         assign_selected=button('Assign selected',lambda _:self.assign_dialog([x for group in self.selected_blocks for x in group]),True)
         assign_selected.set_sensitive(False); bar.append(assign_selected)
         bar.append(button('Apply saved rules to this day',lambda _:self.run_action(lambda:self.store.apply_rules(start=start,end=end),lambda count:self.toast(f'{count} entries assigned'))))
-        for group in groups[:250]:
+        def render_group(target,group):
             name=group['app'] if group['state']=='active' else 'Personal · '+group['app'] if group['state']=='personal' else {'away':'Away from keyboard','locked':'Screen locked','unknown':'Capture gap','excluded':'Excluded application','paused':'Paused'}.get(group['state'],group['state'])
             if group['title']: name+=' · '+group['title']
             duration=group['end']-group['start']; live=not group['closed']
@@ -551,7 +584,7 @@ class TimeSheet(Adw.Application):
                     detail+=' · '+fmt_duration(remaining)+' unassigned'
                 else: detail+=' · Assigned'
             elif group['state']=='personal': actions=[('Return to review',lambda _,g=group:self.run_action(lambda:self.store.set_personal([r['id'] for r in g['blocks']],False)))]
-            card=self.row(b,name or 'Desktop',detail,actions)
+            card=self.row(target,name or 'Desktop',detail,actions)
             if live:
                 first=group['start']; start_text=datetime.fromtimestamp(first).strftime('%H:%M:%S')
                 def format_live(r,first=first,start_text=start_text,limit=end):
@@ -565,17 +598,22 @@ class TimeSheet(Adw.Application):
                     elif g in self.selected_blocks: self.selected_blocks.remove(g)
                     assign_selected.set_sensitive(bool(self.selected_blocks)); assign_selected.set_label(f'Assign selected ({len(self.selected_blocks)})' if self.selected_blocks else 'Assign selected')
                 cb.connect('toggled',changed); card.prepend(cb)
-        if len(groups)>250: b.append(label('Showing the first 250 groups. Use Unassigned to narrow the view.'))
+        append_in_batches(b,groups,render_group)
     def history_bounds(self):
         today=datetime.now().date()
+        if self.history_period=='custom': return day_bounds(self.history_from)[0],day_bounds(self.history_to)[1]
         start=today if self.history_period=='today' else today-timedelta(days=today.weekday()) if self.history_period=='week' else today.replace(day=1) if self.history_period=='month' else datetime(1970,1,1).date()
         return day_bounds(start)[0],day_bounds(today)[1]
     def refresh_history(self):
         b=self.body_history; self.clear(b); self.selected_entries=set(); self.heading(b,'Timesheet history','Review, edit and approve your work. Billed time remains protected.')
         bar=Gtk.Box(spacing=10); b.append(bar)
         kind=dropdown(bar,'View',[('tasks','Task entries'),('usage','Desktop usage')]);select_id(kind,self.history_kind)
-        period=dropdown(bar,'Period',[('today','Today'),('week','This week'),('month','This month'),('all','All time')]); select_id(period,self.history_period)
+        period=dropdown(bar,'Period',[('today','Today'),('week','This week'),('month','This month'),('all','All time'),('custom','Custom dates')]); select_id(period,self.history_period)
         status=dropdown(bar,'Status',[('all','All entries'),('draft','Needs review'),('approved','Approved'),('billed','Billed')]); select_id(status,self.history_status)
+        billing=dropdown(b,'Billing',[('all','All time entries'),('billable','Billable'),('nonbillable','Non-billable')]); select_id(billing,self.history_billable)
+        dates=Gtk.Box(spacing=10); b.append(dates)
+        date_from=field(dates,'From date',self.history_from.isoformat(),'YYYY-MM-DD'); date_to=field(dates,'Through date',self.history_to.isoformat(),'YYYY-MM-DD')
+        dates.set_visible(self.history_period=='custom')
         search=Gtk.SearchEntry(hexpand=True); search.set_placeholder_text('Search client, task or description'); search.set_text(self.history_search); b.append(search)
         controls=action_bar(); b.append(controls)
         approve=button('Approve selected drafts',lambda _:self.run_action(lambda:self.store.approve_many(sorted(self.selected_entries & self.history_draft_ids)),lambda _:self.toast('Selected drafts approved')),True); controls.append(approve)
@@ -593,34 +631,41 @@ class TimeSheet(Adw.Application):
         self.update_history_selection=selection_changed
         results=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10); b.append(results)
         def update(*_):
-            self.history_kind=selected(kind);self.history_period=selected(period); self.history_status=selected(status); self.history_search=search.get_text(); self.selected_entries=set(); self.history_checks=[]; self.history_draft_ids=set(); self.clear(results)
+            self.history_kind=selected(kind);self.history_period=selected(period); self.history_status=selected(status); self.history_billable=selected(billing); dates.set_visible(self.history_period=='custom'); self.history_search=search.get_text(); self.selected_entries=set(); self.history_checks=[]; self.history_draft_ids=set(); self.clear(results)
             self.history_live={}
-            usage=self.history_kind=='usage';controls.set_visible(not usage);selection_bar.set_visible(not usage);selection_count.set_visible(not usage);status.set_sensitive(not usage)
+            usage=self.history_kind=='usage';controls.set_visible(not usage);selection_bar.set_visible(not usage);selection_count.set_visible(not usage);status.set_sensitive(not usage);billing.set_sensitive(not usage)
             search.set_placeholder_text('Search app, window title or activity state' if usage else 'Search client, project, task or description')
             a,z=self.history_bounds(); rows=self.store.entries(a,z,status=None if self.history_status=='all' else self.history_status,search=self.history_search)
             self.history_seen_live=self.current_live_id(a,z)
+            if not usage and self.history_billable!='all': rows=[r for r in rows if bool(r['billable'])==(self.history_billable=='billable')]
             if usage:
                 source=self.store.activity_for(a,z);needle=self.history_search.casefold()
                 groups=group_activity([r for r in source if needle in (r['app']+' '+r['title']+' '+r['state']).casefold()])
                 results.append(label(f'{len(groups)} usage groups','heading'))
-                for group in groups[:200]:
+                def render_usage(target,group):
                     date=datetime.fromtimestamp(group['start']).date()
                     def open_day(_,day=date):self.day=day;self.activity_filter='all';self.show_page('Calendar')
                     def format_usage(r,first=group['start'],limit=z):
                         finish=min(r['end'],limit)
                         return f"{fmt_time(first)} – {datetime.fromtimestamp(finish):%H:%M:%S} · {fmt_duration(finish-first)} · {r['state']}"+(' · Live' if not r['closed'] else '')+('\n'+r['title'] if r['title'] else '')
-                    card=self.row(results,group['app'] or group['state'].capitalize(),format_usage(group),[('Review day',open_day)])
+                    card=self.row(target,group['app'] or group['state'].capitalize(),format_usage(group),[('Review day',open_day)])
                     if not group['closed']: self.history_live[group['blocks'][-1]['id']]=(card.get_first_child().get_next_sibling(),format_usage)
+                append_in_batches(results,groups,render_usage)
                 if not groups:self.empty(results,'No matching usage','Try another app name or period.')
-                if len(groups)>200:results.append(label('Showing the first 200 groups. Narrow the search or period.'))
                 return
-            self.history_draft_ids={r['id'] for r in rows[:200] if r['status']=='draft'}; selection_changed()
+            self.history_draft_ids={r['id'] for r in rows if r['status']=='draft'}; selection_changed()
             results.append(label(f'{len(rows)} entries · '+fmt_duration(sum(min(z,r['end'])-max(a,r['start']) for r in rows)),'heading'))
-            for r in rows[:200]: self.entry_row(results,r,True)
+            append_in_batches(results,rows,lambda target,r:self.entry_row(target,r,True))
             if not rows: self.empty(results,'No matching time','Try another period or record your first task.')
-            if len(rows)>200: results.append(label('Showing the most recent 200 matches. Narrow the search or period.'))
+        def apply_dates(_):
+            try:
+                a=datetime.strptime(date_from.get_text().strip(),'%Y-%m-%d').date(); z=datetime.strptime(date_to.get_text().strip(),'%Y-%m-%d').date()
+                if z<a: raise ValueError('Through date must not be before From date.')
+                self.history_from,self.history_to=a,z; update()
+            except ValueError as exc: self.error(str(exc) if 'Through date' in str(exc) else 'Enter dates as YYYY-MM-DD.')
+        dates.append(button('Apply dates',apply_dates))
         self.history_update=update
-        kind.connect('notify::selected',update);period.connect('notify::selected',update); status.connect('notify::selected',update); search.connect('search-changed',update); update()
+        kind.connect('notify::selected',update);period.connect('notify::selected',update); status.connect('notify::selected',update); billing.connect('notify::selected',update); search.connect('search-changed',update); update()
         exp=Gtk.Expander(label='Recent changes'); changes=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); exp.set_child(changes)
         for r in self.store.rows('SELECT * FROM audit ORDER BY id DESC LIMIT 30'): changes.append(label(f"{fmt_time(r['at'])} · {r['action']}"))
         b.append(exp)
@@ -700,24 +745,31 @@ class TimeSheet(Adw.Application):
         self.dialog('Edit task' if row else 'Add task',build,save)
     def refresh_rules(self):
         b=self.body_rules; self.clear(b); self.heading(b,'Automatic assignment','Teach the app once. Matching usage becomes draft task time for you to review.')
+        b.append(label('Higher priority wins. Conflicting rules at the same priority leave activity unassigned. Rules apply to new settled activity; you can apply them to a past day from Calendar.','dim-label'))
         b.append(button('New rule',lambda _:self.rule_dialog(),True))
         rules=self.store.rows('''SELECT r.*,t.name task,p.name project,c.name client FROM rules r JOIN tasks t ON t.id=r.task_id JOIN projects p ON p.id=t.project_id JOIN clients c ON c.id=p.client_id ORDER BY priority DESC,id''')
         if not rules: self.empty(b,'Less assigning, more doing','Add a rule for a work application, or choose “Always assign” when reviewing its usage. Rules never approve time for billing.'); return
         for r in rules:
             self.row(b,f"{r['app']} → {r['client']} / {r['project']} / {r['task']}",f"Title contains: {r['title'] or 'Any title'} · Priority {r['priority']} · "+('Enabled' if r['enabled'] else 'Disabled'),[
-                ('Disable' if r['enabled'] else 'Enable',lambda _,x=r:self.run_action(lambda:self.toggle_rule(x))),('Delete',lambda _,i=r['id']:self.confirm('Delete this rule?','Existing time entries stay as they are.',lambda:self.delete_rule(i)))])
+                ('Edit',lambda _,x=r:self.rule_dialog(x)),('Disable' if r['enabled'] else 'Enable',lambda _,x=r:self.run_action(lambda:self.toggle_rule(x))),('Delete',lambda _,i=r['id']:self.confirm('Delete this rule?','Existing time entries stay as they are.',lambda:self.delete_rule(i)))])
     def toggle_rule(self,row):
         with self.store.db: self.store.db.execute('UPDATE rules SET enabled=? WHERE id=?',(0 if row['enabled'] else 1,row['id']))
     def delete_rule(self,rid):
         with self.store.db: self.store.db.execute('DELETE FROM rules WHERE id=?',(rid,)); self.store.audit('rule deleted',{'id':rid})
-    def rule_dialog(self):
-        if not self.task_choices(): self.quick_setup(); return
+    def rule_dialog(self,row=None):
+        choices=self.task_choices()
+        if row and not any(i==row['task_id'] for i,_ in choices):
+            old=self.store.db.execute('SELECT c.name client,p.name project,t.name task FROM tasks t JOIN projects p ON p.id=t.project_id JOIN clients c ON c.id=p.client_id WHERE t.id=?',(row['task_id'],)).fetchone()
+            if old: choices.append((row['task_id'],f"{old['client']} / {old['project']} / {old['task']} (archived)"))
+        if not choices: self.quick_setup(); return
         apps=[r['app'] for r in self.store.rows("SELECT DISTINCT app FROM activity WHERE state='active' AND app!='' ORDER BY app")]
         def build(b):
-            app=field(b,'Application name','','Use the name shown under Apps today')
+            app=field(b,'Application name',row['app'] if row else '','Use the name shown under Apps today')
             if apps:
-                known=dropdown(b,'Or choose a recorded app',[(a,a) for a in apps]); known.connect('notify::selected',lambda *_:app.set_text(selected(known) or '')); app.set_text(apps[0])
-            title=field(b,'Only when the title contains (optional)'); task=dropdown(b,'Assign to task',self.task_choices()); priority=field(b,'Priority','0')
+                known=dropdown(b,'Or choose a recorded app',[(a,a) for a in apps]); known.connect('notify::selected',lambda *_:app.set_text(selected(known) or '')); app.set_text(row['app'] if row else apps[0])
+            title=field(b,'Only when the title contains (optional)',row['title'] if row else ''); task=dropdown(b,'Assign to task',choices); priority=field(b,'Priority',str(row['priority']) if row else '0')
+            if row: select_id(task,row['task_id'])
+            if self.store.get('capture_titles','0')!='1': b.append(label('Window title collection is off; title-specific rules cannot match new activity until it is enabled in Settings.','dim-label'))
             preview=label('Choose an application to preview its recent activity.','dim-label'); b.append(preview)
             def update(*_):
                 seconds=self.store.db.execute("SELECT COALESCE(SUM(end-start),0) FROM activity WHERE state='active' AND lower(app)=lower(?) AND instr(lower(title),lower(?))>0",(app.get_text(),title.get_text())).fetchone()[0]
@@ -728,8 +780,10 @@ class TimeSheet(Adw.Application):
             app,title,task,priority=f
             try: p=int(priority.get_text())
             except ValueError: raise ValueError('Priority must be an integer.')
-            self.store.add_rule(app.get_text(),title.get_text(),selected(task),p); self.toast('Automatic assignment rule saved')
-        self.dialog('New rule',build,save)
+            if row: self.store.update_rule(row['id'],app.get_text(),title.get_text(),selected(task),p)
+            else: self.store.add_rule(app.get_text(),title.get_text(),selected(task),p)
+            self.toast('Automatic assignment rule saved')
+        self.dialog('Edit rule' if row else 'New rule',build,save)
     def refresh_reports(self):
         b=self.body_reports; self.clear(b); self.heading(b,'Client reports','Reviewed time, clear amounts and a saved billing history.')
         choices=self.client_choices()
@@ -749,6 +803,16 @@ class TimeSheet(Adw.Application):
                 return self.store.create_report(selected(client),day_bounds(a)[0],day_bounds(z)[1])
             self.run_action(action,self.preview_report)
         b.append(button('Create report from approved time',create,True))
+        def internal(_):
+            try:
+                a=datetime.strptime(start.get_text().strip(),'%Y-%m-%d').date(); z=datetime.strptime(end.get_text().strip(),'%Y-%m-%d').date()
+                if z<a: raise ValueError('End date must follow the start date.')
+                content=self.store.internal_csv(day_bounds(a)[0],day_bounds(z)[1],selected(client))
+            except ValueError as exc:
+                self.error(str(exc)); return
+            self.save_file('Save internal time report','internal-time.csv',lambda path:Path(path).write_text(content,encoding='utf-8'))
+        b.append(label('Internal CSV includes draft, approved and billed entries, including non-billable time. It does not change billing status.','dim-label'))
+        b.append(button('Export internal time CSV',internal))
         b.append(button('Review drafts in History',lambda _:self.review_drafts()))
         b.append(label('Saved reports','title-3'))
         rows=self.store.rows('SELECT r.*,c.name client FROM reports r JOIN clients c ON c.id=r.client_id ORDER BY r.id DESC')
@@ -757,7 +821,7 @@ class TimeSheet(Adw.Application):
             items=self.store.report(r['id']); amount=sum(x['amount'] for x in items); state=self.report_state(r['id'])
             self.row(b,f"{r['client']} · {items[0]['currency']} {money(amount)}",f"Report #{r['id']} · {len(items)} entries · {datetime.fromtimestamp(r['start']):%d %b} – {datetime.fromtimestamp(r['end']-1):%d %b %Y} · {state}",[('Open report',lambda _,i=r['id']:self.preview_report(i))])
     def review_drafts(self):
-        self.history_kind='tasks'; self.history_status='draft'; self.history_period='all'; self.history_search=''; self.show_page('History')
+        self.history_kind='tasks'; self.history_status='draft'; self.history_period='all'; self.history_billable='all'; self.history_search=''; self.show_page('History')
     def report_state(self,rid):
         billing=self.store.db.execute('SELECT * FROM report_billing WHERE report_id=?',(rid,)).fetchone()
         if billing: return 'Billed · '+billing['invoice'] if billing['state']=='billed' else 'Corrected · retained snapshot'
@@ -840,6 +904,12 @@ class TimeSheet(Adw.Application):
         if available: self.row(b,'Automatic tracking is ready','The desktop capture adapter is connected. App names are recorded; window titles are optional.')
         elif desktop.supported_desktop(): self.row(b,'Finish automatic tracking setup','Check desktop dependencies and helper activation in docs/INSTALL.md. After installation, save your work and sign out and back in once.',[('Install / repair setup',lambda _:self.install_setup())])
         else: self.row(b,'Manual timesheet mode','Capture needs a supported desktop adapter and reliable idle and lock services. Check the installation guide; manual timers and reports remain available.')
+        from .diagnostics import diagnose
+        def show_diagnostics(_):
+            details=diagnose()
+            self.info('Setup details',json.dumps(details,indent=2)+'\n\nThis diagnostic does not include activity or window titles.')
+        b.append(button('View setup details',show_diagnostics))
+        b.append(Gtk.LinkButton(uri='https://github.com/peternewing/timesheet-linux/blob/linux-compatibility-0.3/docs/INSTALL.md',label='Open installation and desktop setup guide'))
         tracking=Adw.PreferencesGroup(title='Tracking'); b.append(tracking)
         capture=Adw.SwitchRow(title='Track desktop usage automatically',subtitle='Record the foreground app, excluding idle and locked time'); capture.set_active(self.store.get('capture_enabled','0')=='1'); tracking.add(capture)
         titles=Adw.SwitchRow(title='Include window titles',subtitle='Titles can include document names and other sensitive information'); titles.set_active(self.store.get('capture_titles','0')=='1'); tracking.add(titles)
@@ -850,6 +920,19 @@ class TimeSheet(Adw.Application):
             b.append(label('Startup is managed by the host companion.','dim-label'))
         backups=Adw.SwitchRow(title='Automatic daily backups',subtitle='Keep seven daily copies on this computer'); backups.set_active(self.store.get('auto_backup','1')=='1'); tracking.add(backups)
         exclusions=field(b,'Excluded applications',self.store.get('excluded_apps',''),'Exact app names separated by commas')
+        names={r['app'] for r in self.store.rows("SELECT DISTINCT app FROM activity WHERE app!='' AND state='active' ORDER BY app") if ',' not in r['app']}
+        names.update(x.strip() for x in exclusions.get_text().split(',') if x.strip())
+        if names:
+            chooser=dropdown(b,'Recorded or excluded application',[(name,name) for name in sorted(names,key=str.casefold)])
+            actions=action_bar(); b.append(actions)
+            def set_excluded(add):
+                name=selected(chooser); values=[x.strip() for x in exclusions.get_text().split(',') if x.strip()]
+                values=[x for x in values if x.casefold()!=name.casefold()]
+                if add: values.append(name)
+                exclusions.set_text(', '.join(values))
+            actions.append(button('Exclude selected app',lambda _:set_excluded(True)))
+            actions.append(button('Remove selected exclusion',lambda _:set_excluded(False)))
+            b.append(label('Changes take effect after Save preferences. Excluded apps do not retain their app name or title.','dim-label'))
         idle=field(b,'Idle threshold in minutes',str(int(self.store.get('idle_seconds','300'))//60))
         retention=field(b,'Retain detailed activity for this many days',self.store.get('retention_days','30'))
         b.append(label('Task entries, report snapshots and backups are kept until you remove them. Raw activity expires independently.','dim-label'))
@@ -866,12 +949,17 @@ class TimeSheet(Adw.Application):
         b.append(button('Save preferences',save,True))
         self.heading(b,'Data and recovery')
         b.append(label('Data is stored at '+str(self.store.path),'dim-label'))
+        try:
+            copies=sorted((self.store.path.parent/'backups').glob('*.sqlite3'))
+            backup_status=('Latest automatic backup: '+datetime.fromtimestamp(copies[-1].stat().st_mtime).strftime('%d %b %Y %H:%M')) if copies else 'No automatic backup found yet.'
+        except OSError: backup_status='Automatic backup status is unavailable.'
+        b.append(label(backup_status+' Backups on this computer do not protect against drive loss.','dim-label'))
         actions=Gtk.Box(spacing=8); b.append(actions)
         actions.append(button('Back up now',lambda _:self.save_file('Save backup','timesheet-backup.sqlite3',self.store.backup)))
         actions.append(button('Restore backup',lambda _:self.choose_backup()))
         actions.append(button('Open data folder',lambda _:Gio.AppInfo.launch_default_for_uri(DATA_DIR.as_uri(),None)))
         b.append(button('Delete activity for a period',lambda _:self.delete_period_dialog()))
-        b.append(label('Deletion removes captured app details from this database. Task entries, reports and older backups remain. Database files are not encrypted.','dim-label'))
+        b.append(label('Deletion removes captured app details from this database. Task entries, reports and older backups remain. Database files are not encrypted. Copy a backup elsewhere for protection against drive loss.','dim-label'))
         if not desktop.FLATPAK: b.append(button('Stop background tracking',lambda _:self.confirm('Stop tracking?', 'Recording stops until you open the app or sign in again.',self.stop_collector)))
         else: b.append(label('The host companion manages automatic capture and startup. See the Flatpak installation guide.','dim-label'))
     def install_setup(self):

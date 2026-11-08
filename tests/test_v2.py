@@ -19,6 +19,15 @@ class ImprovedWorkflowTests(unittest.TestCase):
         with self.s.db:self.s.db.execute('UPDATE rules SET created=0')
         self.assertEqual(self.s.apply_rules(now=2000),1);self.assertEqual(self.s.apply_rules(now=2000),0)
         r=self.s.entries(0,3000)[0];self.assertEqual((r['origin'],r['status']),('automatic','draft'))
+    def test_rule_edit_preserves_enabled_and_moves_forward_boundary(self):
+        rid=self.s.add_rule('Editor','',self.task)
+        with self.s.db: self.s.db.execute('UPDATE rules SET enabled=0,created=1 WHERE id=?',(rid,))
+        self.s.update_rule(rid,'Browser','Work',self.task,3)
+        row=self.s.db.execute('SELECT * FROM rules WHERE id=?',(rid,)).fetchone()
+        self.assertEqual((row['app'],row['title'],row['priority'],row['enabled']),('Browser','Work',3,0))
+        self.assertGreater(row['created'],1)
+        with self.assertRaises(ValueError): self.s.update_rule(999,'Browser','',self.task)
+
     def test_new_rule_does_not_reclassify_past_activity_without_request(self):
         self.activity();self.s.add_rule('Editor','',self.task)
         self.assertEqual(self.s.apply_rules(now=2000),0)
