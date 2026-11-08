@@ -578,7 +578,7 @@ class TimeSheet(Adw.Application):
                 b.append(label('Check the review result and choose a task before saving.','dim-label'))
             elif suggested_task in [i for i,_ in self.task_choices()]:
                 select_id(task,suggested_task); b.append(label('Preselected from your review queue. Check it before saving.','dim-label'))
-            status=label('TypeSafe suggestions are unavailable in the offline Flatpak.' if desktop.FLATPAK else 'Optional: get a TypeSafe suggestion using your own key. Nothing is sent until you confirm.','dim-label'); b.append(status)
+            status=label('Optional: get a TypeSafe suggestion using your own key. Nothing is sent until you confirm.','dim-label'); b.append(status)
             more=Gtk.Expander(label='Optional context'); context_box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6); more.set_child(context_box); b.append(more)
             context=field(context_box,'Context to send (remove names and sensitive details)','','Optional; leave empty to send none')
             context.connect('changed',lambda *_:revision.__setitem__(0,revision[0]+1))
@@ -591,7 +591,6 @@ class TimeSheet(Adw.Application):
                 cancel_request.set_sensitive(False)
             cancel_request=button('Cancel suggestion',cancel_suggestion); cancel_request.set_visible(False); b.append(cancel_request)
             def ask_jev(_):
-                if desktop.FLATPAK: return
                 from . import jev
                 from .review import load_categories,add_categories
                 raw_choices=self.task_choices(); categories=load_categories(self.store.get('jev_categories','{}'),[i for i,_ in raw_choices])
@@ -654,7 +653,7 @@ class TimeSheet(Adw.Application):
                         GLib.idle_add(finish)
                     threading.Thread(target=work,daemon=True).start()
                 self.ai_consent('Send this data to TypeSafe?',preview+warning,response)
-            ask=button('Suggest a task with TypeSafe',ask_jev); ask.set_sensitive(not desktop.FLATPAK); b.append(ask)
+            ask=button('Suggest a task with TypeSafe',ask_jev); b.append(ask)
             desc=field(b,'Client-facing description (optional)')
             remember=Gtk.CheckButton(label='Always assign this application to this task')
             same=len({r['app'] for r in blocks})==1 and all(r['state']=='active' for r in blocks)
@@ -716,8 +715,6 @@ class TimeSheet(Adw.Application):
             elif block in selected_blocks: selected_blocks.remove(block)
             assign.set_sensitive(bool(selected_blocks));assign.set_label(f'Assign selected ({len(selected_blocks)})' if selected_blocks else 'Assign selected')
         batch=Gtk.Expander(label='Optional AI suggestions for selected blocks');body.append(batch)
-        if desktop.FLATPAK:
-            batch.set_sensitive(False); body.append(label('TypeSafe suggestions are unavailable in the offline Flatpak. Local review remains available.','dim-label'))
         panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8);batch.set_child(panel)
         panel.append(label('Select blocks below. Each result needs your review before any time is saved.','dim-label'))
         limit=dropdown(panel,'Maximum requests',[(1,'1'),(3,'3'),(5,'5'),(10,'10')]);select_id(limit,5)
@@ -735,7 +732,6 @@ class TimeSheet(Adw.Application):
             return False
         window.connect('close-request',close_batch)
         def ask_batch(_):
-            if desktop.FLATPAK: return
             from . import jev
             from .review import load_categories,add_categories
             chosen=list(selected_blocks); cap=selected(limit); raw=self.task_choices()
@@ -1273,21 +1269,19 @@ class TimeSheet(Adw.Application):
         from . import jev
         from .review import load_categories
         self.heading(b,'Optional Jev assistance')
-        b.append(label('TypeSafe suggestions are unavailable in the offline Flatpak. Local review and rules remain available.' if desktop.FLATPAK else 'Connect your own TypeSafe key to ask for task suggestions. Each suggestion has a data preview before you send it.','dim-label'))
+        b.append(label('Connect your own TypeSafe key to ask for task suggestions. Each suggestion has a data preview before you send it.','dim-label'))
         b.append(label('The key is held by your desktop keyring or the app’s secret portal, outside your timesheet database.','dim-label'))
         buttons=action_bar();b.append(buttons)
         connection=label('No connection check has been made.','dim-label');b.append(connection)
         def key_dialog(_):
-            if desktop.FLATPAK: return
             def build(box):
                 box.append(label('Enter your own TypeSafe API key. Your account is billed by TypeSafe.'))
                 key=field(box,'TypeSafe API key');key.set_visibility(False);key.set_input_purpose(Gtk.InputPurpose.PASSWORD);return key
             def save(key):
                 jev.save_key(key.get_text());key.set_text('');self.toast('TypeSafe key saved securely')
             self.dialog('Connect TypeSafe',build,save)
-        add_key=button('Add or replace TypeSafe key',key_dialog);add_key.set_sensitive(not desktop.FLATPAK);buttons.append(add_key)
+        buttons.append(button('Add or replace TypeSafe key',key_dialog))
         def check(_):
-            if desktop.FLATPAK: return
             check_button.set_sensitive(False);connection.set_text('Checking TypeSafe… No activity is sent.')
             def work():
                 try:
@@ -1301,7 +1295,7 @@ class TimeSheet(Adw.Application):
                     return False
                 GLib.idle_add(done)
             threading.Thread(target=work,daemon=True).start()
-        check_button=button('Check connection',check);check_button.set_sensitive(not desktop.FLATPAK);buttons.append(check_button)
+        check_button=button('Check connection',check);buttons.append(check_button)
         buttons.append(button('Remove TypeSafe key',lambda _:self.confirm('Remove TypeSafe key?','The saved key will be removed from this app’s secure storage.',lambda:jev.delete_key())))
         expander=Gtk.Expander(label='Preferences and categories');b.append(expander)
         advanced=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);expander.set_child(advanced)

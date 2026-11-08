@@ -6,6 +6,8 @@ command: timesheet-linux
 build-options:
   no-debuginfo: true
 finish-args:
+  # Optional user-confirmed TypeSafe requests. Core tracking remains offline.
+  - --share=network
   - --share=ipc
   - --socket=wayland
   - --socket=fallback-x11

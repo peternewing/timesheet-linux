@@ -18,7 +18,7 @@ An assignment form shows a project-budget warning based on saved entries.
 ## Optional TypeSafe suggestions
 
 Source and AppImage builds let each person save their own TypeSafe API key in the
-freedesktop Secret Service keyring. Flatpak stays offline and disables remote suggestions and connection checks; network permission requires explicit approval. Its packaged Secret portal storage is reserved for possible future use and fails closed if unavailable. No shared developer key is included. In an
+freedesktop Secret Service keyring. Flatpak uses the desktop Secret portal and an encrypted application-scoped store; it fails closed if the portal is unavailable. No shared developer key is included. In an
 assignment, use **Suggest a task with TypeSafe** and inspect the preview before
 confirming. It includes selected application names, active client/project/task
 names, optional category labels and any context the user deliberately enters.
@@ -56,7 +56,7 @@ No title or optional context is included in batch mode.
 Core tracking and local review work offline. TypeSafe requests go directly to
 `https://api.typesafe.ai/v1/systemone` after confirmation and can incur charges
 on the user's own account. The prototype requires libsecret and an unlocked
-keyring. AppImage and Flatpak package configurations include libsecret; Flatpak has no network permission and does not offer TypeSafe requests. Package builds and desktop portal compatibility need further testing. Removing the database
+keyring. AppImage and Flatpak package configurations include libsecret; Flatpak uses network access and the Secret portal. Package builds and desktop portal compatibility need further testing. Removing the database
 or uninstalling the app does not remove the keyring entry; remove it in Settings.
 
 Unit and isolated GUI tests use fake credentials and fake API responses. No real

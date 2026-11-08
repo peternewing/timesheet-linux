@@ -150,4 +150,4 @@ To remove its user integration while retaining data, run:
 ```
 
 
-Optional TypeSafe suggestions require your own API key, stored in the desktop keyring. Source and AppImage support confirmed requests. Flatpak stays offline and disables remote suggestions and connection controls; network permission requires explicit approval. See [package checks](../packaging/README.md).
+Optional TypeSafe suggestions require your own API key, stored in the desktop keyring. Flatpak uses the desktop Secret portal and network access for confirmed requests. See [package checks](../packaging/README.md).

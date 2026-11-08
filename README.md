@@ -57,7 +57,7 @@ Invoice PDFs are **drafts**: they do not calculate tax or automatically mark wor
 
 ## Optional suggestions
 
-Add your own TypeSafe key in Settings, then choose a suggestion in an assignment or review queue. Each request shows what will be sent and asks for confirmation. Suggestions can be wrong and never approve time. Source and AppImage builds store the key using the desktop secret service. The Flatpak stays offline and does not offer TypeSafe requests; enabling network permission requires explicit approval. See [review assistance](docs/JEV_IDEAS.md).
+Add your own TypeSafe key in Settings, then choose a suggestion in an assignment or review queue. Each request shows what will be sent and asks for confirmation. Suggestions can be wrong and never approve time. Source and AppImage builds store the key using the desktop secret service. Flatpak uses its application-scoped Secret portal and network access for confirmed requests. See [review assistance](docs/JEV_IDEAS.md).
 
 ## Compatibility
 
@@ -74,7 +74,7 @@ GNOME 50, Plasma 6 and Sway focus/idle were exercised in isolated sessions; X11 
 
 ## Privacy and data
 
-By default, the database and backups are under `~/.local/share/time-sheet-linux/`; source and AppImage installs follow `XDG_DATA_HOME` if set. The database is local and user-only, but **not encrypted**. Optional TypeSafe suggestions send selected application names, active client/project/task names and any context you choose to TypeSafe after a separate confirmation in source and AppImage builds. The Flatpak does not offer TypeSafe requests. Window titles are off by default. No keystrokes, screenshots, clipboard contents or browser URLs are recorded.
+By default, the database and backups are under `~/.local/share/time-sheet-linux/`; source and AppImage installs follow `XDG_DATA_HOME` if set. The database is local and user-only, but **not encrypted**. Optional TypeSafe suggestions send selected application names, active client/project/task names and any context you choose to TypeSafe after a separate confirmation. Window titles are off by default. No keystrokes, screenshots, clipboard contents or browser URLs are recorded.
 
 Keep an external backup if you need protection from disk loss. Uninstalling integration keeps the database and backups. See [privacy and security](SECURITY.md) and [backup and restore](docs/INSTALL.md#backup-and-restore).
 

@@ -12,6 +12,7 @@ import select
 import subprocess
 import sys
 import warnings
+import uuid
 
 
 CLIENT = r'''
@@ -54,6 +55,31 @@ with tempfile.TemporaryDirectory(prefix='timesheet-keyring-test-') as folder:
 '''
 
 
+# Exercise the older request shape as well as the installed libsecret client.
+LEGACY_CLIENT = r'''
+import os
+from gi.repository import Gio, GLib
+bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
+read_fd,write_fd=os.pipe()
+fds=Gio.UnixFDList.new(); index=fds.append(write_fd); os.close(write_fd)
+result,_=bus.call_with_unix_fd_list_sync('org.freedesktop.portal.Desktop',
+    '/org/freedesktop/portal/desktop','org.freedesktop.portal.Secret','RetrieveSecret',
+    GLib.Variant('(ha{sv})',(index,{})),GLib.VariantType.new('(o)'),
+    Gio.DBusCallFlags.NONE,5000,fds,None)
+handle=result.unpack()[0]
+assert os.read(read_fd,128)==b'disposable-portal-master-secret!!'*2
+os.close(read_fd)
+loop=GLib.MainLoop(); received=[]
+def response(connection,sender,path,interface,name,params):
+    received.append(params.unpack());loop.quit()
+bus.signal_subscribe('org.freedesktop.portal.Desktop','org.freedesktop.portal.Request',
+    'Response',handle,None,Gio.DBusSignalFlags.NONE,response)
+GLib.timeout_add(2000,lambda:(loop.quit(),False)[1]);loop.run()
+assert received and received[0][0]==0, 'Legacy request did not receive a successful response'
+print('PASS: legacy request without handle_token',flush=True)
+'''
+
+
 def serve(mode):
     warnings.filterwarnings('ignore',category=DeprecationWarning,message='Gio.DBusConnection.register_object is deprecated')
     import gi
@@ -77,7 +103,9 @@ def serve(mode):
         try: os.write(fds[descriptor],b'disposable-portal-master-secret!!'*2)
         finally:
             for fd in fds: os.close(fd)
-        token=options['handle_token']
+        # Older libsecret versions omit the optional token and wait on the
+        # object path returned by the portal instead.
+        token=options.get('handle_token') or 'timesheet_'+uuid.uuid4().hex
         handle='/org/freedesktop/portal/desktop/request/'+sender[1:].replace('.','_')+'/'+token
         invocation.return_value(GLib.Variant('(o)',(handle,)))
         def respond():
@@ -103,6 +131,8 @@ def check(flatpak_id=None):
             if flatpak_id:
                 command=['flatpak','run','--user','--no-documents-portal','--env=SECRET_BACKEND=file','--command=python3',flatpak_id,'-c',CLIENT,mode]
             subprocess.run(command,check=True,timeout=30)
+            if mode=='present':
+                subprocess.run([sys.executable,'-c',LEGACY_CLIENT],check=True,timeout=10)
         finally:
             server.terminate()
             try: output,errors=server.communicate(timeout=5)

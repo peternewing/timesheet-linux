@@ -5,7 +5,7 @@
 - Add local review sessions, readiness checks, optional remembered choices, and clearer assignment rules with a retained-activity preview.
 - Add optional TypeSafe suggestions using a personal key, explicit per-request data previews, and user-reviewed results. Suggestions do not approve or bill time.
 - Add optional categories, cancellation and bounded batch requests; no live API accuracy or calibration claim is made.
-- Keep the Flatpak offline with local review and rules available; remote suggestions and connection controls are disabled. Network permission requires explicit approval. Secret portal packaging checks remain available.
+- Enable optional network access and application-scoped Secret portal storage in Flatpak. Package builds and desktop portal compatibility require further testing.
 
 This is an unsigned prerelease. Back up data before upgrading; review all suggestions and drafts before billing.
 

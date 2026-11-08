@@ -2,7 +2,7 @@
 
 Last checked: 8 November 2026.
 
-The 0.4.0-rc1 candidate builds on the public [0.3.0-rc3 prerelease](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc3). It adds local review suggestions, clearer assignment rules, and optional TypeSafe suggestions with a personal key and an explicit data preview. All suggested assignments remain drafts for review; invoice drafts do not calculate tax or mark time billed. Core tracking works offline and window titles are off by default. Flatpak remains offline with remote suggestions and connection controls disabled; network permission requires explicit approval.
+The 0.4.0-rc1 candidate builds on the public [0.3.0-rc3 prerelease](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc3). It adds local review suggestions, clearer assignment rules, and optional TypeSafe suggestions with a personal key and an explicit data preview. All suggested assignments remain drafts for review; invoice drafts do not calculate tax or mark time billed. Core tracking works offline and window titles are off by default. Flatpak has network access for optional confirmed suggestions and uses application-scoped Secret portal storage.
 
 Automatic capture supports GNOME 50, Plasma 6, Sway, experimental Hyprland and EWMH X11, with desktop-specific dependencies. Reports include CSV, HTML, PDF and invoice-draft PDF. Data and backups remain local SQLite; see the [compatibility matrix](docs/LINUX_COMPATIBILITY.md).
 

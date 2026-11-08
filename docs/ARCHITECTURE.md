@@ -1,6 +1,6 @@
 # Architecture
 
-The app is a native GTK 4/libadwaita interface over a local SQLite store, with an independent Python collector and a small GNOME Shell extension. The core does not require an application server or cloud service. In source and AppImage builds, optional on-demand TypeSafe suggestions send application and task names and any explicitly entered optional context directly to TypeSafe after user confirmation; the user supplies a key stored in Secret Service. Flatpak remains offline with remote suggestion and connection controls disabled; network permission requires explicit approval.
+The app is a native GTK 4/libadwaita interface over a local SQLite store, with an independent Python collector and a small GNOME Shell extension. The core does not require an application server or cloud service. Optional on-demand TypeSafe suggestions send application and task names and any explicitly entered optional context directly to TypeSafe after user confirmation; the user supplies a key stored in Secret Service. Flatpak uses network access and an application-scoped Secret portal store.
 
 ```text
 GNOME foreground window + idle/lock state

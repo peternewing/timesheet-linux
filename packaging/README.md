@@ -5,9 +5,8 @@ TypeSafe client dependencies, including libsecret; it still needs a running
 desktop keyring on the host. `check_runtime.py` checks imports, the libsecret
 schema API and TLS trust roots without creating a database or sending a request.
 
-The Flatpak does not include network permission, and remote TypeSafe suggestion
-and connection controls are disabled. Adding network permission requires explicit
-approval. Local review and rules remain available. Its launcher pins `SECRET_BACKEND=file`, using libsecret's encrypted
+The Flatpak includes network permission for explicitly confirmed TypeSafe
+requests. Its launcher pins `SECRET_BACKEND=file`, using libsecret's encrypted
 application-scoped store and the desktop Secret portal. It does not request
 `org.freedesktop.secrets` access. Missing portal support must fail closed.
 
