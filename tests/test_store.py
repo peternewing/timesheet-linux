@@ -48,6 +48,17 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(self.db.entries(0,10000)[0]['status'],'draft')
         with self.assertRaises(ValueError): self.db.internal_csv(2,2)
 
+    def test_internal_csv_groups_billable_and_nonbillable(self):
+        from datetime import datetime
+        start=int(datetime(2026,11,8,23,30).timestamp()); boundary=int(datetime(2026,11,9,0,0).timestamp())
+        self.db.add_entry(self.task,start,boundary+1800,billable=True)
+        self.db.add_entry(self.task,boundary+1800,boundary+3600,billable=False)
+        weekly=list(csv.reader(io.StringIO(self.db.internal_csv(start,boundary+3600,group='week'))))
+        self.assertEqual(weekly[1:], [['2026-11-02','0.500000','0.000000','0.500000'],['2026-11-09','0.500000','0.500000','1.000000']])
+        project=list(csv.reader(io.StringIO(self.db.internal_csv(start,boundary+3600,group='project'))))
+        self.assertEqual(project[1],['Client / Project','1.000000','0.500000','1.500000'])
+        with self.assertRaises(ValueError): self.db.internal_csv(start,boundary+3600,group='invalid')
+
     def test_period_summary_clips_entries_and_separates_gap(self):
         self.db.add_entry(self.task,1000,2000,billable=False)
         eid=self.db.add_entry(self.task,2000,3000,billable=True); self.db.approve(eid)
@@ -61,6 +72,17 @@ class StoreTests(unittest.TestCase):
         eid=self.db.stop_timer(1600)
         r=self.db.db.execute('SELECT * FROM entries WHERE id=?',(eid,)).fetchone()
         self.assertEqual((r['start'],r['end']), (1000,1600)); self.assertEqual(self.db.runtime()['state'],'stopped')
+    def test_sqlite_full_keeps_previously_committed_entries(self):
+        import sqlite3
+        entry=self.db.add_entry(self.task,1000,2000,'Already saved')
+        pages=self.db.db.execute('PRAGMA page_count').fetchone()[0]
+        self.db.db.execute(f'PRAGMA max_page_count={pages}')
+        with self.assertRaises(sqlite3.OperationalError):
+            self.db.add_entry(self.task,2000,3000,'X'*(1024*1024))
+        if self.db.db.in_transaction: self.db.db.rollback()
+        self.assertEqual(self.db.db.execute('PRAGMA integrity_check').fetchone()[0],'ok')
+        self.assertEqual([r['id'] for r in self.db.entries(0,4000)],[entry])
+
     def test_backup_restores_accounting(self):
         eid=self.db.add_entry(self.task,1000,6400); self.db.approve(eid)
         dest=Path(self.tmp.name)/'backup.sqlite3'; self.db.backup(dest)

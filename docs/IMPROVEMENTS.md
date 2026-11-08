@@ -13,15 +13,18 @@ finished usability or accessibility certification.
 - Editing assignment rules, priority guidance and a warning when title capture
   is disabled; recorded-app exclusion controls and setup diagnostics in Settings.
 - Internal CSV exports, including non-billable work and optional all-client
-  export, without changing billing state; the latest local automatic backup.
-- Quick manual-entry durations, optional reusable invoice details, and opt-in
+  export, grouped by client, project, task or week, without changing billing
+  state; the latest local automatic backup.
+- First-run guidance, quick manual-entry durations, optional reusable invoice
+  details, and opt-in
   notifications when the background collector detects tracking degradation.
   The collector cannot alert if it is not running at all.
 
 ## Still needed
 
 - Validate full working days on real hardware, including locking, sleep, resume,
-  reboot, storage exhaustion, interrupted writes and recovery. A one-week trial
+  reboot, storage exhaustion, interrupted writes and recovery. SQLite full-page
+  behaviour is covered by a synthetic test; actual disk exhaustion is not. A one-week trial
   must actually elapse; simulated tests are not equivalent.
 - Test full workflows with Orca, keyboard-only use, high text scaling, narrow
   windows and high-contrast themes; run moderated usability sessions.

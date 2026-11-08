@@ -389,6 +389,12 @@ class TimeSheet(Adw.Application):
         self.heading(b,'Today',datetime.now().strftime('%A, %d %B')+' · Review your day and record your work')
         if not self.task_choices():
             self.row(b,'Start with a project','Create a client, project and task. Then add time manually or assign captured activity. Review drafts in History before creating a client report.',[('Create your first project',self.quick_setup)])
+            guide=Gtk.Expander(label='How to get started'); details=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8)
+            details.append(label('1. Create a project. You can leave the rate and budget empty.'))
+            details.append(label('2. Start a task timer or add time manually. If automatic tracking is available, review captured activity and assign it to a task.'))
+            details.append(label('3. Review drafts before approving them. Client reports include approved billable work only.'))
+            details.append(label('Your data stays on this computer. Window titles are off by default; Settings explains tracking and privacy.','dim-label'))
+            guide.set_child(details); b.append(guide)
         health=desktop.read_health(self.store); state=health['status']
         if state=='setup_required':
             description='Desktop capture needs setup. Check docs/INSTALL.md for your desktop, install its dependencies and helper, then sign out and back in.' if desktop.supported_desktop() else 'Automatic capture is unavailable. Check desktop dependencies in docs/INSTALL.md. Manual timers and timesheets remain available.'
@@ -712,370 +718,566 @@ class TimeSheet(Adw.Application):
         def save(f):
             n,c,r,a=f; rate=parse_money(r.get_text()); currency=c.get_text().strip().upper(); name=n.get_text().strip()
             if not name or currency not in ('GBP','EUR','USD'): raise ValueError('Enter a name and choose GBP, EUR or USD.')
-            if not row: self.store.add_client(name,currency,rate); return
-            if currency!=row['currency'] and self.store.db.execute('SELECT 1 FROM entries e JOIN tasks t ON e.task_id=t.id JOIN projects p ON t.project_id=p.id WHERE p.client_id=? AND e.status!=\'draft\' LIMIT 1',(row['id'],)).fetchone(): raise ValueError('Currency cannot be changed for a client with approved or billed entries. Create a separate client instead.')
-            with self.store.db:
-                self.store.db.execute('UPDATE clients SET name=?,currency=?,rate=?,archived=? WHERE id=?',(name,currency,rate,int(a.get_active()),row['id'])); self.store.audit('client edited',{'id':row['id']})
-        self.dialog('Edit client' if row else 'Add client',build,save)
-    def project_dialog(self,row=None,cli…148 tokens truncated…ject name',row['name'] if row else ''); bud=field(b,'Time budget in hours (optional)',str(row['budget']/3600) if row and row['budget'] is not None else '')
-            rate=field(b,'Hourly rate override (optional)',f"{row['rate']/100:.2f}" if row and row['rate'] is not None else '')
-            a=Gtk.CheckButton(label='Archived'); a.set_active(bool(row['archived']) if row else False); b.append(a); return c,n,bud,rate,a
-        def save(f):
-            c,n,bud,rate,a=f; name=n.get_text().strip(); budget=parse_hours(bud.get_text()); r=parse_money(rate.get_text())
-            if not name: raise ValueError('Enter a project name.')
-            if not row: self.store.add_project(selected(c),name,budget,r); return
-            with self.store.db:
-                self.store.db.execute('UPDATE projects SET name=?,budget=?,rate=?,archived=? WHERE id=?',(name,budget,r,int(a.get_active()),row['id'])); self.store.audit('project edited',{'id':row['id']})
-        self.dialog('Edit project' if row else 'Add project',build,save)
-    def task_dialog(self,row=None):
-        choices=self.project_choices()
-        if row and not any(i==row['project_id'] for i,_ in choices):
-            parent=self.store.db.execute('SELECT p.name,c.name client FROM projects p JOIN clients c ON c.id=p.client_id WHERE p.id=?',(row['project_id'],)).fetchone(); choices.append((row['project_id'],parent['client']+' / '+parent['name']+' (archived)'))
-        if not choices: self.error('Create a project first.'); return
-        def build(b):
-            p=dropdown(b,'Project',choices)
-            if row: select_id(p,row['project_id']); p.set_sensitive(False)
-            n=field(b,'Task name',row['name'] if row else ''); bud=field(b,'Time budget in hours (optional)',str(row['budget']/3600) if row and row['budget'] is not None else '')
-            rate=field(b,'Hourly rate override (optional)',f"{row['rate']/100:.2f}" if row and row['rate'] is not None else '')
-            a=Gtk.CheckButton(label='Archived'); a.set_active(bool(row['archived']) if row else False); b.append(a); return p,n,bud,rate,a
-        def save(f):
-            p,n,bud,rate,a=f; name=n.get_text().strip(); budget=parse_hours(bud.get_text()); r=parse_money(rate.get_text())
-            if not name: raise ValueError('Enter a task name.')
-            if not row: self.store.add_task(selected(p),name,budget,r); return
-            with self.store.db:
-                self.store.db.execute('UPDATE tasks SET name=?,budget=?,rate=?,archived=? WHERE id=?',(name,budget,r,int(a.get_active()),row['id'])); self.store.audit('task edited',{'id':row['id']})
-        self.dialog('Edit task' if row else 'Add task',build,save)
-    def refresh_rules(self):
-        b=self.body_rules; self.clear(b); self.heading(b,'Automatic assignment','Teach the app once. Matching usage becomes draft task time for you to review.')
-        b.append(label('Higher priority wins. Conflicting rules at the same priority leave activity unassigned. Rules apply to new settled activity; you can apply them to a past day from Calendar.','dim-label'))
-        b.append(button('New rule',lambda _:self.rule_dialog(),True))
-        rules=self.store.rows('''SELECT r.*,t.name task,p.name project,c.name client FROM rules r JOIN tasks t ON t.id=r.task_id JOIN projects p ON p.id=t.project_id JOIN clients c ON c.id=p.client_id ORDER BY priority DESC,id''')
-        if not rules: self.empty(b,'Less assigning, more doing','Add a rule for a work application, or choose “Always assign” when reviewing its usage. Rules never approve time for billing.'); return
-        for r in rules:
-            self.row(b,f"{r['app']} → {r['client']} / {r['project']} / {r['task']}",f"Title contains: {r['title'] or 'Any title'} · Priority {r['priority']} · "+('Enabled' if r['enabled'] else 'Disabled'),[
-                ('Edit',lambda _,x=r:self.rule_dialog(x)),('Disable' if r['enabled'] else 'Enable',lambda _,x=r:self.run_action(lambda:self.toggle_rule(x))),('Delete',lambda _,i=r['id']:self.confirm('Delete this rule?','Existing time entries stay as they are.',lambda:self.delete_rule(i)))])
-    def toggle_rule(self,row):
-        with self.store.db: self.store.db.execute('UPDATE rules SET enabled=? WHERE id=?',(0 if row['enabled'] else 1,row['id']))
-    def delete_rule(self,rid):
-        with self.store.db: self.store.db.execute('DELETE FROM rules WHERE id=?',(rid,)); self.store.audit('rule deleted',{'id':rid})
-    def rule_dialog(self,row=None):
-        choices=self.task_choices()
-        if row and not any(i==row['task_id'] for i,_ in choices):
-            old=self.store.db.execute('SELECT c.name client,p.name project,t.name task FROM tasks t JOIN projects p ON p.id=t.project_id JOIN clients c ON c.id=p.client_id WHERE t.id=?',(row['task_id'],)).fetchone()
-            if old: choices.append((row['task_id'],f"{old['client']} / {old['project']} / {old['task']} (archived)"))
-        if not choices: self.quick_setup(); return
-        apps=[r['app'] for r in self.store.rows("SELECT DISTINCT app FROM activity WHERE state='active' AND app!='' ORDER BY app")]
-        def build(b):
-            app=field(b,'Application name',row['app'] if row else '','Use the name shown under Apps today')
-            if apps:
-                known=dropdown(b,'Or choose a recorded app',[(a,a) for a in apps]); known.connect('notify::selected',lambda *_:app.set_text(selected(known) or '')); app.set_text(row['app'] if row else apps[0])
-            title=field(b,'Only when the title contains (optional)',row['title'] if row else ''); task=dropdown(b,'Assign to task',choices); priority=field(b,'Priority',str(row['priority']) if row else '0')
-            if row: select_id(task,row['task_id'])
-            if self.store.get('capture_titles','0')!='1': b.append(label('Window title collection is off; title-specific rules cannot match new activity until it is enabled in Settings.','dim-label'))
-            preview=label('Choose an application to preview its recent activity.','dim-label'); b.append(preview)
-            def update(*_):
-                seconds=self.store.db.execute("SELECT COALESCE(SUM(end-start),0) FROM activity WHERE state='active' AND lower(app)=lower(?) AND instr(lower(title),lower(?))>0",(app.get_text(),title.get_text())).fetchone()[0]
-                preview.set_text(fmt_duration(seconds)+' of retained activity matches. New rules apply to future settled usage. Use the calendar to apply rules to a past day.')
-            app.connect('changed',update); title.connect('changed',update); update()
-            return app,title,task,priority
-        def save(f):
-            app,title,task,priority=f
-            try: p=int(priority.get_text())
-            except ValueError: raise ValueError('Priority must be an integer.')
-            if row: self.store.update_rule(row['id'],app.get_text(),title.get_text(),selected(task),p)
-            else: self.store.add_rule(app.get_text(),title.get_text(),selected(task),p)
-            self.toast('Automatic assignment rule saved')
-        self.dialog('Edit rule' if row else 'New rule',build,save)
-    def refresh_reports(self):
-        b=self.body_reports; self.clear(b); self.heading(b,'Client reports','Reviewed time, clear amounts and a saved billing history.')
-        choices=self.client_choices()
-        # Archived clients can still have approved work and saved billing history.
-        choices += [(r['id'],r['name']+' (archived)') for r in self.store.rows('SELECT id,name FROM clients WHERE archived=1 ORDER BY name')]
-        if not choices: self.empty(b,'Create a client first','Once you approve billable time, it can be included in a client report.',('New project',self.quick_setup)); return
-        today=datetime.now().date(); client=dropdown(b,'Client',choices)
-        b.append(label('Reports include approved, billable time only. Drafts must be approved in History first. Exporting a report does not mark time as billed.','dim-label'))
-        dates=Gtk.Box(spacing=12); b.append(dates)
-        start=field(dates,'From',today.replace(day=1).isoformat(),'YYYY-MM-DD'); end=field(dates,'Through',today.isoformat(),'YYYY-MM-DD')
-        def create(_):
-            def action():
-                try:
-                    a=datetime.strptime(start.get_text().strip(),'%Y-%m-%d').date(); z=datetime.strptime(end.get_text().strip(),'%Y-%m-%d').date()
-                except ValueError: raise ValueError('Enter dates as YYYY-MM-DD.')
-                if z<a: raise ValueError('End date must follow the start date.')
-                return self.store.create_report(selected(client),day_bounds(a)[0],day_bounds(z)[1])
-            self.run_action(action,self.preview_report)
-        b.append(button('Create report from approved time',create,True))
-        all_clients=Gtk.CheckButton(label='Include all clients in internal CSV'); b.append(all_clients)
-        def internal(_):
-            try:
-                a=datetime.strptime(start.get_text().strip(),'%Y-%m-%d').date(); z=datetime.strptime(end.get_text().strip(),'%Y-%m-%d').date()
-                if z<a: raise ValueError('End date must follow the start date.')
-                content=self.store.internal_csv(day_bounds(a)[0],day_bounds(z)[1],None if all_clients.get_active() else selected(client))
-            except ValueError as exc:
-                self.error(str(exc)); return
-            self.save_file('Save internal time report','internal-time.csv',lambda path:Path(path).write_text(content,encoding='utf-8'))
-        b.append(label('Internal CSV includes draft, approved and billed entries, including non-billable time. It does not change billing status.','dim-label'))
-        b.append(button('Export internal time CSV',internal))
-        b.append(button('Review drafts in History',lambda _:self.review_drafts()))
-        b.append(label('Saved reports','title-3'))
-        rows=self.store.rows('SELECT r.*,c.name client FROM reports r JOIN clients c ON c.id=r.client_id ORDER BY r.id DESC')
-        if not rows: b.append(label('No reports yet. Review and approve time in History first.','dim-label'))
-        for r in rows:
-            items=self.store.report(r['id']); amount=sum(x['amount'] for x in items); state=self.report_state(r['id'])
-            self.row(b,f"{r['client']} · {items[0]['currency']} {money(amount)}",f"Report #{r['id']} · {len(items)} entries · {datetime.fromtimestamp(r['start']):%d %b} – {datetime.fromtimestamp(r['end']-1):%d %b %Y} · {state}",[('Open report',lambda _,i=r['id']:self.preview_report(i))])
-    def review_drafts(self):
-        self.history_kind='tasks'; self.history_status='draft'; self.history_period='all'; self.history_billable='all'; self.history_search=''; self.show_page('History')
-    def report_state(self,rid):
-        billing=self.store.db.execute('SELECT * FROM report_billing WHERE report_id=?',(rid,)).fetchone()
-        if billing: return 'Billed · '+billing['invoice'] if billing['state']=='billed' else 'Corrected · retained snapshot'
-        rows=self.store.rows('SELECT e.status,e.deleted,e.revision,re.revision saved FROM report_entries re JOIN entries e ON e.id=re.entry_id WHERE re.report_id=?',(rid,))
-        if rows and all(r['status']=='billed' and not r['deleted'] for r in rows): return 'Billed'
-        if any(r['deleted'] or r['status']!='approved' or r['revision']!=r['saved'] for r in rows): return 'Snapshot only · entries changed'
-        return 'Ready to bill'
-    def preview_report(self,rid):
-        rows=self.store.report(rid); w=Adw.Window(title=f'Timesheet report {rid}',transient_for=self.win,modal=True,default_width=760,default_height=650)
-        self.dialogs.append(w); self.dialog_count=len(self.dialogs)
-        w.connect('close-request',lambda *_:self.dialog_closed(w))
-        box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL); w.set_content(box); head=Adw.HeaderBar(); box.append(head)
-        head.pack_start(button('PDF',lambda _:self.export_report(rid,'pdf'))); head.pack_start(button('Invoice PDF',lambda _:self.invoice_pdf_dialog(rid))); head.pack_start(button('CSV',lambda _:self.export_report(rid,'csv'))); head.pack_start(button('Printable report',lambda _:self.export_report(rid,'html')))
-        if self.report_state(rid)=='Ready to bill': head.pack_end(button('Mark billed',lambda _:self.bill_dialog(rid,w),True))
-        billing=self.store.db.execute('SELECT * FROM report_billing WHERE report_id=?',(rid,)).fetchone()
-        if billing and billing['state']=='billed': head.pack_end(button('Record correction',lambda _:self.correct_report_dialog(rid,w)))
-        scroll=Gtk.ScrolledWindow(vexpand=True); box.append(scroll); body=margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12),24); scroll.set_child(body)
-        self.heading(body,rows[0]['client'],f'Report #{rid} · '+self.report_state(rid))
-        body.append(label(rows[0]['currency']+' '+money(sum(r['amount'] for r in rows)),'metric'))
-        body.append(label('Exact recorded duration. Rates and amounts are frozen in this report.','dim-label'))
-        for r in rows:
-            self.row(body,f"{r['project']} / {r['task']}",f"{r.get('report_date','')} · {fmt_duration(r['end']-r['start'])} · {r['currency']} {money(r['rate'])}/h · {money(r['amount'])}\n{r['description']}")
-        w.present()
-    def correct_report_dialog(self,rid,preview=None):
-        def build(b):
-            b.append(label('Use this after correcting or cancelling the invoice in your invoicing system. The original report remains in history, and its entries return to draft for review.'))
-            reason=field(b,'Reason for correction')
-            confirm=Gtk.CheckButton(label='I have handled the invoice correction externally'); b.append(confirm)
-            return reason,confirm
-        def save(f):
-            if not f[1].get_active(): raise ValueError('Confirm that the invoice has been handled externally.')
-            self.store.reopen_report(rid,f[0].get_text()); self.toast('Correction recorded; entries need review')
-            if preview: GLib.idle_add(lambda:(preview.close(),False)[1])
-        self.dialog('Record billing correction',build,save)
-    def bill_dialog(self,rid,preview=None):
-        def build(b):
-            b.append(label('Billed entries are locked and excluded from future billing reports.'))
-            return field(b,'Invoice reference','','e.g. INV-2026-001')
-        def save(w):
-            self.store.mark_billed(rid,w.get_text()); self.toast('Report marked billed')
-            if preview: GLib.idle_add(lambda:(preview.close(),False)[1])
-        self.dialog('Mark report billed',build,save)
-    def save_file(self,title,name,handler):
-        chooser=Gtk.FileChooserNative(title=title,transient_for=self.dialogs[-1] if self.dialogs else self.win,action=Gtk.FileChooserAction.SAVE,accept_label='Save',cancel_label='Cancel'); chooser.set_current_name(name)
-        def response(c,r):
-            if r==Gtk.ResponseType.ACCEPT:
-                f=c.get_file()
-                try:
-                    if not f or not f.get_path(): raise ValueError('Choose a local file.')
-                    handler(f.get_path()); self.toast('Saved '+Path(f.get_path()).name)
-                except (ValueError,sqlite3.Error,OSError) as exc: self.error(exc)
-            c.destroy()
-        chooser.connect('response',response); chooser.show()
-    def invoice_pdf_dialog(self,rid):
-        def build(b):
-            b.append(label('Create a draft invoice PDF from this saved report. No tax is calculated; review before issuing. Export does not mark work billed.'))
-            fields=[field(b,title,value) for title,value in [
-                ('Invoice reference',''),('Seller name and address',self.store.get('invoice_seller','')),
-                ('Customer name and address',self.store.report(rid)[0]['client']),
-                ('Issue date (YYYY-MM-DD)',datetime.now().strftime('%Y-%m-%d')),
-                ('Due date (YYYY-MM-DD)',datetime.now().strftime('%Y-%m-%d')),('Payment details',self.store.get('invoice_payment',''))]]
-            remember=Gtk.CheckButton(label='Remember seller and payment details on this computer')
-            remember.set_active(self.store.get('remember_invoice_details','0')=='1'); b.append(remember)
-            b.append(label('Saved details are stored locally in the unencrypted database. Turn this off and save to forget them.','dim-label'))
-            return fields,remember
-        def save(form):
-            from .pdf_export import report_pdf,write_pdf
-            fields,remember=form
-            invoice=dict(zip(('number','seller','customer','issued','due','payment'),[w.get_text() for w in fields]))
-            content=report_pdf(self.store.report(rid),rid,invoice=invoice)
-            self.store.set('remember_invoice_details',int(remember.get_active()))
-            self.store.set('invoice_seller',invoice['seller'] if remember.get_active() else '')
-            self.store.set('invoice_payment',invoice['payment'] if remember.get_active() else '')
-            GLib.idle_add(lambda:(self.save_file('Save invoice draft',f'invoice-draft-{rid}.pdf',lambda path:write_pdf(path,content)),False)[1])
-        self.dialog('Invoice PDF',build,save)
+            if not row: self.store.add_client(name,currency,rate…9179 tokens truncated…), started INTEGER, checkpoint INTEGER, state TEXT NOT NULL DEFAULT 'stopped', collector_seen INTEGER, capture_status TEXT NOT NULL DEFAULT 'not running');
+INSERT OR IGNORE INTO runtime(id) VALUES(1);
+'''
 
-    def export_report(self,rid,kind):
-        if kind=='pdf':
-            from .pdf_export import report_pdf,write_pdf
-            content=report_pdf(self.store.report(rid),rid)
-            self.save_file('Save PDF report',f'timesheet-{rid}.pdf',lambda path:write_pdf(path,content))
-            return
-        content=self.store.csv_report(rid) if kind=='csv' else self.store.html_report(rid)
-        self.save_file('Save report',f'timesheet-{rid}.{kind}',lambda p:Path(p).write_text(content,encoding='utf-8'))
-    def refresh_settings(self):
-        b=self.body_settings; self.clear(b); self.heading(b,'Settings','Control what is recorded and keep your data on this computer.')
-        available=desktop.capture_available()
-        if available: self.row(b,'Automatic tracking is ready','The desktop capture adapter is connected. App names are recorded; window titles are optional.')
-        elif desktop.supported_desktop(): self.row(b,'Finish automatic tracking setup','Check desktop dependencies and helper activation in docs/INSTALL.md. After installation, save your work and sign out and back in once.',[('Install / repair setup',lambda _:self.install_setup())])
-        else: self.row(b,'Manual timesheet mode','Capture needs a supported desktop adapter and reliable idle and lock services. Check the installation guide; manual timers and reports remain available.')
-        from .diagnostics import diagnose
-        def show_diagnostics(_):
-            details=diagnose()
-            self.info('Setup details',json.dumps(details,indent=2)+'\n\nThis diagnostic does not include activity or window titles.')
-        b.append(button('View setup details',show_diagnostics))
-        b.append(Gtk.LinkButton(uri='https://github.com/peternewing/timesheet-linux/blob/linux-compatibility-0.3/docs/INSTALL.md',label='Open installation and desktop setup guide'))
-        tracking=Adw.PreferencesGroup(title='Tracking'); b.append(tracking)
-        capture=Adw.SwitchRow(title='Track desktop usage automatically',subtitle='Record the foreground app, excluding idle and locked time'); capture.set_active(self.store.get('capture_enabled','0')=='1'); tracking.add(capture)
-        notifications=Adw.SwitchRow(title='Notify me when tracking needs attention',subtitle='Alert me if the background tracker detects that active tracking has become unavailable'); notifications.set_active(self.store.get('tracking_notifications','0')=='1'); tracking.add(notifications)
-        titles=Adw.SwitchRow(title='Include window titles',subtitle='Titles can include document names and other sensitive information'); titles.set_active(self.store.get('capture_titles','0')=='1'); tracking.add(titles)
-        startup=None
-        if not desktop.FLATPAK:
-            startup=Adw.SwitchRow(title='Start when I sign in',subtitle='Keep recording when the main window closes'); startup.set_active(desktop.AUTOSTART.exists()); tracking.add(startup)
+class Store:
+    def _migrate(self):
+        version=self.db.execute('PRAGMA user_version').fetchone()[0]
+        if version>3:
+            raise ValueError('This database was created by a newer version of Time Sheet Linux.')
+        if version<3:
+            # A consistent pre-migration copy is retained for existing user data.
+            if self.db.execute('SELECT COUNT(*) FROM entries').fetchone()[0]:
+                dest=self.path.with_name(self.path.stem+'-before-v3.sqlite3')
+                if not dest.exists(): self.backup(dest)
+            with self.db:
+                self.db.execute('BEGIN IMMEDIATE')
+                additions={
+                    'entries': [('deleted','INTEGER NOT NULL DEFAULT 0'),('origin',"TEXT NOT NULL DEFAULT 'manual'"),('activity_id','INTEGER')],
+                    'activity': [('closed','INTEGER NOT NULL DEFAULT 1'),('auto_processed','INTEGER NOT NULL DEFAULT 0'),('session',"TEXT NOT NULL DEFAULT ''")],
+                    'rules': [('created','INTEGER NOT NULL DEFAULT 0')],
+                    'runtime': [('app',"TEXT NOT NULL DEFAULT ''"),('activity_state',"TEXT NOT NULL DEFAULT 'unknown'"),('last_error',"TEXT NOT NULL DEFAULT ''")],
+                }
+                for table,columns in additions.items():
+                    present={r[1] for r in self.db.execute('PRAGMA table_info('+table+')')}
+                    for name,typ in columns:
+                        if name not in present: self.db.execute(f'ALTER TABLE {table} ADD COLUMN {name} {typ}')
+                self.db.execute('CREATE TABLE IF NOT EXISTS entry_changes(id INTEGER PRIMARY KEY,at INTEGER NOT NULL,action TEXT NOT NULL,before_state TEXT NOT NULL,after_state TEXT NOT NULL,undone INTEGER NOT NULL DEFAULT 0)')
+                self.db.execute('CREATE TABLE IF NOT EXISTS notices(id INTEGER PRIMARY KEY,at INTEGER NOT NULL,message TEXT NOT NULL,read INTEGER NOT NULL DEFAULT 0)')
+                self.db.execute("CREATE TABLE IF NOT EXISTS report_billing(report_id INTEGER PRIMARY KEY REFERENCES reports(id),invoice TEXT NOT NULL,at INTEGER NOT NULL,state TEXT NOT NULL DEFAULT 'billed',reason TEXT NOT NULL DEFAULT '')")
+                self.db.execute('PRAGMA user_version=3')
+
+    def notice(self,message):
+        self.db.execute('INSERT INTO notices(at,message) VALUES(?,?)',(int(time.time()),message))
+
+    def _record_change(self,action,before,after_ids):
+        after=[dict(self.db.execute('SELECT * FROM entries WHERE id=?',(i,)).fetchone()) for i in after_ids]
+        self.db.execute('INSERT INTO entry_changes(at,action,before_state,after_state) VALUES(?,?,?,?)',
+                        (int(time.time()),action,json.dumps([dict(r) for r in before]),json.dumps(after)))
+
+    def quick_project(self,client,project,task='General',rate=None,currency='GBP',budget=None):
+        if not client.strip() or not project.strip() or not task.strip(): raise ValueError('Enter a client, project and task name.')
+        if currency not in ('GBP','EUR','USD'): raise ValueError('Choose GBP, EUR or USD.')
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            c=self.db.execute('SELECT * FROM clients WHERE name=?',(client.strip(),)).fetchone()
+            if c and c['archived']: raise ValueError('This client is archived. Unarchive it in Projects or choose another client name.')
+            if c and (c['currency']!=currency or (rate is not None and c['rate']!=rate)):
+                raise ValueError('This client already has different billing settings. Use Add project under that client in Projects, or choose a new client name.')
+            cid=c[0] if c else self.db.execute('INSERT INTO clients(name,currency,rate) VALUES(?,?,?)',(client.strip(),currency,rate)).lastrowid
+            p=self.db.execute('SELECT id FROM projects WHERE client_id=? AND name=?',(cid,project.strip())).fetchone()
+            if p: raise ValueError('This project already exists for the client. Edit it or add a task in Projects.')
+            pid=p[0] if p else self.db.execute('INSERT INTO projects(client_id,name,budget) VALUES(?,?,?)',(cid,project.strip(),budget)).lastrowid
+            existing=self.db.execute('SELECT id FROM tasks WHERE project_id=? AND name=?',(pid,task.strip())).fetchone()
+            tid=existing[0] if existing else self.db.execute('INSERT INTO tasks(project_id,name) VALUES(?,?)',(pid,task.strip())).lastrowid
+            self.audit('project set up',{'task_id':tid})
+            return tid
+
+    def uncovered(self,start,end,now=None):
+        """Unallocated subintervals; manual timers reserve their live interval."""
+        intervals=[(r['start'],r['end']) for r in self.rows('SELECT start,end FROM entries WHERE deleted=0 AND start<? AND end>? ORDER BY start',(end,start))]
+        rt=self.runtime()
+        if rt['state']=='running' and rt['started'] is not None:
+            intervals.append((rt['started'],int(time.time() if now is None else now)))
+        cursor=int(start); result=[]
+        for a,b in sorted(intervals):
+            if b<=cursor: continue
+            if a>=end: break
+            if a>cursor: result.append((cursor,min(a,end)))
+            cursor=max(cursor,b)
+            if cursor>=end: break
+        if cursor<end: result.append((cursor,int(end)))
+        return [(a,b) for a,b in result if b>a]
+
+    def activity_for(self,start,end,unassigned=False):
+        result=[]
+        for row in self.rows('SELECT * FROM activity WHERE start<? AND end>? ORDER BY start',(int(end),int(start))):
+            record=dict(row); record['start']=max(row['start'],int(start)); record['end']=min(row['end'],int(end))
+            if unassigned and row['state']=='active':
+                for a,b in self.uncovered(record['start'],record['end']):
+                    result.append(dict(record,start=a,end=b))
+            elif not unassigned: result.append(record)
+        return result
+
+    def day_summary(self,start,end,include_running=False,now=None):
+        entries=self.entries(start,end)
+        assigned=sum(min(end,r['end'])-max(start,r['start']) for r in entries)
+        if include_running:
+            rt=self.runtime()
+            if rt['state']=='running' and rt['started'] is not None:
+                a=max(start,rt['started']); z=min(end,int(time.time() if now is None else now))
+                if z>a:
+                    # Future manual entries may overlap a still-running timer. Do
+                    # not count that time twice; stop_timer will clip it too.
+                    assigned+=z-a-sum(max(0,min(z,r['end'])-max(a,r['start'])) for r in entries)
+        active=0; away=0; unassigned=0; apps={}
+        for r in self.activity_for(start,end):
+            seconds=r['end']-r['start']
+            if r['state'] in ('active','personal'):
+                active+=seconds; apps[r['app']]=apps.get(r['app'],0)+seconds
+                if r['state']=='active': unassigned+=sum(b-a for a,b in self.uncovered(r['start'],r['end']))
+            elif r['state'] in ('away','locked'): away+=seconds
+        approved=sum(min(end,r['end'])-max(start,r['start']) for r in entries if r['status'] in ('approved','billed'))
+        return dict(active=active,away=away,assigned=assigned,approved=approved,unassigned=unassigned,
+                    drafts=sum(r['status']=='draft' for r in entries),apps=sorted(apps.items(),key=lambda pair:pair[1],reverse=True))
+
+    def period_summary(self,start,end):
+        """Summarise recorded entries and observed gaps, clipped to the period."""
+        if end<=start: raise ValueError('End must be after start.')
+        entries=self.entries(start,end)
+        result=dict(recorded=0,approved=0,billable=0,drafts=0,gaps=0)
+        for r in entries:
+            seconds=min(end,r['end'])-max(start,r['start'])
+            result['recorded']+=seconds
+            if r['status'] in ('approved','billed'): result['approved']+=seconds
+            if r['billable']: result['billable']+=seconds
+            if r['status']=='draft': result['drafts']+=1
+        result['gaps']=sum(r['end']-r['start'] for r in self.activity_for(start,end) if r['state']=='unknown')
+        return result
+
+    def set_personal(self,ids,personal=True):
+        if not ids: raise ValueError('Select completed activity first.')
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            for aid in set(ids):
+                r=self.db.execute('SELECT * FROM activity WHERE id=?',(aid,)).fetchone()
+                if not r or not r['closed'] or r['state'] not in ('active','personal'): raise ValueError('Choose completed application usage.')
+                if personal and sum(b-a for a,b in self.uncovered(r['start'],r['end']))!=r['end']-r['start']: raise ValueError('Some of this activity is already assigned. Edit its task entry first.')
+                self.db.execute('UPDATE activity SET state=?,auto_processed=1 WHERE id=?',('personal' if personal else 'active',aid))
+            self.audit('activity marked personal' if personal else 'activity returned to review',{'count':len(set(ids))})
+
+    def matching_rule(self,app,title,at=None):
+        choices=[]
+        for r in self.rows('''SELECT r.* FROM rules r JOIN tasks t ON r.task_id=t.id JOIN projects p ON t.project_id=p.id
+              JOIN clients c ON p.client_id=c.id WHERE r.enabled=1 AND t.archived=0 AND p.archived=0 AND c.archived=0 ORDER BY r.priority DESC,r.id'''):
+            if at is not None and r['created']>at: continue
+            if r['app'].casefold()==app.casefold() and r['title'].casefold() in title.casefold(): choices.append(r)
+        if not choices: return None
+        best=[r for r in choices if r['priority']==choices[0]['priority']]
+        targets={r['task_id'] for r in best}
+        return best[0] if len(targets)==1 else None
+
+    def matching_task(self,app,title):
+        rule=self.matching_rule(app,title)
+        return rule['task_id'] if rule else None
+
+    def add_rule(self,app,title,task,priority=0):
+        if not app.strip(): raise ValueError('Choose an application.')
+        with self.db:
+            rid=self.db.execute('INSERT INTO rules(app,title,task_id,priority,created) VALUES(?,?,?,?,?)',(app.strip(),title.strip(),task,int(priority),int(time.time()))).lastrowid
+            self.audit('rule created',{'id':rid})
+            return rid
+
+    def update_rule(self,rule_id,app,title,task,priority=0):
+        if not app.strip(): raise ValueError('Choose an application.')
+        with self.db:
+            cur=self.db.execute('UPDATE rules SET app=?,title=?,task_id=?,priority=?,created=? WHERE id=?',
+                (app.strip(),title.strip(),task,int(priority),int(time.time()),rule_id))
+            if not cur.rowcount: raise ValueError('Rule not found.')
+            self.audit('rule edited',{'id':rule_id})
+
+    def apply_rules(self,now=None,start=None,end=None):
+        now=int(time.time() if now is None else now)
+        cutoff=now-int(self.get('idle_seconds','300'))
+        count=0
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            if start is not None:
+                self.db.execute("UPDATE activity SET auto_processed=0 WHERE state='active' AND closed=1 AND start>=? AND end<=?",(start,end or now))
+            rows=self.rows("SELECT * FROM activity WHERE state='active' AND closed=1 AND auto_processed=0 AND end<=? ORDER BY start",(cutoff,))
+            for r in rows:
+                rule=self.matching_rule(r['app'],r['title'],None if start is not None else r['end'])
+                if rule:
+                    beginning=r['start'] if start is not None else max(r['start'],rule['created'])
+                    for a,b in self.uncovered(beginning,r['end'],now):
+                        self.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id) VALUES(?,?,?,'','automatic',?)",(rule['task_id'],a,b,r['id']))
+                        count+=1
+                self.db.execute('UPDATE activity SET auto_processed=1 WHERE id=?',(r['id'],))
+            if count: self.audit('automatically assigned',{'entries':count})
+        return count
+
+    def assign_remaining(self,blocks,task,description='',remember=False):
+        count=0
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            before=[]; ids=[]
+            for block in blocks:
+                original=self.db.execute('SELECT * FROM activity WHERE id=?',(block['id'],)).fetchone()
+                if not original or original['state'] not in ('active','away'): raise ValueError('Activity is no longer available.')
+                if not original['closed']: raise ValueError('This activity is still being recorded. Assign it once you switch apps or pause.')
+                a=max(block['start'],original['start']); b=min(block['end'],original['end'])
+                for x,y in self.uncovered(a,b):
+                    cur=self.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id) VALUES(?,?,?,?,'assigned',?)",(task,x,y,description.strip(),original['id']))
+                    ids.append(cur.lastrowid); count+=1
+                if remember and original['state']=='active':
+                    exists=self.db.execute("SELECT 1 FROM rules WHERE lower(app)=lower(?) AND title='' AND task_id=? AND enabled=1",(original['app'],task)).fetchone()
+                    if not exists: self.db.execute('INSERT INTO rules(app,title,task_id,priority,created) VALUES(?,?,?,?,?)',(original['app'],'',task,0,int(time.time())))
+            if not count: raise ValueError('This activity is already assigned to a task.')
+            self._record_change('Assign activity',before,ids)
+            self.audit('activity assigned',{'entries':count})
+        return count
+
+    def approve_many(self,ids):
+        if not ids: raise ValueError('Select at least one draft entry.')
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            for entry in dict.fromkeys(ids): self._approve_one(entry)
+
+    def _approve_one(self,entry):
+        row=self.db.execute('''SELECT e.*,COALESCE(t.rate,p.rate,c.rate) effective_rate,c.currency client_currency
+                FROM entries e JOIN tasks t ON e.task_id=t.id JOIN projects p ON t.project_id=p.id
+                JOIN clients c ON p.client_id=c.id WHERE e.deleted=0 AND e.id=?''',(entry,)).fetchone()
+        if not row or row['status']!='draft': raise ValueError('Only draft entries can be approved.')
+        if row['end']>time.time(): raise ValueError('Future time cannot be approved.')
+        if row['origin'] in ('automatic','assigned'):
+            activity=self.db.execute('SELECT * FROM activity WHERE id=?',(row['activity_id'],)).fetchone()
+            if activity and (not activity['closed'] or activity['end']>time.time()-int(self.get('idle_seconds','300'))):
+                raise ValueError('Recent activity is still settling. Review it after the idle threshold, or enter it explicitly as manual work.')
+        if row['billable'] and row['effective_rate'] is None: raise ValueError('Set an hourly rate or mark this entry non-billable before approval.')
+        self.db.execute("UPDATE entries SET status='approved',rate=?,currency=?,revision=revision+1 WHERE id=?",(row['effective_rate'],row['client_currency'],entry))
+        self.audit('entry approved',{'id':entry})
+
+    def merge_entries(self,ids):
+        if len(set(ids))<2: raise ValueError('Select at least two adjacent entries.')
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            rows=[self.db.execute('SELECT * FROM entries WHERE deleted=0 AND id=?',(i,)).fetchone() for i in set(ids)]
+            if any(r is None for r in rows): raise ValueError('An entry has changed. Refresh the list.')
+            rows.sort(key=lambda r:r['start'])
+            if any(r['status']=='billed' for r in rows): raise ValueError('Billed entries cannot be merged.')
+            if len({(r['task_id'],r['billable']) for r in rows})!=1: raise ValueError('Choose entries for the same task and billable setting.')
+            if any(a['end']!=b['start'] for a,b in zip(rows,rows[1:])): raise ValueError('Entries must be adjacent without a gap.')
+            first=rows[0]
+            description='; '.join(dict.fromkeys(r['description'] for r in rows if r['description']))
+            self.db.execute("UPDATE entries SET end=?,description=?,origin='manual',activity_id=NULL,status='draft',rate=NULL,currency=NULL,revision=revision+1 WHERE id=?",(rows[-1]['end'],description,first['id']))
+            for r in rows[1:]: self.db.execute('UPDATE entries SET deleted=1,revision=revision+1 WHERE id=?',(r['id'],))
+            self._record_change('Merge entries',rows,[r['id'] for r in rows])
+            self.audit('entries merged',{'id':first['id'],'count':len(rows)})
+
+    def undo(self):
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            change=self.db.execute('SELECT * FROM entry_changes WHERE undone=0 ORDER BY id DESC LIMIT 1').fetchone()
+            if not change: raise ValueError('There is no change to undo.')
+            before=json.loads(change['before_state']); after=json.loads(change['after_state'])
+            revisions={}
+            for expected in after:
+                current=self.db.execute('SELECT * FROM entries WHERE id=?',(expected['id'],)).fetchone()
+                same=current and {k:v for k,v in dict(current).items() if k!='revision'}=={k:v for k,v in expected.items() if k!='revision'}
+                if not same or current['status']=='billed': raise ValueError('These entries changed after that action. Undo is unavailable.')
+                revisions[current['id']]=current['revision']
+            self.db.executemany('UPDATE entries SET deleted=1 WHERE id=?',[(r['id'],) for r in after])
+            original_ids={r['id'] for r in before}
+            for r in before:
+                if not r['deleted']: self._assert_free(r['start'],r['end'])
+                values={k:v for k,v in r.items() if k!='id'}
+                values.update(status='draft',rate=None,currency=None,revision=revisions[r['id']]+1)
+                self.db.execute('UPDATE entries SET '+','.join(k+'=?' for k in values)+' WHERE id=?',(*values.values(),r['id']))
+            for r in after:
+                if r['id'] not in original_ids: self.db.execute('UPDATE entries SET revision=revision+1 WHERE id=?',(r['id'],))
+            self.db.execute('UPDATE entry_changes SET undone=1 WHERE id=?',(change['id'],))
+            self.audit('undone',{'action':change['action']})
+            return change['action']
+    def __init__(self, path=None):
+        path = Path(path or DB_PATH)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if not path.exists():
+            try:
+                fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                os.close(fd)
+            except FileExistsError:
+                pass
+        os.chmod(path,0o600)
+        self.path = path
+        self.db = sqlite3.connect(path, timeout=10)
+        self.db.row_factory = sqlite3.Row
+        self.db.execute('PRAGMA foreign_keys=ON')
+        self.db.execute('PRAGMA busy_timeout=10000')
+        self.db.executescript(SCHEMA)
+        self.db.commit()
+        self._migrate()
+
+    def close(self): self.db.close()
+    def rows(self, query, args=()): return self.db.execute(query, args).fetchall()
+    def get(self, key, default=''): 
+        row = self.db.execute('SELECT value FROM settings WHERE key=?',(key,)).fetchone()
+        return row[0] if row else default
+    def set(self, key, value):
+        with self.db: self.db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',(key,str(value)))
+    def audit(self, action, details):
+        self.db.execute('INSERT INTO audit(at,action,details) VALUES(?,?,?)',(int(time.time()),action,json.dumps(details)))
+    def add_client(self,name,currency='GBP',rate=None):
+        if not name.strip(): raise ValueError('Enter a client name.')
+        if currency.strip().upper() not in ('GBP','EUR','USD'): raise ValueError('Choose GBP, EUR or USD; other currency precision is not yet supported.')
+        with self.db:
+            cur=self.db.execute('INSERT INTO clients(name,currency,rate) VALUES (?,?,?)',(name.strip(),currency.upper(),rate)); self.audit('client created',{'id':cur.lastrowid}); return cur.lastrowid
+    def add_project(self,client,name,budget=None,rate=None):
+        if not name.strip(): raise ValueError('Enter a project name.')
+        with self.db:
+            cur=self.db.execute('INSERT INTO projects(client_id,name,budget,rate) VALUES (?,?,?,?)',(client,name.strip(),budget,rate)); self.audit('project created',{'id':cur.lastrowid}); return cur.lastrowid
+    def add_task(self,project,name,budget=None,rate=None):
+        if not name.strip(): raise ValueError('Enter a task name.')
+        with self.db:
+            cur=self.db.execute('INSERT INTO tasks(project_id,name,budget,rate) VALUES (?,?,?,?)',(project,name.strip(),budget,rate)); self.audit('task created',{'id':cur.lastrowid}); return cur.lastrowid
+    def tasks(self):
+        return self.rows('''SELECT t.id, c.name AS client, p.name AS project, t.name AS task, t.budget,
+            COALESCE((SELECT SUM(e.end-e.start) FROM entries e WHERE e.task_id=t.id AND e.deleted=0),0) AS spent,
+            c.currency, COALESCE(t.rate,p.rate,c.rate) AS effective_rate FROM tasks t
+            JOIN projects p ON p.id=t.project_id JOIN clients c ON c.id=p.client_id
+            WHERE t.archived=0 AND p.archived=0 AND c.archived=0 ORDER BY c.name,p.name,t.name''')
+    def _assert_free(self,start,end,exclude=None):
+        if int(end) <= int(start): raise ValueError('End time must be after start time.')
+        if self.db.execute('SELECT 1 FROM entries WHERE deleted=0 AND start < ? AND end > ? AND id != ? LIMIT 1',(end,start,exclude or -1)).fetchone():
+            raise ValueError('This time overlaps an existing entry. Adjust or split it first.')
+        rt=self.db.execute('SELECT * FROM runtime WHERE id=1').fetchone()
+        if rt['state']=='running' and rt['started'] is not None and end > rt['started'] and start < max(int(time.time()),rt['started']+1):
+            raise ValueError('This time overlaps the running timer. Stop it first.')
+    def add_entry(self,task,start,end,description='',billable=True):
+        start,end=int(start),int(end)
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            self._assert_free(start,end)
+            cur=self.db.execute('INSERT INTO entries(task_id,start,end,description,billable) VALUES (?,?,?,?,?)',(task,start,end,description.strip(),int(billable)))
+            self.audit('entry created',{'id':cur.lastrowid}); self._record_change('Add entry',[],[cur.lastrowid]); return cur.lastrowid
+    def update_entry(self,entry,task,start,end,description,billable,expected_revision=None):
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            old=self.db.execute('SELECT * FROM entries WHERE deleted=0 AND id=?',(entry,)).fetchone()
+            if not old: raise ValueError('Entry not found.')
+            if expected_revision is not None and old['revision']!=expected_revision: raise ValueError('This entry changed while you were editing it. Reopen it to see the latest version.')
+            if old['status']=='billed': raise ValueError('Billed entries are locked. Keep this entry and record a separate correction.')
+            self._assert_free(int(start),int(end),entry)
+            self.db.execute("UPDATE entries SET task_id=?,start=?,end=?,description=?,billable=?,origin='manual',activity_id=NULL,status='draft',rate=NULL,currency=NULL,revision=revision+1 WHERE id=?",(task,int(start),int(end),description.strip(),int(billable),entry))
+            self.audit('entry edited',{'id':entry})
+            self._record_change('Edit entry',[old],[entry])
+    def delete_entry(self,entry):
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            old=self.db.execute('SELECT * FROM entries WHERE deleted=0 AND id=?',(entry,)).fetchone()
+            if not old: raise ValueError('Entry not found.')
+            if old['status']=='billed': raise ValueError('Billed entries are locked.')
+            if self.db.execute('SELECT 1 FROM report_entries WHERE entry_id=?',(entry,)).fetchone(): raise ValueError('This entry belongs to a saved report and cannot be deleted. Edit it instead.')
+            self.audit('entry deleted',{'id':entry})
+            self.db.execute("UPDATE entries SET deleted=1,revision=revision+1 WHERE id=?",(entry,))
+            self._record_change('Delete entry',[old],[entry])
+    def split_entry(self,entry,point):
+        point=int(point)
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            old=self.db.execute('SELECT * FROM entries WHERE deleted=0 AND id=?',(entry,)).fetchone()
+            if not old: raise ValueError('Entry not found.')
+            if old['status']=='billed': raise ValueError('Billed entries are locked.')
+            if not old['start'] < point < old['end']: raise ValueError('Split time must be inside the entry.')
+            self.db.execute("UPDATE entries SET end=?,status='draft',rate=NULL,currency=NULL,revision=revision+1 WHERE id=?",(point,entry))
+            cur=self.db.execute('INSERT INTO entries(task_id,start,end,description,billable) VALUES(?,?,?,?,?)',
+                (old['task_id'],point,old['end'],old['description'],old['billable']))
+            self.audit('entry split',{'id':entry,'new_id':cur.lastrowid})
+            self._record_change('Split entry',[old],[entry,cur.lastrowid])
+            return cur.lastrowid
+    def assign_activity_batch(self,ids,task,description=''):
+        if not ids: raise ValueError('Select one or more activity blocks.')
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            for activity_id in dict.fromkeys(ids):
+                r=self.db.execute('SELECT * FROM activity WHERE id=?',(activity_id,)).fetchone()
+                if not r or r['state']!='active': raise ValueError('Activity is no longer available for assignment.')
+                self._assert_free(r['start'],r['end'])
+                self.db.execute('INSERT INTO entries(task_id,start,end,description) VALUES(?,?,?,?)',(task,r['start'],r['end'],description.strip()))
+            self.audit('activity assigned',{'count':len(set(ids)),'task_id':task})
+    def entries(self,start,end,client=None,status=None,search=''):
+        sql='''SELECT e.*, t.name AS task, p.name AS project, c.name AS client, c.id AS client_id,
+                 COALESCE(t.rate,p.rate,c.rate) AS suggested_rate,c.currency AS client_currency
+                 FROM entries e JOIN tasks t ON t.id=e.task_id JOIN projects p ON p.id=t.project_id
+                 JOIN clients c ON c.id=p.client_id WHERE e.deleted=0 AND e.start < ? AND e.end > ?'''
+        args=[int(end),int(start)]
+        if client: sql+=' AND c.id=?'; args.append(client)
+        if status: sql+=' AND e.status=?'; args.append(status)
+        if search: sql+=' AND (e.description LIKE ? OR c.name LIKE ? OR p.name LIKE ? OR t.name LIKE ?)'; args += ['%'+search+'%']*4
+        return self.rows(sql+' ORDER BY e.start DESC',args)
+    def approve(self,entry):
+        return self.approve_many([entry])
+    def start_timer(self,task,now=None):
+        now=int(time.time() if now is None else now)
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            rt=self.db.execute('SELECT * FROM runtime WHERE id=1').fetchone()
+            if rt['state']=='running': raise ValueError('Stop the running timer first.')
+            if self.db.execute('SELECT 1 FROM entries WHERE deleted=0 AND start<=? AND end>?',(now,now)).fetchone(): raise ValueError('The current time is already assigned.')
+            self.db.execute("UPDATE runtime SET task_id=?,started=?,checkpoint=?,state='running' WHERE id=1",(task,now,now)); self.audit('timer started',{'task_id':task})
+    def stop_timer(self,now=None,reason='stopped'):
+        now=int(time.time() if now is None else now)
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            rt=self.db.execute('SELECT * FROM runtime WHERE id=1').fetchone()
+            if rt['state']!='running': return None
+            start=rt['started']; end=now
+            conflict=self.db.execute('SELECT MIN(start) FROM entries WHERE deleted=0 AND start >= ? AND start < ?',(start,end)).fetchone()[0]
+            if conflict is not None: end=conflict
+            self.db.execute("UPDATE runtime SET task_id=NULL,started=NULL,checkpoint=NULL,state='stopped' WHERE id=1")
+            eid=None
+            if end>start:
+                self._assert_free(start,end)
+                eid=self.db.execute("INSERT INTO entries(task_id,start,end,description,origin) VALUES (?,?,?,?,'timer')",(rt['task_id'],start,end,'')).lastrowid
+            self.audit('timer stopped',{'entry_id':eid,'reason':reason}); return eid
+    def runtime(self): return self.db.execute('SELECT * FROM runtime WHERE id=1').fetchone()
+    def backup(self,dest):
+        if Path(dest).resolve()==self.path.resolve(): raise ValueError('Choose a backup path other than the active database.')
+        target=sqlite3.connect(dest)
+        try: self.db.backup(target); result=target.execute('PRAGMA integrity_check').fetchone()[0]
+        finally: target.close()
+        if result!='ok': raise ValueError('Backup did not pass the integrity check.')
+        os.chmod(dest,0o600)
+    def validate(self):
+        if self.db.execute('PRAGMA integrity_check').fetchone()[0]!='ok': raise ValueError('Database integrity check failed.')
+        if self.rows('PRAGMA foreign_key_check'): raise ValueError('Database references are inconsistent.')
+        # Exercise all required columns before a restored file can replace live data.
+        for query in [
+            'SELECT id,name,currency,rate,archived FROM clients LIMIT 0',
+            'SELECT id,client_id,name,budget,rate,archived FROM projects LIMIT 0',
+            'SELECT id,project_id,name,budget,rate,archived FROM tasks LIMIT 0',
+            'SELECT id,task_id,start,end,description,billable,status,rate,currency,invoice,revision,origin,activity_id,deleted FROM entries LIMIT 0',
+            'SELECT id,start,end,app,title,state,closed,session,auto_processed FROM activity LIMIT 0',
+            'SELECT key,value FROM settings LIMIT 0',
+            'SELECT id,created,client_id,start,end,snapshot FROM reports LIMIT 0']:
+            self.db.execute(query)
+        invalid=self.db.execute("SELECT 1 FROM entries WHERE end<=start OR status NOT IN ('draft','approved','billed') OR billable NOT IN (0,1) OR rate<0 OR (billable=1 AND status IN ('approved','billed') AND rate IS NULL) LIMIT 1").fetchone()
+        overlap=self.db.execute('SELECT 1 FROM entries a JOIN entries b ON a.id<b.id AND a.start<b.end AND a.end>b.start WHERE a.deleted=0 AND b.deleted=0 LIMIT 1').fetchone()
+        if invalid or overlap: raise ValueError('The backup contains invalid or overlapping timesheet entries.')
+        for r in self.rows('SELECT id,snapshot FROM reports'):
+            try:
+                lines=json.loads(r['snapshot'])
+                required={'id','start','end','rate','amount','currency','client','project','task','description'}
+                if not isinstance(lines,list) or not lines: raise ValueError()
+                for line in lines:
+                    if not isinstance(line,dict) or not required.issubset(line): raise ValueError()
+                    if any(type(line[key]) is not int for key in ('id','start','end','rate','amount')): raise ValueError()
+                    if line['id']<=0 or line['end']<=line['start'] or line['rate']<0 or line['amount']<0: raise ValueError()
+                    if line['currency'] not in ('GBP','EUR','USD'): raise ValueError()
+                    if any(not isinstance(line[key],str) for key in ('client','project','task','description')): raise ValueError()
+                    datetime.fromtimestamp(line['start']); datetime.fromtimestamp(line['end'])
+                    if 'report_date' in line: datetime.strptime(line['report_date'],'%Y-%m-%d')
+            except (ValueError,TypeError,OverflowError,OSError): raise ValueError('A saved report is malformed.')
+        return True
+    def create_report(self,client,start,end):
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            rows=[dict(r) for r in self.entries(start,end,client,'approved') if r['billable']]
+            if not rows: raise ValueError('No approved, unbilled work in this period.')
+            if any(r['start'] < start or r['end'] > end for r in rows): raise ValueError('An entry crosses the report boundary. Split it first.')
+            for row in rows:
+                # Stored rate is minor currency units per hour; amounts round only once per line.
+                row['amount'] = int((Decimal(row['end']-row['start'])*Decimal(row['rate'])/Decimal(3600)).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
+                row['report_date']=datetime.fromtimestamp(row['start']).strftime('%Y-%m-%d')
+            cur=self.db.execute('INSERT INTO reports(created,client_id,start,end,snapshot) VALUES (?,?,?,?,?)',(int(time.time()),client,int(start),int(end),json.dumps(rows)))
+            self.db.executemany('INSERT INTO report_entries VALUES (?,?,?)',[(cur.lastrowid,r['id'],r['revision']) for r in rows])
+            self.audit('report created',{'id':cur.lastrowid}); return cur.lastrowid
+    def report(self,rid):
+        row=self.db.execute('SELECT * FROM reports WHERE id=?',(rid,)).fetchone()
+        if not row: raise ValueError('Report not found.')
+        return json.loads(row['snapshot'])
+    def mark_billed(self,rid,invoice):
+        if not invoice.strip(): raise ValueError('Enter an invoice reference.')
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            records=self.rows('''SELECT e.id,e.status,e.deleted,e.revision,r.revision snapshot_revision FROM report_entries r JOIN entries e ON e.id=r.entry_id WHERE r.report_id=?''',(rid,))
+            if not records: raise ValueError('Report not found or empty.')
+            if any(r['deleted'] or r['status']!='approved' or r['revision']!=r['snapshot_revision'] for r in records): raise ValueError('Report is stale or entries are already billed. Create a new report.')
+            self.db.executemany("UPDATE entries SET status='billed',invoice=?,revision=revision+1 WHERE id=?",[(invoice.strip(),r['id']) for r in records])
+            self.db.execute('INSERT INTO report_billing(report_id,invoice,at) VALUES(?,?,?)',(rid,invoice.strip(),int(time.time())))
+            self.audit('marked billed',{'report_id':rid,'invoice':invoice.strip()})
+
+    def reopen_report(self,rid,reason):
+        if not reason.strip(): raise ValueError('Explain the invoice correction for your history.')
+        with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            billing=self.db.execute('SELECT * FROM report_billing WHERE report_id=?',(rid,)).fetchone()
+            if not billing or billing['state']!='billed': raise ValueError('This report is not currently marked billed.')
+            rows=self.rows('SELECT e.*,r.revision saved FROM report_entries r JOIN entries e ON e.id=r.entry_id WHERE r.report_id=?',(rid,))
+            if any(r['status']!='billed' or r['invoice']!=billing['invoice'] or r['revision']!=r['saved']+1 for r in rows): raise ValueError('These entries have changed. Review the billing history first.')
+            self.db.executemany("UPDATE entries SET status='draft',invoice=NULL,rate=NULL,currency=NULL,revision=revision+1 WHERE id=?",[(r['id'],) for r in rows])
+            self.db.execute("UPDATE report_billing SET state='corrected',reason=? WHERE report_id=?",(reason.strip(),rid))
+            self.audit('billing corrected',{'report_id':rid,'invoice':billing['invoice'],'reason':reason.strip()})
+    def internal_csv(self,start,end,client=None,group='entries'):
+        """Export current task time, including non-billable work, without billing it."""
+        if int(end)<=int(start): raise ValueError('End must be after start.')
+        if group not in ('entries','client','project','task','week'): raise ValueError('Choose a valid grouping.')
+        out=io.StringIO(newline=''); w=csv.writer(out)
+        safe=lambda x: "'"+x if x.lstrip().startswith(('=','+','-','@','\t','\r','\n')) else x
+        rows=self.entries(start,end,client=client)
+        if group=='entries':
+            w.writerow(['Start','End','Client','Project','Task','Description','Hours in period','Billable','Status'])
+            for r in rows:
+                a=max(int(start),r['start']); z=min(int(end),r['end'])
+                w.writerow([datetime.fromtimestamp(a).isoformat(sep=' '),datetime.fromtimestamp(z).isoformat(sep=' '),
+                            *[safe(str(r[k])) for k in ('client','project','task','description')],
+                            f"{Decimal(z-a)/Decimal(3600):.6f}",'Yes' if r['billable'] else 'No',r['status']])
         else:
-            b.append(label('Startup is managed by the host companion.','dim-label'))
-        backups=Adw.SwitchRow(title='Automatic daily backups',subtitle='Keep seven daily copies on this computer'); backups.set_active(self.store.get('auto_backup','1')=='1'); tracking.add(backups)
-        exclusions=field(b,'Excluded applications',self.store.get('excluded_apps',''),'Exact app names separated by commas')
-        names={r['app'] for r in self.store.rows("SELECT DISTINCT app FROM activity WHERE app!='' AND state='active' ORDER BY app") if ',' not in r['app']}
-        names.update(x.strip() for x in exclusions.get_text().split(',') if x.strip())
-        if names:
-            chooser=dropdown(b,'Recorded or excluded application',[(name,name) for name in sorted(names,key=str.casefold)])
-            actions=action_bar(); b.append(actions)
-            def set_excluded(add):
-                name=selected(chooser); values=[x.strip() for x in exclusions.get_text().split(',') if x.strip()]
-                values=[x for x in values if x.casefold()!=name.casefold()]
-                if add: values.append(name)
-                exclusions.set_text(', '.join(values))
-            actions.append(button('Exclude selected app',lambda _:set_excluded(True)))
-            actions.append(button('Remove selected exclusion',lambda _:set_excluded(False)))
-            b.append(label('Changes take effect after Save preferences. Excluded apps do not retain their app name or title.','dim-label'))
-        idle=field(b,'Idle threshold in minutes',str(int(self.store.get('idle_seconds','300'))//60))
-        retention=field(b,'Retain detailed activity for this many days',self.store.get('retention_days','30'))
-        b.append(label('Task entries, report snapshots and backups are kept until you remove them. Raw activity expires independently.','dim-label'))
-        def save(_):
-            def apply():
-                try: minutes=int(idle.get_text()); days=int(retention.get_text())
-                except ValueError: raise ValueError('Idle threshold and retention must be whole numbers.')
-                if not 1<=minutes<=240 or not 1<=days<=3650: raise ValueError('Idle: 1–240 minutes. Retention: 1–3650 days.')
-                desktop.set_paused(self.store,not capture.get_active())
-                for key,value in [('tracking_notifications',int(notifications.get_active())),('capture_titles',int(titles.get_active())),('excluded_apps',exclusions.get_text()),('idle_seconds',minutes*60),('retention_days',days),('auto_backup',int(backups.get_active()))]: self.store.set(key,value)
-                if startup is not None: desktop.set_autostart(startup.get_active())
-                desktop.start_collector()
-            self.run_action(apply,lambda _:self.toast('Preferences saved'))
-        b.append(button('Save preferences',save,True))
-        self.heading(b,'Data and recovery')
-        b.append(label('Data is stored at '+str(self.store.path),'dim-label'))
-        try:
-            copies=sorted((self.store.path.parent/'backups').glob('*.sqlite3'))
-            backup_status=('Latest automatic backup: '+datetime.fromtimestamp(copies[-1].stat().st_mtime).strftime('%d %b %Y %H:%M')) if copies else 'No automatic backup found yet.'
-        except OSError: backup_status='Automatic backup status is unavailable.'
-        b.append(label(backup_status+' Backups on this computer do not protect against drive loss.','dim-label'))
-        actions=Gtk.Box(spacing=8); b.append(actions)
-        actions.append(button('Back up now',lambda _:self.save_file('Save backup','timesheet-backup.sqlite3',self.store.backup)))
-        actions.append(button('Restore backup',lambda _:self.choose_backup()))
-        actions.append(button('Open data folder',lambda _:Gio.AppInfo.launch_default_for_uri(DATA_DIR.as_uri(),None)))
-        b.append(button('Delete activity for a period',lambda _:self.delete_period_dialog()))
-        b.append(label('Deletion removes captured app details from this database. Task entries, reports and older backups remain. Database files are not encrypted. Copy a backup elsewhere for protection against drive loss.','dim-label'))
-        if not desktop.FLATPAK: b.append(button('Stop background tracking',lambda _:self.confirm('Stop tracking?', 'Recording stops until you open the app or sign in again.',self.stop_collector)))
-        else: b.append(label('The host companion manages automatic capture and startup. See the Flatpak installation guide.','dim-label'))
-    def install_setup(self):
-        self.run_action(lambda:desktop.install(),lambda result:self.info('Setup installed','Desktop capture dependencies are missing or this desktop is unsupported. See docs/INSTALL.md; manual timesheets remain available.' if result['manual_only'] else 'Sign out and back in once to activate your desktop helper; check tracking status afterwards.' if result['needs_sign_in'] else 'Automatic tracking is ready.'))
-    def stop_collector(self): desktop.stop_collector()
-    def delete_period_dialog(self):
-        today=datetime.now().date()
-        def build(b): return field(b,'From date',today.isoformat()),field(b,'Through date',today.isoformat())
-        def save(f):
-            try: a=datetime.strptime(f[0].get_text(),'%Y-%m-%d').date(); z=datetime.strptime(f[1].get_text(),'%Y-%m-%d').date()
-            except ValueError: raise ValueError('Enter dates as YYYY-MM-DD.')
-            if z<a: raise ValueError('End date must follow start date.')
-            start,end=day_bounds(a)[0],day_bounds(z)[1]
-            count=len(self.store.activity_for(start,end))
-            self.confirm('Delete activity details?',f'{count} activity periods are affected. Timesheet entries and reports will remain. Older backups may contain deleted details.',lambda:self.delete_activity_period(start,end))
-        self.dialog('Choose activity to delete',build,save)
-    def delete_activity_period(self,start,end):
-        desktop.stop_collector()
-        try:
-            with self.store.db:
-                for row in self.store.rows('SELECT * FROM activity WHERE start<? AND end>?',(end,start)):
-                    # Preserve portions outside the requested period without retaining the deleted detail.
-                    self.store.db.execute('DELETE FROM activity WHERE id=?',(row['id'],))
-                    for a,z in ((row['start'],min(start,row['end'])),(max(end,row['start']),row['end'])):
-                        if z>a: self.store.db.execute('INSERT INTO activity(start,end,app,title,state,closed,session) VALUES(?,?,?,?,?,1,?)',(a,z,row['app'],row['title'],row['state'],row['session']))
-                self.store.audit('activity period deleted',{'start':start,'end':end})
-            self.toast('Activity deleted')
-        finally: desktop.start_collector()
-    def choose_backup(self):
-        chooser=Gtk.FileChooserNative(title='Choose a backup',transient_for=self.win,action=Gtk.FileChooserAction.OPEN,accept_label='Choose',cancel_label='Cancel')
-        def response(c,r):
-            path=c.get_file().get_path() if r==Gtk.ResponseType.ACCEPT and c.get_file() else None
-            c.destroy()
-            if path:
-                self.confirm('Restore this backup?',f'{path}\n\nThe current data will be saved as a recovery copy and the collector will stop during restore.',lambda:self.restore_backup(path))
-        chooser.connect('response',response); chooser.show()
-    def restore_backup(self,path):
-        # Validate and copy before stopping the collector or replacing the live database.
-        candidate=sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro',uri=True)
-        fd,tempname=tempfile.mkstemp(prefix='restore-',suffix='.sqlite3',dir=self.store.path.parent); os.close(fd)
-        try:
-            if candidate.execute('PRAGMA integrity_check').fetchone()[0]!='ok': raise ValueError('Backup integrity check failed.')
-            names={r[0] for r in candidate.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            if not {'clients','projects','tasks','entries','activity','reports','runtime','settings'}.issubset(names): raise ValueError('This is not a compatible Time Sheet Linux backup.')
-            target=sqlite3.connect(tempname)
-            try: candidate.backup(target)
-            finally: target.close()
-            candidate.close()
-            checked=Store(tempname)
-            try: checked.validate()
-            finally: checked.close()
-            self.stop_collector()
-            lock=open(DATA_DIR/'collector.lock','a+')
-            try:
-                deadline=time.monotonic()+5
-                while True:
-                    try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB); break
-                    except BlockingIOError:
-                        if time.monotonic()>deadline: raise ValueError('Collector did not stop; current data is unchanged.')
-                        time.sleep(0.1)
-                recovery=self.store.path.with_name('pre-restore-'+datetime.now().strftime('%Y%m%d-%H%M%S')+'.sqlite3')
-                self.store.backup(recovery)
-                dbpath=self.store.path; self.store.close()
-                try: os.replace(tempname,dbpath)
-                finally: self.store=Store(dbpath)
-                with self.store.db:
-                    self.store.db.execute("UPDATE runtime SET task_id=NULL,started=NULL,checkpoint=NULL,state='stopped',collector_seen=NULL,capture_status='restored' WHERE id=1")
-                    self.store.audit('backup restored',{'recovery_file':recovery.name})
-            finally: lock.close()
-            desktop.start_collector(); self.info('Backup restored',f'Previous data saved to {recovery}.')
-        finally:
-            candidate.close()
-            if os.path.exists(tempname): os.unlink(tempname)
+            totals={}
+            for r in rows:
+                a=max(int(start),r['start']); z=min(int(end),r['end'])
+                while a<z:
+                    if group=='week':
+                        day=datetime.fromtimestamp(a).date(); monday=day-timedelta(days=day.weekday())
+                        key=monday.isoformat(); boundary=int(datetime.combine(monday+timedelta(days=7),datetime.min.time()).timestamp())
+                        finish=min(z,boundary)
+                    else:
+                        key=' / '.join(str(r[k]) for k in ('client','project','task')[:{'client':1,'project':2,'task':3}[group]])
+                        finish=z
+                    values=totals.setdefault(key,[0,0]); values[0 if r['billable'] else 1]+=finish-a; a=finish
+            w.writerow(['Week beginning' if group=='week' else group.capitalize(),'Billable hours','Non-billable hours','Total hours'])
+            for key,(billable,nonbillable) in sorted(totals.items()):
+                w.writerow([safe(key),*[f"{Decimal(seconds)/Decimal(3600):.6f}" for seconds in (billable,nonbillable,billable+nonbillable)]])
+        return out.getvalue()
 
-def main():
-    parser=argparse.ArgumentParser(description='Private Linux desktop time tracking')
-    from . import __version__
-    parser.add_argument('--version',action='version',version=__version__)
-    parser.add_argument('--diagnose',action='store_true',help='Print privacy-safe Linux compatibility diagnostics')
-    parser.add_argument('--install',action='store_true',help='Install desktop launcher, GNOME helper and background startup')
-    parser.add_argument('--uninstall',action='store_true',help='Remove desktop integration, keeping timesheet data')
-    parser.add_argument('--collector-direct',action='store_true',help=argparse.SUPPRESS)
-    parser.add_argument('--background',action='store_true',help='Start the background collector')
-    parser.add_argument('--pause',action='store_true',help='Pause automatic tracking')
-    parser.add_argument('--resume',action='store_true',help='Resume automatic tracking')
-    parser.add_argument('--status',action='store_true',help='Print recording status')
-    args=parser.parse_args()
-    if args.diagnose:
-        from .diagnostics import diagnose
-        print(json.dumps(diagnose(),indent=2)); return 0
-    if args.install:
-        result=desktop.install(); print(json.dumps(result,indent=2)); return 0
-    if args.uninstall: print(desktop.uninstall()); return 0
-    if args.collector_direct:
-        from .collector import run
-        run(); return 0
-    if args.background: desktop.start_collector(); return 0
-    if args.pause or args.resume or args.status:
-        store=Store()
-        try:
-            if args.pause or args.resume: desktop.set_paused(store,args.pause); desktop.start_collector()
-            if args.status: print(json.dumps(desktop.read_health(store),indent=2))
-        finally: store.close()
-        return 0
-    app=TimeSheet(); return app.run([sys.argv[0]])
+    def csv_report(self,rid):
+        out=io.StringIO(newline=''); w=csv.writer(out)
+        w.writerow(['Date','Client','Project','Task','Description','Actual hours','Billed hours','Hourly rate','Currency','Amount'])
+        for r in self.report(rid):
+            # Spreadsheet formula injection: prefix dangerous untrusted text.
+            safe=lambda x: "'"+x if x.lstrip().startswith(('=','+','-','@','\t','\r','\n')) else x
+            hours=f"{Decimal(r['end']-r['start'])/Decimal(3600):.6f}"
+            w.writerow([r.get('report_date',datetime.fromtimestamp(r['start']).strftime('%Y-%m-%d')),*[safe(str(r[k])) for k in ('client','project','task','description')],hours,hours,f"{Decimal(r['rate'])/100:.2f}",r['currency'],f"{Decimal(r['amount'])/100:.2f}"])
+        return out.getvalue()
+    def html_report(self,rid):
+        rows=self.report(rid); e=html.escape
+        def duration(seconds): return f'{seconds//3600}h {(seconds%3600)//60:02d}m {seconds%60:02d}s'
+        items=''.join('<tr>'+''.join('<td>'+e(v)+'</td>' for v in [r.get('report_date',datetime.fromtimestamp(r['start']).strftime('%Y-%m-%d')),r['project'],r['task'],r['description'],duration(r['end']-r['start']),f"{Decimal(r['rate'])/100:.2f}",r['currency'],f"{Decimal(r['amount'])/100:.2f}"])+'</tr>' for r in rows)
+        total=sum(r['amount'] for r in rows)
+        return '<!doctype html><html><head><meta charset="utf-8"><title>Timesheet report</title><style>body{font:14px sans-serif;margin:2em;color:#222}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px;border-bottom:1px solid #ccc}thead{display:table-header-group}@media print{tr{break-inside:avoid}}</style></head><body><h1>Timesheet report</h1><p>Client: '+e(rows[0]['client'])+' · Report '+str(rid)+' · Dates use the local time zone at report creation.</p><p>Exact time; no duration rounding.</p><table><thead><tr><th>Date</th><th>Project</th><th>Task</th><th>Description</th><th>Duration</th><th>Rate</th><th>Currency</th><th>Amount</th></tr></thead><tbody>'+items+'</tbody></table><p><strong>Total: '+e(rows[0]['currency'])+' '+f'{Decimal(total)/100:.2f}'+'</strong></p></body></html>'
 
-if __name__=='__main__': raise SystemExit(main())
+def parse_money(text):
+    if not text.strip(): return None
+    try:
+        value=Decimal(text.strip())
+        if not value.is_finite() or value<0 or value>Decimal('1000000000') or value.as_tuple().exponent < -2: raise ValueError()
+        return int(value*100)
+    except Exception: raise ValueError('Enter a rate between 0 and 1,000,000,000 with at most two decimal places.')
+
+def parse_hours(text):
+    if not text.strip(): return None
+    try:
+        value=Decimal(text.strip())
+        if not value.is_finite() or value<0 or value>Decimal('1000000000'): raise ValueError()
+        return int(value*3600)
+    except Exception: raise ValueError('Enter hours between 0 and 1,000,000,000.')
+
+def local_timestamp(text):
+    """Parse unambiguous local wall time; reject DST gaps and repeated hours."""
+    parsed=None
+    for fmt in ('%Y-%m-%d %H:%M:%S','%Y-%m-%d %H:%M'):
+        try:
+            parsed=datetime.strptime(text.strip(),fmt); break
+        except ValueError: pass
+    if parsed is None: raise ValueError('Use date and time format YYYY-MM-DD HH:MM or YYYY-MM-DD HH:MM:SS.')
+    expected=(parsed.year,parsed.month,parsed.day,parsed.hour,parsed.minute,parsed.second)
+    candidates=set()
+    for isdst in (0,1):
+        try:
+            ts=int(time.mktime((*expected,0,0,isdst)))
+            if tuple(time.localtime(ts)[:6])==expected: candidates.add(ts)
+        except (ValueError,OverflowError,OSError): pass
+    if not candidates: raise ValueError('That local time does not exist because the clock changed. Choose another time.')
+    if len(candidates)>1: raise ValueError('That local time occurs twice because the clock changed. Use a time outside the repeated hour.')
+    return candidates.pop()

@@ -51,6 +51,12 @@ with tempfile.TemporaryDirectory(prefix='timesheet-improvements-') as directory:
             form.close()
             entry=app.store.entries(0,now)[0]['id']; app.store.approve(entry)
             report=app.store.create_report(1,now-20000,now+1)
+            app.show_page('Reports')
+            grouping=find(app.body_reports,Gtk.DropDown,lambda w:any(v[0]=='week' for v in w._values))
+            select_id(grouping,'week')
+            with patch.object(app,'save_file',side_effect=lambda title,name,handler:handler(str(Path(directory)/name))):
+                find(app.body_reports,Gtk.Button,lambda w:w.get_label()=='Export internal time CSV').emit('clicked')
+            assert (Path(directory)/'internal-time.csv').read_text().startswith('Week beginning,')
             app.invoice_pdf_dialog(report); form=app.dialogs[-1]
             fields=[w for w in descendants(form) if isinstance(w,Gtk.Entry)]
             fields[0].set_text('INV-1'); fields[1].set_text('Seller'); fields[5].set_text('Payment')
