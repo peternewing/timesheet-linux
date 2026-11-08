@@ -24,11 +24,6 @@ with tempfile.TemporaryDirectory(prefix='timesheet-improvements-') as directory:
     failures=[]
     def check():
         try:
-            app.store.set('tracking_notifications','1')
-            with patch.object(app,'send_notification') as send, patch.object(app,'withdraw_notification') as withdraw:
-                app.last_tracking_status='active'; app.update_tracking_notification('error'); send.assert_called_once()
-                app.update_tracking_notification('active'); withdraw.assert_called_once()
-            app.store.set('tracking_notifications','0')
             app.history_period='all'; app.show_page('History')
             assert len(app.history_checks)==50
             more=find(app.body_history,Gtk.Button,lambda w:(w.get_label() or '').startswith('Show more'))

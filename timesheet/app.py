@@ -138,7 +138,7 @@ class TimeSheet(Adw.Application):
         super().__init__(application_id=APP_ID)
         self.store=Store(); self.win=None; self.day=datetime.now().date(); self.page='Today'
         self.dialog_count=0; self.last_refresh=0; self.history_search=''; self.history_period='month'; self.history_status='all'
-        self.dialogs=[]; self.last_tracking_status=None
+        self.dialogs=[]
         self.timer_label=None; self.timer_started=None
         self.live_signature=None; self.today_metrics={}; self.today_apps={}; self.calendar_live={}; self.history_live={}
         self.project_live={}; self.task_live={}; self.task_projects={}
@@ -290,7 +290,6 @@ class TimeSheet(Adw.Application):
             self.update_timer_display()
             names={'active':'Tracking automatically','paused':'Tracking paused','setup_required':'Finish setup','stopped':'Tracking stopped','error':'Recording failed','degraded':'Tracking needs attention'}
             self.status.set_text(names.get(status,'Starting…'))
-            self.update_tracking_notification(status)
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
             if self.page=='Today':
                 signature=(rt['state'],rt['capture_status'],rt['app'],datetime.now().date(),int(time.time())//15)
@@ -304,16 +303,6 @@ class TimeSheet(Adw.Application):
                 self.update_live_counts(rt,now); self.live_signature=signature
         except (sqlite3.Error,OSError) as exc: self.status.set_text('Recording needs attention')
         return True
-    def update_tracking_notification(self,status):
-        previous=self.last_tracking_status; self.last_tracking_status=status
-        if self.store.get('tracking_notifications','0')!='1': return
-        if previous=='active' and status in ('stopped','error','degraded','setup_required'):
-            notice=Gio.Notification.new('Time Sheet Linux needs attention')
-            notice.set_body('Automatic tracking may be incomplete. Open the app to check its status.')
-            self.send_notification('tracking-health',notice)
-        elif status=='active' and previous in ('stopped','error','degraded','setup_required'):
-            self.withdraw_notification('tracking-health')
-
     def update_timer_display(self):
         if not self.win: return False
         self.timer_button.set_visible(self.timer_started is not None)
@@ -728,16 +717,7 @@ class TimeSheet(Adw.Application):
             with self.store.db:
                 self.store.db.execute('UPDATE clients SET name=?,currency=?,rate=?,archived=? WHERE id=?',(name,currency,rate,int(a.get_active()),row['id'])); self.store.audit('client edited',{'id':row['id']})
         self.dialog('Edit client' if row else 'Add client',build,save)
-    def project_dialog(self,row=None,client_id=None):
-        choices=self.client_choices()
-        if row and not any(i==row['client_id'] for i,_ in choices):
-            parent=self.store.db.execute('SELECT name FROM clients WHERE id=?',(row['client_id'],)).fetchone(); choices.append((row['client_id'],parent['name']+' (archived)'))
-        if not choices: self.error('Create a client first.'); return
-        def build(b):
-            c=dropdown(b,'Client',choices)
-            if row: select_id(c,row['client_id']); c.set_sensitive(False)
-            elif client_id: select_id(c,client_id)
-            n=field(b,'Project name',row['name'] if row else ''); bud=field(b,'Time budget in hours (optional)',str(row['budget']/3600) if row and row['budget'] is not None else '')
+    def project_dialog(self,row=None,cli…148 tokens truncated…ject name',row['name'] if row else ''); bud=field(b,'Time budget in hours (optional)',str(row['budget']/3600) if row and row['budget'] is not None else '')
             rate=field(b,'Hourly rate override (optional)',f"{row['rate']/100:.2f}" if row and row['rate'] is not None else '')
             a=Gtk.CheckButton(label='Archived'); a.set_active(bool(row['archived']) if row else False); b.append(a); return c,n,bud,rate,a
         def save(f):
@@ -943,7 +923,7 @@ class TimeSheet(Adw.Application):
         b.append(Gtk.LinkButton(uri='https://github.com/peternewing/timesheet-linux/blob/linux-compatibility-0.3/docs/INSTALL.md',label='Open installation and desktop setup guide'))
         tracking=Adw.PreferencesGroup(title='Tracking'); b.append(tracking)
         capture=Adw.SwitchRow(title='Track desktop usage automatically',subtitle='Record the foreground app, excluding idle and locked time'); capture.set_active(self.store.get('capture_enabled','0')=='1'); tracking.add(capture)
-        notifications=Adw.SwitchRow(title='Notify me when tracking needs attention',subtitle='While this window is open, alert me if active tracking becomes unavailable'); notifications.set_active(self.store.get('tracking_notifications','0')=='1'); tracking.add(notifications)
+        notifications=Adw.SwitchRow(title='Notify me when tracking needs attention',subtitle='Alert me if the background tracker detects that active tracking has become unavailable'); notifications.set_active(self.store.get('tracking_notifications','0')=='1'); tracking.add(notifications)
         titles=Adw.SwitchRow(title='Include window titles',subtitle='Titles can include document names and other sensitive information'); titles.set_active(self.store.get('capture_titles','0')=='1'); tracking.add(titles)
         startup=None
         if not desktop.FLATPAK:

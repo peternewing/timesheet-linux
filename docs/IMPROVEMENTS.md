@@ -15,7 +15,8 @@ finished usability or accessibility certification.
 - Internal CSV exports, including non-billable work and optional all-client
   export, without changing billing state; the latest local automatic backup.
 - Quick manual-entry durations, optional reusable invoice details, and opt-in
-  notifications when tracking degrades while the app window is open.
+  notifications when the background collector detects tracking degradation.
+  The collector cannot alert if it is not running at all.
 
 ## Still needed
 
@@ -26,9 +27,9 @@ finished usability or accessibility certification.
   windows and high-contrast themes; run moderated usability sessions.
 - Complete guided onboarding, a unified review workflow, richer manual entry,
   project search and organisation, reporting and invoice preferences.
-- Evaluate backup encryption and recovery, background notifications when the
-  window is closed, more currencies, update delivery and signing, and additional
-  Linux environments.
+- Evaluate backup encryption and recovery, monitoring when the collector is
+  not running at all, more currencies, update delivery and signing, and
+  additional Linux environments.
 - Profile large datasets and long-running resource use; reduce the size and
   coupling of the interface module and extend end-to-end test coverage.
 
