@@ -3,7 +3,7 @@ on:
   push:
     branches: [linux-compatibility-0.3]
   pull_request:
-    branches: [main]
+    branches: [main, linux-compatibility-0.3]
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y python3-gi python3-gi-cairo python3-cairo python3-reportlab python3-pil python3-xlib gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-graphene-1.0 fonts-dejavu-core librsvg2-common libfuse2 xvfb xauth
+        run: sudo apt-get update && sudo apt-get install -y python3-gi python3-gi-cairo python3-cairo python3-reportlab python3-pil python3-xlib gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-graphene-1.0 gir1.2-secret-1 fonts-dejavu-core librsvg2-common libfuse2 xvfb xauth
       - name: Download verified packaging tools
         run: |
           curl -fsSL -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
@@ -24,6 +24,8 @@ jobs:
       - name: Build AppImage
         run: |
           /usr/bin/python3 packaging/appimage/build.py /tmp/AppDir
+          PYTHONHOME=/tmp/AppDir/usr PYTHONPATH=/tmp/AppDir/usr/lib/python3/dist-packages:/tmp/AppDir/usr/share/time-sheet-linux LD_LIBRARY_PATH=/tmp/AppDir/usr/lib GI_TYPELIB_PATH=/tmp/AppDir/usr/lib/girepository-1.0 /tmp/AppDir/usr/bin/python3 /tmp/AppDir/usr/share/time-sheet-linux/check-runtime.py
+          dbus-run-session -- env PYTHONHOME=/tmp/AppDir/usr PYTHONPATH=/tmp/AppDir/usr/lib/python3/dist-packages:/tmp/AppDir/usr/share/time-sheet-linux LD_LIBRARY_PATH=/tmp/AppDir/usr/lib GI_TYPELIB_PATH=/tmp/AppDir/usr/lib/girepository-1.0 /tmp/AppDir/usr/bin/python3 packaging/verify_secret_portal.py
           mkdir -p dist
           ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 /tmp/appimagetool --runtime-file /tmp/runtime-x86_64 --mksquashfs-opt -processors --mksquashfs-opt 2 /tmp/AppDir dist/TimeSheetLinux-x86_64.AppImage
           (cd dist && sha256sum TimeSheetLinux-x86_64.AppImage > AppImage-SHA256SUMS)
@@ -49,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Flatpak tools and SDK
         run: |
-          sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder
+          sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder python3-gi
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak install --user -y --noninteractive flathub org.gnome.Platform//49 org.gnome.Sdk//49
       - name: Build Flatpak
@@ -64,6 +66,12 @@ jobs:
           mkdir -p /tmp/ts-runtime && chmod 700 /tmp/ts-runtime
           export XDG_RUNTIME_DIR=/tmp/ts-runtime
           dbus-run-session -- flatpak run --user --no-documents-portal --env=TIMESHEET_TESTING=1 --command=python3 org.local.TimeSheetLinux -c 'from timesheet.pdf_export import report_pdf; r={"client":"Client","project":"Project","task":"Task","description":"Test","start":0,"end":3600,"rate":6000,"amount":6000,"currency":"GBP"}; assert report_pdf([r],1).startswith(b"%PDF")'
+          dbus-run-session -- flatpak run --user --no-documents-portal --command=python3 org.local.TimeSheetLinux /app/libexec/timesheet-check-runtime.py
+      - name: Verify sandbox Secret portal storage and fail-closed behaviour
+        run: |
+          mkdir -p /tmp/ts-secret-runtime && chmod 700 /tmp/ts-secret-runtime
+          export XDG_RUNTIME_DIR=/tmp/ts-secret-runtime
+          dbus-run-session -- /usr/bin/python3 packaging/verify_secret_portal.py --flatpak org.local.TimeSheetLinux
       - uses: actions/upload-artifact@v4
         with:
           name: TimeSheetLinux-Flatpak-x86_64

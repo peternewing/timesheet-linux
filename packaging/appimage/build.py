@@ -21,6 +21,7 @@ for module in ('gi','cairo','reportlab','PIL','Xlib'):
     mod=__import__(module);cp(Path(mod.__file__).parent,site/module)
 code=app/'usr/share/time-sheet-linux';code.mkdir()
 for name in ('timesheet','resources'):cp(root/name,code/name)
+cp(root/'packaging/check_runtime.py',code/'check-runtime.py')
 cp('/usr/share/doc/fonts-dejavu-core/copyright',code/'resources/fonts/LICENSE-DejaVu.txt')
 for font in ('DejaVuSans.ttf','DejaVuSans-Bold.ttf'):
     cp('/usr/share/fonts/truetype/dejavu/'+font,code/'resources/fonts'/font)
@@ -44,7 +45,7 @@ for line in subprocess.check_output(['ldconfig','-p'],text=True).splitlines():
     m=re.search(r'^\s*(\S+)\s+\([^)]*\)\s+=>\s+(\S+)',line)
     if m:lookup.setdefault(m[1],m[2])
 queue=list(app.rglob('*.so'))+list(app.rglob('*.so.*'))+[app/'usr/bin/python3',app/'usr/bin/gdk-pixbuf-query-loaders']
-for name in ('Adw-1','Gtk-4.0','Gdk-4.0','Gio-2.0','GObject-2.0','GLib-2.0','Graphene-1.0','Pango-1.0','PangoCairo-1.0','GdkPixbuf-2.0'):
+for name in ('Adw-1','Gtk-4.0','Gdk-4.0','Gio-2.0','GObject-2.0','GLib-2.0','Graphene-1.0','Pango-1.0','PangoCairo-1.0','GdkPixbuf-2.0','Secret-1'):
     typ=app/'usr/lib/girepository-1.0'/(name+'.typelib')
     for lib in re.findall(r'[\w+.-]+\.so(?:\.\d+)*',subprocess.check_output(['strings',str(typ)],text=True)):
         if lib in lookup:queue.append(Path(lookup[lib]))

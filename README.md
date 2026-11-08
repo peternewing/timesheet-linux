@@ -1,18 +1,18 @@
 # Time Sheet Linux
 
-A private Linux desktop app for recording foreground app use, assigning activity to projects and creating client timesheets. Your data stays on your computer; an account or cloud service is not required.
+A private Linux desktop app for recording foreground app use, assigning activity to projects and creating client timesheets. Core tracking is local and requires no account. Optional TypeSafe suggestions send selected application names, active task names and any context you choose to TypeSafe only after confirmation and require your own key.
 
 ![Today view with example data](docs/screenshots/today.png)
 
 ## Install
 
-Install **Time Sheet Linux 0.3.0-rc3** using either the AppImage or terminal commands. This is a prerelease: desktop support is still being tested, and the downloads are unsigned. Back up existing data before upgrading.
+Install **Time Sheet Linux 0.4.0-rc1** using either the AppImage or terminal commands. This is a prerelease: desktop support is still being tested, and the downloads are unsigned. Back up existing data before upgrading.
 
 ### Option 1: AppImage
 
 For x86-64 Linux with glibc 2.39 or newer:
 
-1. Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc3/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc3/SHA256SUMS) into a permanent folder.
+1. Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.4.0-rc1/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.4.0-rc1/SHA256SUMS) into a permanent folder.
 2. Open a terminal in that folder and run:
 
    ```sh
@@ -35,9 +35,9 @@ For Ubuntu 24.04+ or Debian 13+, open a terminal and run:
 
 ```sh
 sudo apt update
-sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 python3-reportlab fonts-dejavu-core
-git clone --branch v0.3.0-rc3 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.3
-cd timesheet-linux-0.3
+sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-secret-1 python3-reportlab fonts-dejavu-core
+git clone --branch v0.4.0-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.4
+cd timesheet-linux-0.4
 /usr/bin/python3 -m timesheet.diagnostics
 ./install.sh
 ```
@@ -55,9 +55,13 @@ On GNOME 50 Wayland, sign out and back in once to load the helper. Other desktop
 
 Invoice PDFs are **drafts**: they do not calculate tax or automatically mark work billed. A foreground app is evidence of usage, not proof that time is billable. Review activity before invoicing.
 
+## Optional suggestions
+
+Add your own TypeSafe key in Settings, then choose a suggestion in an assignment or review queue. Each request shows what will be sent and asks for confirmation. Suggestions can be wrong and never approve time. Source and AppImage builds store the key using the desktop secret service. The Flatpak stays offline and does not offer TypeSafe requests; enabling network permission requires explicit approval. See [review assistance](docs/JEV_IDEAS.md).
+
 ## Compatibility
 
-| Desktop session | Automatic tracking in 0.3.0-rc3 |
+| Desktop session | Automatic tracking in 0.4.0-rc1 |
 |---|---|
 | GNOME 50 Wayland | Supported |
 | Plasma 6 Wayland | Capture helper + `swayidle` |
@@ -70,7 +74,7 @@ GNOME 50, Plasma 6 and Sway focus/idle were exercised in isolated sessions; X11 
 
 ## Privacy and data
 
-By default, the database and backups are under `~/.local/share/time-sheet-linux/`; source and AppImage installs follow `XDG_DATA_HOME` if set. Data is local and user-only, but **not encrypted**. Window titles are off by default. No keystrokes, screenshots, clipboard contents or browser URLs are recorded.
+By default, the database and backups are under `~/.local/share/time-sheet-linux/`; source and AppImage installs follow `XDG_DATA_HOME` if set. The database is local and user-only, but **not encrypted**. Optional TypeSafe suggestions send selected application names, active client/project/task names and any context you choose to TypeSafe after a separate confirmation in source and AppImage builds. The Flatpak does not offer TypeSafe requests. Window titles are off by default. No keystrokes, screenshots, clipboard contents or browser URLs are recorded.
 
 Keep an external backup if you need protection from disk loss. Uninstalling integration keeps the database and backups. See [privacy and security](SECURITY.md) and [backup and restore](docs/INSTALL.md#backup-and-restore).
 
