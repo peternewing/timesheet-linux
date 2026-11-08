@@ -1,16 +1,11 @@
 # Implementation status
 
-Last checked: 7 November 2026.
+Last checked: 8 November 2026.
 
-| | 0.2.0 stable source (`main`) | 0.3.0 release candidate |
-|---|---|---|
-| Availability | Historical source on `main` | [AppImage and source](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc3) |
-| Automatic capture | GNOME 50 Wayland | GNOME 50, Plasma 6, Sway, experimental Hyprland and EWMH X11; desktop dependencies apply |
-| Reports | CSV and printable HTML | CSV, HTML, PDF and invoice-draft PDF |
-| Data | Local SQLite and backups | Same database schema and report snapshots |
+The [0.4.0-rc1 prerelease](https://github.com/peternewing/timesheet-linux/releases/tag/v0.4.0-rc1) builds on the public [0.3.0-rc3 prerelease](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc3). It adds local review suggestions, clearer assignment rules, and optional TypeSafe suggestions with a personal key and an explicit data preview. All suggested assignments remain drafts for review; invoice drafts do not calculate tax or mark time billed. Core tracking works offline and window titles are off by default. Flatpak has network access for optional confirmed suggestions and uses application-scoped Secret portal storage.
 
-Both versions support manual time, projects, review and approval, local backups, retention and app exclusions. Window titles are off by default. Invoice drafts do not calculate tax or mark time billed.
+Automatic capture supports GNOME 50, Plasma 6, Sway, experimental Hyprland and EWMH X11, with desktop-specific dependencies. Reports include CSV, HTML, PDF and invoice-draft PDF. Data and backups remain local SQLite; see the [compatibility matrix](docs/LINUX_COMPATIBILITY.md).
 
-The candidate passed 66 automated tests, scaled mouse/keyboard workflows and isolated GNOME, Plasma and Sway focus/idle tests. X11 was exercised on a virtual server. The tested package builds are available as a prerelease; they are not signed or published to Flathub. See [test evidence](docs/TESTING.md) and the [candidate pull request](https://github.com/peternewing/timesheet-linux/pull/1).
+The candidate passed 124 core unit tests, 53 GTK smoke checks, and a synthetic Jev consent and review GUI test. A private D-Bus test exercised missing-portal failure and encrypted secret store/read/remove; the native runtime dependency check passed. Earlier isolated GNOME, Plasma and Sway focus/idle tests and virtual X11 checks cover the capture adapters. No real TypeSafe key, live API request, provider billing, or real user activity was used in Jev tests.
 
-Still requiring validation: Hyprland with a real GPU, hardware lock and suspend across desktops, the Flatpak document portal, accessibility, long-duration performance and more distributions and architectures. Other Wayland compositors remain manual-only until suitable adapters exist. See the [compatibility matrix](docs/LINUX_COMPATIBILITY.md).
+Ubuntu 22.04 and 24.04 tests, scaled UI checks, AppImage and Flatpak builds, bundled runtime checks and encrypted Secret portal tests passed in GitHub Actions run 42523517246 and test run 42523517284. PR #3 is merged; its source tree matches the package source tree. Releases are unsigned and not published to Flathub. Further validation is needed for real desktop Secret portals, Hyprland with a real GPU, hardware lock and suspend, Flatpak document portal behavior, accessibility, long-duration performance, more distributions and architectures, and live TypeSafe behavior. Other Wayland compositors remain manual-only until suitable adapters exist. See [test evidence](docs/TESTING.md).
