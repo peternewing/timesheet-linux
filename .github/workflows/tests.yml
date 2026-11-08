@@ -32,3 +32,5 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y python3-gi python3-gi-cairo python3-cairo python3-reportlab gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-graphene-1.0 fonts-dejavu-core xvfb xauth
       - name: Exercise mouse, keyboard and PDF workflows at 200 percent
         run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_ui.py
+      - name: Exercise review, timer and rule controls
+        run: GDK_BACKEND=x11 GSK_RENDERER=cairo PYTHONPATH=. xvfb-run -a -s '-screen 0 1280x1000x24' /usr/bin/python3 tests/verify_improvements.py

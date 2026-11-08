@@ -3,9 +3,9 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from timesheet.store import Store
-from timesheet.collector import Collector
+from timesheet.collector import Collector, notify_tracking_problem, should_notify
 
 class ImprovedWorkflowTests(unittest.TestCase):
     def setUp(self):
@@ -14,11 +14,33 @@ class ImprovedWorkflowTests(unittest.TestCase):
     def tearDown(self):self.s.close();self.tmp.cleanup()
     def activity(self,start=1000,end=1500,app='Editor',title='',closed=1):
         with self.s.db:return self.s.db.execute('INSERT INTO activity(start,end,app,title,closed) VALUES(?,?,?,?,?)',(start,end,app,title,closed)).lastrowid
+    def test_tracking_alert_is_opt_in_and_only_on_degradation(self):
+        self.assertTrue(should_notify('active','error',True))
+        self.assertTrue(should_notify('active','degraded',True))
+        for previous,status,enabled in [('active','paused',True),('error','error',True),('active','error',False),(None,'error',True)]:
+            self.assertFalse(should_notify(previous,status,enabled))
+        bus=Mock()
+        with patch('timesheet.collector.Gio.bus_get_sync',return_value=bus): notify_tracking_problem()
+        args=bus.call_sync.call_args.args
+        self.assertEqual(args[3],'Notify')
+        payload=args[4].unpack()
+        self.assertNotIn('Client',str(payload))
+        self.assertIn('tracking',payload[4].lower())
+
     def test_automatic_rules_are_idempotent_and_do_not_approve(self):
         self.activity();self.s.add_rule('Editor','',self.task)
         with self.s.db:self.s.db.execute('UPDATE rules SET created=0')
         self.assertEqual(self.s.apply_rules(now=2000),1);self.assertEqual(self.s.apply_rules(now=2000),0)
         r=self.s.entries(0,3000)[0];self.assertEqual((r['origin'],r['status']),('automatic','draft'))
+    def test_rule_edit_preserves_enabled_and_moves_forward_boundary(self):
+        rid=self.s.add_rule('Editor','',self.task)
+        with self.s.db: self.s.db.execute('UPDATE rules SET enabled=0,created=1 WHERE id=?',(rid,))
+        self.s.update_rule(rid,'Browser','Work',self.task,3)
+        row=self.s.db.execute('SELECT * FROM rules WHERE id=?',(rid,)).fetchone()
+        self.assertEqual((row['app'],row['title'],row['priority'],row['enabled']),('Browser','Work',3,0))
+        self.assertGreater(row['created'],1)
+        with self.assertRaises(ValueError): self.s.update_rule(999,'Browser','',self.task)
+
     def test_new_rule_does_not_reclassify_past_activity_without_request(self):
         self.activity();self.s.add_rule('Editor','',self.task)
         self.assertEqual(self.s.apply_rules(now=2000),0)
