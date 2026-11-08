@@ -24,6 +24,9 @@ with tempfile.TemporaryDirectory(prefix='timesheet-improvements-') as directory:
     failures=[]
     def check():
         try:
+            app.show_page('Today'); app.tick()
+            with patch.object(app,'refresh_today',wraps=app.refresh_today) as refresh, patch('time.time',return_value=time.time()+30):
+                app.tick(); refresh.assert_not_called()
             app.history_period='all'; app.show_page('History')
             assert len(app.history_checks)==50
             more=find(app.body_history,Gtk.Button,lambda w:(w.get_label() or '').startswith('Show more'))

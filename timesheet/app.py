@@ -292,7 +292,7 @@ class TimeSheet(Adw.Application):
             self.status.set_text(names.get(status,'Starting…'))
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
             if self.page=='Today':
-                signature=(rt['state'],rt['capture_status'],rt['app'],datetime.now().date(),int(time.time())//15)
+                signature=(rt['state'],rt['capture_status'],rt['app'],datetime.now().date())
                 if signature!=self.rendered_signature and not self.dialog_count:
                     self.refresh_today(); self.rendered_signature=signature
             elif self.page=='Calendar' and not self.dialog_count and not self.selected_blocks and time.monotonic()-self.last_refresh>15:
