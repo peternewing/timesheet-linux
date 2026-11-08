@@ -1,18 +1,18 @@
 # Time Sheet Linux
 
-A private Linux desktop app for recording foreground app use, assigning activity to projects and creating client timesheets. Core tracking is local and requires no account. Optional TypeSafe suggestions send selected application names, active task names and any context you choose to TypeSafe only after confirmation and require your own key.
+A private Linux desktop app for recording foreground app use, assigning activity to projects and creating client timesheets. Core tracking is local and requires no account. Optional Jev/TypeSafe can organise completed activity into reversible drafts under an explicit background policy, using your own API key. Uncertain work goes to a small decision inbox. Recording works independently and stays local.
 
 ![Today view with example data](docs/screenshots/today.png)
 
 ## Install
 
-Install **Time Sheet Linux 0.4.0-rc2** using either the AppImage or terminal commands. This is a prerelease: desktop support is still being tested, and the downloads are unsigned. Back up existing data before upgrading.
+Install **Time Sheet Linux 0.5.0-rc1** using either the AppImage or terminal commands. This is a prerelease: desktop support is still being tested, and releases require checksum and provenance verification. Back up existing data before upgrading.
 
 ### Option 1: AppImage
 
 For x86-64 Linux with glibc 2.39 or newer:
 
-1. Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.4.0-rc2/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.4.0-rc2/SHA256SUMS) into a permanent folder.
+1. Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.5.0-rc1/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.5.0-rc1/SHA256SUMS) into a permanent folder.
 2. Open a terminal in that folder and run:
 
    ```sh
@@ -36,8 +36,8 @@ For Ubuntu 24.04+ or Debian 13+, open a terminal and run:
 ```sh
 sudo apt update
 sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-secret-1 python3-reportlab fonts-dejavu-core
-git clone --branch v0.4.0-rc2 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.4
-cd timesheet-linux-0.4
+git clone --branch v0.5.0-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.5
+cd timesheet-linux-0.5
 /usr/bin/python3 -m timesheet.diagnostics
 ./install.sh
 ```
@@ -45,6 +45,10 @@ cd timesheet-linux-0.4
 Run `./install.sh` as your normal user, not with `sudo`, and keep the folder in place. Open **Time Sheet Linux** from Applications. For Fedora, Arch, openSUSE and desktop-specific setup, see the [complete installation guide](docs/INSTALL.md). The command above selects the fixed release tag for a reproducible installation.
 
 On GNOME 50 Wayland, sign out and back in once to load the helper. Other desktops may need extra setup; see the [desktop instructions](docs/INSTALL.md#desktop-setup).
+
+## Jev automation
+
+Read [Let Jev organise your day](docs/AUTOMATION_GUIDE.md) for one-time setup, permitted context, focus, the exception inbox, caps and pause controls. Automatic drafts are experimental; real working-day accuracy has not been established.
 
 ## How it works
 
@@ -69,7 +73,7 @@ Add your own TypeSafe key in Settings, then choose a suggestion in an assignment
 
 ## Compatibility
 
-| Desktop session | Automatic tracking in 0.4.0-rc2 |
+| Desktop session | Automatic tracking in 0.5.0-rc1 |
 |---|---|
 | GNOME 50 Wayland | Supported |
 | Plasma 6 Wayland | Capture helper + `swayidle` |
@@ -86,6 +90,32 @@ By default, the database and backups are under `~/.local/share/time-sheet-linux/
 
 Keep an external backup if you need protection from disk loss. Uninstalling integration keeps the database and backups. See [privacy and security](SECURITY.md) and [backup and restore](docs/INSTALL.md#backup-and-restore).
 
+## Development direction
+
+The [automation source of truth](docs/AUTOMATION_ROADMAP.md) governs future improvements: Jev should organise the day in the background and ask only about meaningful exceptions.
+
 ## Contributing
 
 Run `/usr/bin/python3 -m unittest discover -s tests -v` and see [contributing](CONTRIBUTING.md), [testing](docs/TESTING.md) and [architecture](docs/ARCHITECTURE.md). Licensed under the [MIT License](LICENSE).
+
+
+## Verify release provenance
+
+The main-branch package workflow produces a GitHub/Sigstore provenance bundle.
+For a release listing `provenance.sigstore.json`, download it alongside the binary
+and install the official GitHub CLI, then run from the source checkout:
+
+```sh
+python3 packaging/verify_release.py TimeSheetLinux-x86_64.AppImage --bundle provenance.sigstore.json --source-commit FULL_SOURCE_SHA_FROM_RELEASE
+```
+
+Use the Flatpak filename to verify that bundle instead. A successful verification
+checks the package digest, repository, trusted main workflow, source SHA and hosted
+runner identity. Checksums alone detect corruption, not publisher identity. Do not
+execute the package if verification fails. The release notes must identify the
+source commit and passing trusted build; a listed bundle alone is not verification.
+This is workflow provenance, not a personal code-signing certificate.
+
+See [automation setup and upgrade behaviour](docs/AUTOMATION_GUIDE.md). Back up data before upgrading. Older versions can read core
+v3 time records but do not implement the optional automation tables; turn off
+automation and keep a pre-upgrade backup when rolling back.

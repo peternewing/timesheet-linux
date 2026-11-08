@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0-rc1 — automation candidate
+
+- Explicit personal-key background policy, independent worker, durable queue/cache, usage caps and safe recovery.
+- Typed task/evidence/personal/category decisions, scoped examples and task guidance; first model pinned.
+- Bounded focus context and separately authorised draft default; rules and manual assignments take precedence.
+- Today status, exception inbox, one-answer-many scope preview, explanations and reversible drafts.
+- Guidance overlap hints, local progress counts, read-only update check and trusted-build provenance workflow.
+- Accepted 28-category roadmap and fresh second-pass adversarial assessment. Automatic accuracy, assistive technology and sustained hardware acceptance remain open.
+
 ## 0.4.0-rc2 — guided rules and daily review (2026-11-08)
 
 - Create rules by selecting a recorded app and a task, with a plain-language preview. Keep title filters, custom app names and priority optional.

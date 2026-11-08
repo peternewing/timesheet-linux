@@ -194,6 +194,7 @@ class Store:
         return rule['task_id'] if rule else None
 
     def validate_rule_target(self,task):
+        if type(task) is not int or task<=0:raise ValueError('Choose an active task.')
         valid=self.db.execute('''SELECT 1 FROM tasks t JOIN projects p ON p.id=t.project_id
             JOIN clients c ON c.id=p.client_id WHERE t.id=? AND t.archived=0 AND p.archived=0 AND c.archived=0''',(task,)).fetchone()
         if not valid: raise ValueError('Choose an active task.')
@@ -284,7 +285,7 @@ class Store:
                 JOIN clients c ON p.client_id=c.id WHERE e.deleted=0 AND e.id=?''',(entry,)).fetchone()
         if not row or row['status']!='draft': raise ValueError('Only draft entries can be approved.')
         if row['end']>time.time(): raise ValueError('Future time cannot be approved.')
-        if row['origin'] in ('automatic','assigned'):
+        if row['origin'] in ('automatic','assigned','jev'):
             activity=self.db.execute('SELECT * FROM activity WHERE id=?',(row['activity_id'],)).fetchone()
             if activity and (not activity['closed'] or activity['end']>time.time()-int(self.get('idle_seconds','300'))):
                 raise ValueError('Recent activity is still settling. Review it after the idle threshold, or enter it explicitly as manual work.')
@@ -358,7 +359,11 @@ class Store:
         row = self.db.execute('SELECT value FROM settings WHERE key=?',(key,)).fetchone()
         return row[0] if row else default
     def set(self, key, value):
-        with self.db: self.db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',(key,str(value)))
+        # Participate in an existing transaction; a nested connection context
+        # would commit its caller's partially completed operation.
+        if self.db.in_transaction:self.db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',(key,str(value)))
+        else:
+            with self.db:self.db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',(key,str(value)))
     def audit(self, action, details):
         self.db.execute('INSERT INTO audit(at,action,details) VALUES(?,?,?)',(int(time.time()),action,json.dumps(details)))
     def add_client(self,name,currency='GBP',rate=None):

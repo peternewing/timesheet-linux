@@ -1,0 +1,8 @@
+[
+  {"applications":["Visual Studio Code"],"tasks":[[7,"Synthetic Falcon / Development | Implement and test the Falcon software in Visual Studio Code"],[8,"Synthetic Birch / Research | Research competitors and write a research report"]],"expected_task":7,"seconds":600,"has_context":true,"focus":7},
+  {"applications":["Figma"],"tasks":[[7,"Synthetic Falcon / Design | Design interface layouts and prototypes in Figma"],[8,"Synthetic Birch / Development | Implement backend software and automated tests"]],"expected_task":7,"seconds":600,"has_context":true,"focus":7},
+  {"applications":["Firefox"],"tasks":[[7,"Synthetic Falcon / Development | Implement Falcon software"],[8,"Synthetic Birch / Research | Research Birch competitors and prepare findings"]],"expected_task":8,"seconds":600,"has_context":true,"clues":[{"task":8,"matching_terms":3}]},
+  {"applications":["Unspecified Desktop Application"],"tasks":[[7,"Synthetic Falcon / General"],[8,"Synthetic Birch / General"]],"expected_task":null,"seconds":600,"has_context":false},
+  {"applications":["Steam"],"tasks":[[7,"Synthetic Falcon / Accounting | Prepare business accounts and reconcile invoices"],[8,"Synthetic Birch / Legal research | Read and summarise legislation for a report"]],"expected_task":null,"seconds":600,"has_context":false},
+  {"applications":["LibreOffice Writer"],"tasks":[[7,"Synthetic Falcon / Research report | Write a report about research findings"],[8,"Synthetic Birch / Development | Write and test database application code"]],"expected_task":7,"seconds":600,"has_context":true,"focus":7}
+]

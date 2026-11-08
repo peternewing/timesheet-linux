@@ -180,6 +180,9 @@ def notify_tracking_problem():
 def maintenance(store, now):
     with store.db:
         store.db.execute('DELETE FROM activity WHERE closed=1 AND end<?',(int(now)-int(store.get('retention_days','30'))*86400,))
+    if store.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ai_jobs'").fetchone():
+        from .automation_store import Repository
+        Repository(store).prune(now)
     if store.get('auto_backup','1')=='1':
         folder=DATA_DIR/'backups'; folder.mkdir(mode=0o700,exist_ok=True)
         stamp=time.strftime('%Y-%m-%d',time.localtime(now)); target=folder/(stamp+'.sqlite3')

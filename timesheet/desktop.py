@@ -35,7 +35,46 @@ def run_systemd(*args):
         return None
 
 
+def start_automation():
+    """Start only the installation explicitly authorised in the saved policy."""
+    if os.environ.get('TIMESHEET_TESTING')=='1':return
+    from .decision_policy import settings,owner_token
+    store=Store()
+    try:config=settings(store.get('ai_policy','{}'))
+    finally:store.close()
+    if config['mode']=='off' or config['owner']!=owner_token() or config['backend']!=('flatpak' if FLATPAK else 'native'):return
+    if not FLATPAK and SERVICE.with_name('time-sheet-linux-ai.service').exists() and str(APPIMAGE or ROOT) in SERVICE.with_name('time-sheet-linux-ai.service').read_text():
+        result=run_systemd('start','time-sheet-linux-ai.service')
+        if result is not None and result.returncode==0:return
+    env=os.environ.copy();env['PYTHONPATH']=str(ROOT)+os.pathsep+env.get('PYTHONPATH','')
+    command=[APPIMAGE,'--automation-direct'] if APPIMAGE else [sys.executable,'-m','timesheet.automation_worker']
+    subprocess.Popen(command,cwd=ROOT,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+
+
+def stop_automation(wait=True):
+    if os.environ.get('TIMESHEET_TESTING')=='1':return
+    if not FLATPAK and SERVICE.with_name('time-sheet-linux-ai.service').exists():run_systemd('stop','time-sheet-linux-ai.service')
+    pidfile=DATA_DIR/'automation.pid'
+    try:
+        pid=int(pidfile.read_text());args=Path(f'/proc/{pid}/cmdline').read_bytes().split(b'\0')
+        if b'timesheet.automation_worker' in args or b'--automation-direct' in args:
+            os.kill(pid,signal.SIGTERM)
+            if wait:
+                deadline=time.monotonic()+18
+                while pidfile.exists() and time.monotonic()<deadline:time.sleep(.1)
+    except (OSError,ValueError):pass
+    # A worker from another sandbox may not have the same PID namespace. Never
+    # replace a database while an un-stopped worker still owns its lock.
+    import fcntl
+    DATA_DIR.mkdir(parents=True,exist_ok=True,mode=0o700)
+    with open(DATA_DIR/'automation.lock','a+') as lock:
+        try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:raise ValueError('Stop Jev automation in the other running installation before restoring or replacing data.')
+        finally:fcntl.flock(lock,fcntl.LOCK_UN)
+
+
 def start_collector():
+    start_automation()
     if FLATPAK: return  # The host companion owns and supervises capture.
     if os.environ.get('TIMESHEET_TESTING')!='1' and SERVICE.exists():
         # Graphical autostart has the current session environment; systemd may not.
@@ -55,6 +94,7 @@ def start_collector():
 
 
 def stop_collector(wait=True):
+    stop_automation(wait=wait)
     if FLATPAK:
         import fcntl
         DATA_DIR.mkdir(parents=True,exist_ok=True,mode=0o700)
@@ -215,6 +255,8 @@ UMask=0077
 [Install]
 WantedBy=graphical-session.target
 ''',encoding='utf-8')
+    ai_exec=(quote(APPIMAGE).replace('%','%%')+' --automation-direct') if APPIMAGE else '/usr/bin/python3 -m timesheet.automation_worker'
+    SERVICE.with_name('time-sheet-linux-ai.service').write_text('[Unit]\nDescription=Time Sheet Linux Jev decision worker\nPartOf=graphical-session.target\nAfter=graphical-session.target\n\n[Service]\nType=simple\nWorkingDirectory='+working+'\nExecStart='+ai_exec+'\nRestart=on-failure\nRestartSec=15\nTimeoutStopSec=20\nUMask=0077\n',encoding='utf-8')
     result=run_systemd('daemon-reload')
     with_store=Store()
     first_install=with_store.get('setup_complete','0')!='1'
@@ -264,7 +306,7 @@ def uninstall(host_only=False):
             raise ValueError('The installed collector does not belong to this host companion checkout.')
     stop_collector()
     set_autostart(False)
-    SERVICE.unlink(missing_ok=True); run_systemd('daemon-reload')
+    SERVICE.unlink(missing_ok=True); SERVICE.with_name('time-sheet-linux-ai.service').unlink(missing_ok=True); run_systemd('daemon-reload')
     if not host_only:
         (SHARE/'applications'/(APP_ID+'.desktop')).unlink(missing_ok=True)
         (SHARE/'icons/hicolor/scalable/apps'/(APP_ID+'.svg')).unlink(missing_ok=True)

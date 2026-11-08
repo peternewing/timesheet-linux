@@ -46,3 +46,29 @@ and installs services against the persistent image path. The Flatpak contains th
 UI and PDF runtime, accesses only the default host data folder, and relies on a
 separately installed host capture companion. The Flatpak cannot install or stop the
 host service from its sandbox; backup restore requires the collector to be stopped.
+
+
+## 0.5 decision service
+
+The user-approved [automation roadmap](AUTOMATION_ROADMAP.md) governs product
+changes. `decision_context` builds exact permitted payloads and local fingerprints;
+`decision_policy` routes complete typed results. `automation_store` owns additive
+v3-compatible optional queue/context/usage/audit tables. `automation_worker` runs
+in a separate process/service; network calls never enter the collector.
+`automation_ui` contains consent, focus, explanations and the exception inbox.
+
+A completed interval is split on local days, explicit focus and rule boundaries.
+A rule wins locally. A conflicting rule cannot be bypassed by an AI focus default.
+Jobs carry frozen context and are revalidated before request reservation and
+transactional application. Lease recovery never silently re-sends unknown usage.
+A strict request reservation and reported-token ledger survive restarts.
+Equivalent inputs reuse validated results; the first actual model is pinned.
+Different paths/versions cannot execute another installation's saved policy.
+
+Human batch corrections freeze their previewed IDs and preflight every item
+before writing; updates, examples, audit and undo commit together. The worker
+creates drafts only. Source retention prunes copied context. Restore disables
+automation. `evaluate` separates paid labelled inference from offline replay;
+`updates` reads release metadata without executing downloads. The package workflow
+attests trusted main builds; `packaging/verify_release.py` delegates cryptographic
+verification to the official GitHub CLI.

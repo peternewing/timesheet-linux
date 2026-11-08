@@ -86,3 +86,15 @@ wire reply directly, so the optional high-level extension module is unnecessary.
 ## 0.4.0-rc2 daily review
 
 See [the usability review](USABILITY_REVIEW.md) for the complete workflow audit, 128 core tests, 53 scaled mouse/keyboard checks and the new 19-check daily-review scenario. Regression tests cover selected-period rule application, midnight boundaries, conflicting future rules and bulk allocation parity with a running timer.
+
+## 0.5 automation candidate
+
+Read [the accepted roadmap](AUTOMATION_ROADMAP.md), [both-pass review and scores](AUTOMATION_REVIEW_0.5.md), and [user guide](AUTOMATION_GUIDE.md). Current deterministic suite: 184 tests. Additional isolated checks:
+
+```sh
+PYTHONPATH=. /usr/bin/python3 tests/verify_worker_process.py
+/usr/bin/python3 -m timesheet.evaluate tests/fixtures/jev_live_heldout_recorded.json
+GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_automation_ui.py
+```
+
+The recorded fixture is synthetic live evidence, replayed offline. It does not establish real-work accuracy. Never run tests against the actual user's database or silently enable a background policy while testing an upgrade.

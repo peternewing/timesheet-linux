@@ -52,3 +52,9 @@ Screenshots use synthetic data and are written to `/tmp/timesheet-ui-audit`.
 The test needs GTK 4 and libadwaita 1.5 or newer; its screenshot path was verified
 with GTK 4.22.4 / libadwaita 1.9.1. Keep GUI checks separate from headless core
 unit tests. See `docs/USABILITY_AUDIT_2026-11-07.md` for tested workflows and limits.
+
+## Product source of truth
+
+Read [Automation roadmap](docs/AUTOMATION_ROADMAP.md) and [AGENTS.md](AGENTS.md)
+before improvements. The goal is automatic Jev-assisted organisation and a small
+exception inbox. Update the evidence ledger; do not promote scores without proof.
