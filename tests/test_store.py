@@ -15,6 +15,48 @@ class StoreTests(unittest.TestCase):
         self.project=self.db.add_project(self.client,'Project',36000)
         self.task=self.db.add_task(self.project,'Task')
     def tearDown(self): self.db.close(); self.tmp.cleanup()
+    def test_apply_rules_to_period_never_processes_other_days_or_crosses_boundary(self):
+        self.db.add_rule('Editor','',self.task)
+        with self.db.db:
+            for start,end,processed in [(500,1000,0),(1500,3500,1),(4000,4500,0)]:
+                self.db.db.execute("INSERT INTO activity(start,end,app,state,closed,auto_processed) VALUES(?,?,'Editor','active',1,?)",(start,end,processed))
+        self.assertEqual(self.db.apply_rules(now=10000,start=2000,end=3000),1)
+        self.assertEqual([(r['start'],r['end'],r['status']) for r in self.db.entries(0,10000)],[(2000,3000,'draft')])
+        self.assertEqual([r['auto_processed'] for r in self.db.rows('SELECT auto_processed FROM activity ORDER BY start')],[0,1,0])
+        self.assertEqual(self.db.apply_rules(now=10000,start=2000,end=3000),0)
+        self.assertEqual(self.db.apply_rules(now=10000,start=3000,end=4000),1)
+        self.assertEqual(sum(r['end']-r['start'] for r in self.db.entries(0,10000)),1500)
+        with self.assertRaisesRegex(ValueError,'End must'):self.db.apply_rules(start=3000,end=2000)
+
+    def test_remember_assignment_rejects_conflicting_rule_without_saving_time(self):
+        other=self.db.add_task(self.project,'Other')
+        self.db.add_rule('EDITOR','',other)
+        with self.db.db:self.db.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(1000,2000,'Editor','active',1)")
+        blocks=self.db.activity_for(0,3000)
+        with self.assertRaisesRegex(ValueError,'already has a rule'):self.db.assign_remaining(blocks,self.task,remember=True)
+        self.assertEqual(self.db.entries(0,3000),[])
+        self.assertEqual(len(self.db.rows('SELECT * FROM rules')),1)
+        self.assertEqual(self.db.assign_remaining(blocks,self.task,remember=False),1)
+
+    def test_remember_assignment_deduplicates_unicode_app_names(self):
+        self.db.add_rule('Straße','',self.task)
+        with self.db.db:self.db.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(1000,2000,'STRASSE','active',1)")
+        self.db.assign_remaining(self.db.activity_for(0,3000),self.task,remember=True)
+        self.assertEqual(len(self.db.rows('SELECT * FROM rules')),1)
+
+    def test_bulk_unassigned_view_matches_interval_subtraction_with_live_timer(self):
+        with self.db.db:
+            for start in range(1000,5000,100):
+                self.db.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,'Editor','active',1)",(start,start+100))
+            for start in range(1050,5000,200):
+                self.db.db.execute('INSERT INTO entries(task_id,start,end,description) VALUES(?,?,?,?)',(self.task,start,start+25,'Saved'))
+            self.db.db.execute("UPDATE runtime SET state='running',task_id=?,started=2100 WHERE id=1",(self.task,))
+        expected=[]
+        for r in self.db.activity_for(1025,4975):
+            expected.extend((r['id'],a,b) for a,b in self.db.uncovered(r['start'],r['end'],now=2850))
+        actual=self.db.activity_for(1025,4975,True,now=2850)
+        self.assertEqual([(r['id'],r['start'],r['end']) for r in actual],expected)
+        self.assertEqual(self.db.day_summary(1025,4975,now=2850)['unassigned'],sum(b-a for _,a,b in expected))
     def test_adjacent_and_overlapping_intervals(self):
         self.db.add_entry(self.task,1000,2000)
         self.db.add_entry(self.task,2000,2100)

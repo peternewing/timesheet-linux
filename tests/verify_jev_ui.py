@@ -38,8 +38,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-jev-ui-') as tmp:
             check.set_active(True); assert assign.get_sensitive(); assert not app.store.entries(start,now)
             assign.emit('clicked'); assert app.dialogs[-1].get_title()=='Assign activity'; app.dialogs[-1].close()
             state['review']=review_window
-            find(review_window,Gtk.Expander,'Optional AI suggestions for selected blocks').set_expanded(True)
-            find(review_window,Gtk.Button,'Suggest for selected blocks').emit('clicked')
+            find(review_window,Gtk.Button,'Ask Jev').emit('clicked')
             assert not api.called and not key.called
             find(app.dialogs[-1],Gtk.Button,'Send').emit('clicked')
             GLib.timeout_add(100,verify_batch)

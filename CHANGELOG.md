@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0-rc2 — guided rules and daily review (2026-11-08)
+
+- Create rules by selecting a recorded app and a task, with a plain-language preview. Keep title filters, custom app names and priority optional.
+- Make Review today the main daily action, add Ask Jev and selection controls, and show a short summary of saved work.
+- Keep unused Jev results while working through the review and keep draft review on the selected date.
+- Require an explicit task choice when there is no rule or saved suggestion.
+- Restrict applying rules to the selected period, including midnight boundaries; preserve unrelated activity and prevent duplicate assignments.
+- Reject unusable title filters and conflicting future-rule choices without partially saving time.
+- Speed up allocation summaries using a single snapshot, with running-timer parity checks. Add regression coverage and a usability report. This remains an unsigned prerelease; live TypeSafe/provider, assistive-technology and hardware testing remain follow-up work.
+
 ## 0.4.0-rc1 — optional review assistance (2026-11-08)
 
 - Add local review sessions, readiness checks, optional remembered choices, and clearer assignment rules with a retained-activity preview.

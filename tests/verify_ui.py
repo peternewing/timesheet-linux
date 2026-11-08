@@ -163,8 +163,9 @@ def main():
                 app.store.db.execute('INSERT INTO activity(start,end,app,state) VALUES(?,?,?,?)',(base-3600,base-3000,'Example Editor','active'))
                 app.store.db.execute('INSERT INTO activity(start,end,app,state) VALUES(?,?,?,?)',(base-3000,base-2400,'Example Browser','personal'))
             click(app.nav['Rules'].get_child().get_last_child()); yield
-            click(find_button(app.win,'New rule')); yield
-            entries()[0].set_text('Example Editor')
+            click(find_button(app.win,'Create assignment rule')); yield
+            app_choice=next(w for w in descendants(app.dialogs[-1]) if isinstance(w,Gtk.DropDown) and hasattr(w,'_values') and w._values[0][1]=='Choose an application…')
+            app_choice.set_selected(next(i for i,(value,_) in enumerate(app_choice._values) if value=='Example Editor'))
             task_choice=next(w for w in descendants(app.dialogs[-1]) if isinstance(w,Gtk.DropDown) and hasattr(w,'_values') and w._values[0][1]=='Choose a task…')
             task_choice.set_selected(1); save(); yield
             check(len(app.store.rows('SELECT * FROM rules'))==1,'Rule saves through the form')

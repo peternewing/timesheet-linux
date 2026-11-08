@@ -82,3 +82,7 @@ wire reply directly, so the optional high-level extension module is unnecessary.
   screen-lock service verified lock-state propagation. Real Hyprland launch was
   attempted, but its GPU allocator could not access the available render device;
   its adapter has unit coverage but not real-compositor acceptance.
+
+## 0.4.0-rc2 daily review
+
+See [the usability review](USABILITY_REVIEW.md) for the complete workflow audit, 128 core tests, 53 scaled mouse/keyboard checks and the new 19-check daily-review scenario. Regression tests cover selected-period rule application, midnight boundaries, conflicting future rules and bulk allocation parity with a running timer.

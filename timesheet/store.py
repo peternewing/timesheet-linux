@@ -1,6 +1,7 @@
 """SQLite persistence and accounting rules for the local timesheet."""
 from __future__ import annotations
 import csv
+from bisect import bisect_right
 import html
 import io
 import json
@@ -101,13 +102,32 @@ class Store:
         if cursor<end: result.append((cursor,int(end)))
         return [(a,b) for a,b in result if b>a]
 
-    def activity_for(self,start,end,unassigned=False):
+    def activity_for(self,start,end,unassigned=False,now=None):
+        # One allocation snapshot per view, rather than a database query for
+        # every activity period. Merge the live timer with saved intervals.
+        occupied=[];ends=[]
+        if unassigned:
+            intervals=[(r['start'],r['end']) for r in self.rows('SELECT start,end FROM entries WHERE deleted=0 AND start<? AND end>? ORDER BY start',(int(end),int(start)))]
+            rt=self.runtime()
+            if rt['state']=='running' and rt['started'] is not None:
+                intervals.append((rt['started'],int(time.time() if now is None else now)))
+            for a,b in sorted(intervals):
+                if b<=a:continue
+                if occupied and a<=occupied[-1][1]:occupied[-1]=(occupied[-1][0],max(b,occupied[-1][1]))
+                else:occupied.append((a,b))
+            ends=[b for _,b in occupied]
         result=[]
         for row in self.rows('SELECT * FROM activity WHERE start<? AND end>? ORDER BY start',(int(end),int(start))):
             record=dict(row); record['start']=max(row['start'],int(start)); record['end']=min(row['end'],int(end))
             if unassigned and row['state']=='active':
-                for a,b in self.uncovered(record['start'],record['end']):
-                    result.append(dict(record,start=a,end=b))
+                cursor=record['start']
+                for index in range(bisect_right(ends,cursor),len(occupied)):
+                    a,b=occupied[index]
+                    if a>=record['end']:break
+                    if a>cursor:result.append(dict(record,start=cursor,end=min(a,record['end'])))
+                    cursor=max(cursor,b)
+                    if cursor>=record['end']:break
+                if cursor<record['end']:result.append(dict(record,start=cursor))
             elif not unassigned: result.append(record)
         return result
 
@@ -127,8 +147,8 @@ class Store:
             seconds=r['end']-r['start']
             if r['state'] in ('active','personal'):
                 active+=seconds; apps[r['app']]=apps.get(r['app'],0)+seconds
-                if r['state']=='active': unassigned+=sum(b-a for a,b in self.uncovered(r['start'],r['end']))
             elif r['state'] in ('away','locked'): away+=seconds
+        unassigned=sum(r['end']-r['start'] for r in self.activity_for(start,end,True,now=now))
         approved=sum(min(end,r['end'])-max(start,r['start']) for r in entries if r['status'] in ('approved','billed'))
         return dict(active=active,away=away,assigned=assigned,approved=approved,unassigned=unassigned,
                     drafts=sum(r['status']=='draft' for r in entries),apps=sorted(apps.items(),key=lambda pair:pair[1],reverse=True))
@@ -198,20 +218,26 @@ class Store:
     def apply_rules(self,now=None,start=None,end=None):
         now=int(time.time() if now is None else now)
         cutoff=now-int(self.get('idle_seconds','300'))
+        bounded=start is not None
+        if bounded:
+            start=int(start); end=int(end if end is not None else now)
+            if end<=start: raise ValueError('End must be after start.')
         count=0
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
-            if start is not None:
-                self.db.execute("UPDATE activity SET auto_processed=0 WHERE state='active' AND closed=1 AND start>=? AND end<=?",(start,end or now))
-            rows=self.rows("SELECT * FROM activity WHERE state='active' AND closed=1 AND auto_processed=0 AND end<=? ORDER BY start",(cutoff,))
+            if bounded:
+                rows=self.rows("SELECT * FROM activity WHERE state='active' AND closed=1 AND end<=? AND start<? AND end>? ORDER BY start",(cutoff,end,start))
+            else:
+                rows=self.rows("SELECT * FROM activity WHERE state='active' AND closed=1 AND auto_processed=0 AND end<=? ORDER BY start",(cutoff,))
             for r in rows:
-                rule=self.matching_rule(r['app'],r['title'],None if start is not None else r['end'])
+                rule=self.matching_rule(r['app'],r['title'],None if bounded else r['end'])
                 if rule:
-                    beginning=r['start'] if start is not None else max(r['start'],rule['created'])
-                    for a,b in self.uncovered(beginning,r['end'],now):
+                    beginning=max(r['start'],start) if bounded else max(r['start'],rule['created'])
+                    finish=min(r['end'],end) if bounded else r['end']
+                    for a,b in self.uncovered(beginning,finish,now):
                         self.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id) VALUES(?,?,?,'','automatic',?)",(rule['task_id'],a,b,r['id']))
                         count+=1
-                self.db.execute('UPDATE activity SET auto_processed=1 WHERE id=?',(r['id'],))
+                if not bounded: self.db.execute('UPDATE activity SET auto_processed=1 WHERE id=?',(r['id'],))
             if count: self.audit('automatically assigned',{'entries':count})
         return count
 
@@ -220,6 +246,15 @@ class Store:
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
             self.validate_rule_target(task)
+            if remember:
+                apps={str(block['app']).casefold() for block in blocks}
+                if len(apps)!=1 or any(block['state']!='active' for block in blocks):
+                    raise ValueError('A rule needs activity from one application.')
+                existing=self.rows('''SELECT r.* FROM rules r JOIN tasks t ON t.id=r.task_id
+                    JOIN projects p ON p.id=t.project_id JOIN clients c ON c.id=p.client_id
+                    WHERE r.enabled=1 AND r.title='' AND r.priority=0 AND t.archived=0 AND p.archived=0 AND c.archived=0''')
+                if any(r['app'].casefold() in apps and r['task_id']!=task for r in existing):
+                    raise ValueError('This app already has a rule for another task. Clear the rule checkbox to assign this time only, or edit the existing rule in Rules.')
             before=[]; ids=[]
             for block in blocks:
                 original=self.db.execute('SELECT * FROM activity WHERE id=?',(block['id'],)).fetchone()
@@ -230,7 +265,7 @@ class Store:
                     cur=self.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id) VALUES(?,?,?,?,'assigned',?)",(task,x,y,description.strip(),original['id']))
                     ids.append(cur.lastrowid); count+=1
                 if remember and original['state']=='active':
-                    exists=self.db.execute("SELECT 1 FROM rules WHERE lower(app)=lower(?) AND title='' AND task_id=? AND enabled=1",(original['app'],task)).fetchone()
+                    exists=any(r['app'].casefold()==original['app'].casefold() for r in self.rows("SELECT app FROM rules WHERE title='' AND task_id=? AND enabled=1",(task,)))
                     if not exists: self.db.execute('INSERT INTO rules(app,title,task_id,priority,created) VALUES(?,?,?,?,?)',(original['app'],'',task,0,int(time.time())))
             if not count: raise ValueError('This activity is already assigned to a task.')
             self._record_change('Assign activity',before,ids)
