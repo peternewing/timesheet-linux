@@ -6,13 +6,13 @@ A private Linux desktop app for recording foreground app use, assigning activity
 
 ## Install
 
-Install **Time Sheet Linux 0.3.0-rc2** using either the AppImage or terminal commands. This is a prerelease: desktop support is still being tested, and the downloads are unsigned. Back up existing data before upgrading.
+Install **Time Sheet Linux 0.3.0-rc3** using either the AppImage or terminal commands. This is a prerelease: desktop support is still being tested, and the downloads are unsigned. Back up existing data before upgrading.
 
 ### Option 1: AppImage
 
 For x86-64 Linux with glibc 2.39 or newer:
 
-1. Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc2/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc2/SHA256SUMS) into a permanent folder.
+1. Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc3/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.3.0-rc3/SHA256SUMS) into a permanent folder.
 2. Open a terminal in that folder and run:
 
    ```sh
@@ -36,7 +36,7 @@ For Ubuntu 24.04+ or Debian 13+, open a terminal and run:
 ```sh
 sudo apt update
 sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 python3-reportlab fonts-dejavu-core
-git clone --branch v0.3.0-rc2 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.3
+git clone --branch v0.3.0-rc3 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.3
 cd timesheet-linux-0.3
 /usr/bin/python3 -m timesheet.diagnostics
 ./install.sh
@@ -57,7 +57,7 @@ Invoice PDFs are **drafts**: they do not calculate tax or automatically mark wor
 
 ## Compatibility
 
-| Desktop session | Automatic tracking in 0.3.0-rc2 |
+| Desktop session | Automatic tracking in 0.3.0-rc3 |
 |---|---|
 | GNOME 50 Wayland | Supported |
 | Plasma 6 Wayland | Capture helper + `swayidle` |
