@@ -21,6 +21,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Graphene, Gtk, Pango
 from .store import Store, DATA_DIR, parse_money, parse_hours, local_timestamp
 from . import desktop, __version__
 from .automation_ui import AutomationUI
+from .simple_ui import SimpleUI
 
 APP_ID=desktop.APP_ID
 ROOT=desktop.ROOT
@@ -142,7 +143,7 @@ class Timeline(Gtk.Widget):
             snapshot.save();snapshot.translate(point);snapshot.append_layout(layout,color);snapshot.restore()
 
 
-class TimeSheet(AutomationUI,Adw.Application):
+class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID)
         self.store=Store(); self.win=None; self.day=datetime.now().date(); self.page='Today'
@@ -159,7 +160,7 @@ class TimeSheet(AutomationUI,Adw.Application):
     def do_activate(self):
         if self.win:
             self.win.present(); return
-        self.win=Adw.ApplicationWindow(application=self,title='Time Sheet Linux',default_width=1120,default_height=800)
+        self.win=Adw.ApplicationWindow(application=self,title='Time Sheet Linux',default_width=960 if self.simple_mode() else 1120,default_height=800)
         self.win.set_icon_name(APP_ID)
         self.win.connect('close-request',self.close_window)
         provider=Gtk.CssProvider(); provider.load_from_path(str(ROOT/'resources/style.css'))
@@ -172,11 +173,11 @@ class TimeSheet(AutomationUI,Adw.Application):
         self.timer_button.add_css_class('timer-digits'); self.timer_button.set_tooltip_text('Running task timer · hours:minutes:seconds · Open Today')
         self.timer_button.set_visible(False); header.pack_start(self.timer_button)
         self.capture_button=button('Pause',self.toggle_capture); header.pack_end(self.capture_button)
-        self.start_timer_button=button('Start timer',lambda _:self.timer_dialog()); header.pack_start(self.start_timer_button)
-        self.undo_button=button('Undo',lambda _:self.run_action(self.store.undo,lambda action:self.toast(action+' undone'))); header.pack_end(self.undo_button)
-        header.pack_end(button('Refresh',lambda _:self.show_page(self.page)))
-        header.pack_end(button('About',lambda _:self.info('About Time Sheet Linux', 'Version '+__version__+'\n\nRecording stays local. Optional Jev requests send only the data permitted by your chosen policy.')) )
-        header.pack_end(button('Help',lambda _:self.info('From activity to a client report',
+        self.start_timer_button=button('Start timer',lambda _:self.timer_dialog()); header.pack_start(self.start_timer_button);self.start_timer_button.set_visible(not self.simple_mode())
+        self.undo_button=button('Undo',lambda _:self.run_action(self.store.undo,lambda action:self.toast(action+' undone'))); header.pack_end(self.undo_button);self.undo_button.set_visible(not self.simple_mode())
+        if not self.simple_mode():header.pack_end(button('Refresh',lambda _:self.show_page(self.page)))
+        if not self.simple_mode():header.pack_end(button('About',lambda _:self.info('About Time Sheet Linux', 'Version '+__version__+'\n\nRecording stays local. Optional Jev requests send only the data permitted by your chosen policy.')) )
+        if not self.simple_mode():header.pack_end(button('Help',lambda _:self.info('From activity to a client report',
             '1. Projects: create a client, project and task. Set an hourly rate for billable work.\n\n'
             '2. Calendar: review captured activity and assign it to a task. Use Add time for work you recorded manually.\n\n'
             '3. History: check your entries and approve the drafts. Approval freezes the rate.\n\n'
@@ -184,11 +185,13 @@ class TimeSheet(AutomationUI,Adw.Application):
             'Draft = editable work. Approved = reviewed and ready to report. Billed = locked to protect your invoice history.\n\n'
             'Keyboard: Ctrl+1–7 opens pages, Ctrl+N creates a project, Ctrl+Z undoes an entry edit, Ctrl+R refreshes. Escape closes an edit form.')))
         split=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL); split.set_vexpand(True); layout.append(split)
-        sidebar=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); sidebar.add_css_class('sidebar'); margins(sidebar,12); sidebar.set_size_request(172,-1); split.append(sidebar)
+        sidebar=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); sidebar.add_css_class('sidebar'); margins(sidebar,12); sidebar.set_size_request(140 if self.simple_mode() else 172,-1); split.append(sidebar)
         sidebar.append(margins(label('TIME SHEET','brand'),8)); self.nav={}
         for name,icon in zip(PAGES,PAGE_ICONS):
-            b=Gtk.Button(); inner=Gtk.Box(spacing=10); inner.append(Gtk.Image.new_from_icon_name(icon)); inner.append(label(name,selectable=False)); b.set_child(inner)
-            b.add_css_class('flat'); b.update_property([Gtk.AccessibleProperty.LABEL],[name]); b.set_tooltip_text(f'{name} (Ctrl+{len(self.nav)+1})'); b.connect('clicked',lambda _,n=name:self.show_page(n)); sidebar.append(b); self.nav[name]=b
+            display_name='Past days' if name=='Calendar' and self.simple_mode() else name
+            b=Gtk.Button(); inner=Gtk.Box(spacing=10); inner.append(Gtk.Image.new_from_icon_name(icon)); inner.append(label(display_name,selectable=False)); b.set_child(inner)
+            b.add_css_class('flat'); b.update_property([Gtk.AccessibleProperty.LABEL],[display_name]); b.set_tooltip_text(f'{display_name} (Ctrl+{len(self.nav)+1})'); b.connect('clicked',lambda _,n=name:self.show_page(n)); sidebar.append(b); self.nav[name]=b
+            if self.simple_mode():b.set_visible(name in ('Today','Calendar','Settings'))
         spacer=Gtk.Box(); spacer.set_vexpand(True); sidebar.append(spacer); sidebar.append(label('Private • on this computer','dim-label'))
         self.stack=Gtk.Stack(hexpand=True,vexpand=True); split.append(self.stack)
         for name in PAGES:
@@ -320,11 +323,14 @@ class TimeSheet(AutomationUI,Adw.Application):
         try:
             health=desktop.read_health(self.store); status=health['status']; rt=self.store.runtime()
             self.timer_started=rt['started'] if rt['state']=='running' else None
-            self.start_timer_button.set_visible(self.timer_started is None)
+            self.start_timer_button.set_visible(not self.simple_mode() and self.timer_started is None)
             self.update_timer_display()
             names={'active':'Tracking automatically','paused':'Tracking paused','setup_required':'Finish setup','stopped':'Tracking stopped','error':'Recording failed','degraded':'Tracking needs attention'}
             self.status.set_text(names.get(status,'Starting…'))
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
+            if self.simple_mode():
+                self.status.set_text({'active':'Recording','paused':'Paused','setup_required':'Needs setup','stopped':'Stopped','error':'Needs attention','degraded':'Needs attention'}.get(status,'Starting…'))
+                self.simple_tick(rt,health);return True
             if self.page=='Today':
                 ai=self.store.db.execute('SELECT MAX(updated) FROM ai_jobs').fetchone()
                 focus=self.store.db.execute('SELECT task_id,end FROM ai_focus WHERE start<=? AND end>? ORDER BY start DESC LIMIT 1',(int(time.time()),int(time.time()))).fetchone()
@@ -418,6 +424,7 @@ class TimeSheet(AutomationUI,Adw.Application):
         self.dialog('New project',build,save)
 
     def refresh_today(self):
+        if self.simple_mode():return self.simple_today()
         self.timer_label=None
         b=self.body_today; self.clear(b); now=int(time.time()); start,end=day_bounds(datetime.now().date()); rt=self.store.runtime(); summary=self.store.day_summary(start,end,include_running=True,now=now)
         self.today_metrics={}; self.today_apps={}
@@ -871,6 +878,7 @@ class TimeSheet(AutomationUI,Adw.Application):
         window.present()
 
     def refresh_calendar(self):
+        if self.simple_mode():return self.simple_past_days()
         b=self.body_calendar; self.clear(b); self.selected_blocks=[]
         self.heading(b,'Calendar','Your activity and task history, day by day')
         top=Gtk.Box(spacing=20); b.append(top)
@@ -1428,6 +1436,7 @@ class TimeSheet(AutomationUI,Adw.Application):
         advanced.append(Gtk.LinkButton(uri='https://help.typesafe.ai/articles/5974925716',label='TypeSafe data handling information'))
 
     def refresh_settings(self):
+        if self.simple_mode() and not getattr(self,'simple_settings_override',False):return self.simple_settings()
         b=self.body_settings; self.clear(b); self.heading(b,'Settings','Control tracking, local data and optional AI services.')
         available=desktop.capture_available()
         if available: self.row(b,'Automatic tracking is ready','The desktop capture adapter is connected. App names are recorded; window titles are optional.')

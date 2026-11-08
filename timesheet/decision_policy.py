@@ -9,7 +9,7 @@ from . import __version__
 
 POLICY_VERSION=1
 DEFAULTS=dict(mode='off',consent_version=0,since=0,daily_requests=50,daily_tokens=250000,
-              allow_guidance=True,allow_examples=False,allow_project_clues=False,allow_focus=True,exclude_apps=[],backend='native',owner='')
+              allow_guidance=True,allow_examples=False,allow_project_clues=False,allow_focus=True,exclude_apps=[],backend='native',owner='',category_tasks=[])
 
 
 def owner_token():
@@ -18,7 +18,7 @@ def owner_token():
 
 
 def settings(raw):
-    fallback=lambda:{**DEFAULTS,'exclude_apps':[]}
+    fallback=lambda:{**DEFAULTS,'exclude_apps':[],'category_tasks':[]}
     if not isinstance(raw,str) or len(raw)>64000:return fallback()
     try:value=json.loads(raw or '{}')
     except (ValueError,TypeError,RecursionError):return fallback()
@@ -30,6 +30,8 @@ def settings(raw):
            and type(result['daily_tokens']) is int and 1000<=result['daily_tokens']<=10000000
            and all(type(result[k]) is bool for k in ('allow_guidance','allow_examples','allow_project_clues','allow_focus'))
            and isinstance(result['exclude_apps'],list) and len(result['exclude_apps'])<=200
+           and isinstance(result['category_tasks'],list) and len(result['category_tasks'])<=8 and len(set(str(i) for i in result['category_tasks']))==len(result['category_tasks'])
+           and all(type(i) is int and i>0 for i in result['category_tasks'])
            and isinstance(result['owner'],str) and (result['owner']=='' or len(result['owner'])==64 and all(c in '0123456789abcdef' for c in result['owner']))
            and all(isinstance(s,str) and 0<len(s)<=200 and not any(ord(c)<32 for c in s) for s in result['exclude_apps']))
     if not valid:return fallback()
@@ -42,7 +44,7 @@ def probability(value):
     return type(value) in (int,float) and math.isfinite(value) and 0<=value<=1
 
 
-def route(result,mode,*,has_context=False,focus_task=None,focus_default=False):
+def route(result,mode,*,has_context=False,focus_task=None,focus_default=False,application_categories=False):
     """Return action/reason. Only supported, unambiguous decisions can make drafts."""
     if not isinstance(result,dict) or not probability(result.get('probability')):
         return 'exception','The decision could not be validated.'
@@ -53,6 +55,14 @@ def route(result,mode,*,has_context=False,focus_task=None,focus_default=False):
         return 'exception','The task alternatives could not be validated.'
     runner=max([float(result.get('none_probability',1))]+[p for t,p in alternatives if t!=result['task']])
     if focus_default and result['task']!=focus_task:return 'exception','Jev disagrees with your draft-default focus. Choose the task.'
+    if application_categories:
+        # Limited to owned generic categories with zero billing effect. This is
+        # app-function labelling, never a decision that the period was productive.
+        if not has_context or not probability(result.get('enough_evidence')) or result['enough_evidence']<.85 or result['probability']<.9 or result['probability']-runner<.4:
+            return 'exception','This app could fit several activity types. Choose a category.'
+        if mode!='automatic':return 'exception','Activity-type suggestion ready for review.'
+        return 'apply','Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.'
+
     # A user-authorised, time-bounded draft default is a distinct action from
     # inferring a task without instructions. Jev must agree and not signal a
     # competing task/personal interpretation. This is not a calibration claim.

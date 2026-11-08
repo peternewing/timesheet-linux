@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-automation-ui-') as tmp:
     os.environ.update(XDG_DATA_HOME=tmp,TIMESHEET_TESTING='1')
     from timesheet.app import TimeSheet,Gtk,GLib,desktop,selected
     from timesheet.automation_worker import Engine
-    app=TimeSheet();app.set_application_id('org.local.TimeSheetAutomationUITest')
+    app=TimeSheet();app.store.set('interface_mode','advanced');app.set_application_id('org.local.TimeSheetAutomationUITest')
     task=app.store.quick_project('Example Studio','Falcon','Development',6000);repo=app.automation_repo()
     repo.save_profile(task,'Falcon implementation for Example Studio')
     now=int(time.time());base=int(datetime.combine(datetime.now().date()-timedelta(days=1),datetime.min.time()).replace(hour=12).timestamp())

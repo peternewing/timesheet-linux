@@ -44,7 +44,7 @@ def main():
         xt.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
         xt.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
         xt.XTestFakeKeyEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
-        app=TimeSheet(); app.set_application_id('org.local.TimeSheetUIAudit')
+        app=TimeSheet();app.store.set('interface_mode','advanced'); app.set_application_id('org.local.TimeSheetUIAudit')
         failures=[]; checks=[]
         output=Path('/tmp/timesheet-ui-audit'); output.mkdir(exist_ok=True)
         def exception(kind,value,tb):

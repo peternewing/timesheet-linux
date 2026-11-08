@@ -23,3 +23,11 @@ from timesheet.decision_policy import settings
 assert settings('{}')['mode']=='off'
 assert callable(automation_worker.Engine.step) and callable(automation_store.Repository.complete)
 print('PASS: bundled automation policy, worker, queue, evaluation and update modules; default off')
+
+from timesheet import simple_ui, simple_setup, simple_store, day_record
+assert len(simple_setup.BUCKETS)==4 and callable(day_record.pdf)
+print('PASS: bundled simple setup, daily record and category controls')
+
+record=dict(day='2026-11-08',generated=0,active=0,away=0,gaps=0,ai=0,human=0,unclassified=0,categories=[],entries=[],activity=[])
+assert day_record.pdf(record).startswith(b'%PDF')
+print('PASS: bundled simple day-record PDF generation')

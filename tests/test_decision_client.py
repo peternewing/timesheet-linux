@@ -41,3 +41,9 @@ class DecisionClientTests(unittest.TestCase):
         seen=[];request=Mock(return_value={'task':7,'probability':.52,'alternatives':[(7,.52),(8,.47)],'personal':.1})
         jev.suggest_batch(['Editor'],[(7,'Task')],'synthetic',lambda:False,lambda *args:seen.append(args),request=request,detailed=True)
         self.assertIsInstance(seen[0][1],dict)
+
+    def test_application_categories_have_a_distinct_limited_question(self):
+        payload=jev.prepare_decision(['GIMP'],[(7,'Creating & building')],application_categories=True)
+        self.assertIn('no claim',payload['state']['categorisation_scope'])
+        self.assertIn('characteristic activity type',payload['questions']['task']['instructions'])
+        with self.assertRaises(jev.JevError):jev.prepare_decision(['GIMP'],[(7,'Task')],application_categories='yes')

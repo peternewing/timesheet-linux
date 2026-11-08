@@ -1,3 +1,14 @@
+# Everyday setup in 0.6
+
+Click **Set up in 4 steps**. Choose categories, choose privacy, connect your saved
+key (or paste it), then Start. No names, rates or rules need typing.
+
+Work as usual. If Jev asks, choose one category. Use **Save day record** for a PDF.
+Today, Past days and Settings are the only everyday destinations.
+
+The detailed guide below applies to optional **Settings → Advanced tools →
+Detailed Jev controls**. It is not required for the everyday flow.
+
 # Let Jev organise your day
 
 Start on **Today → Set up Jev automation**. Use your own TypeSafe API key. It is

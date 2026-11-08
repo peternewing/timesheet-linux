@@ -4,6 +4,21 @@ Accepted by the user on 8 November 2026. This document preserves the assessment
 of 0.4.0-rc2 and governs subsequent development. Read it before every improvement
 or review. Keep the baseline intact; record later evidence separately.
 
+## Latest user direction — simplicity rebuild
+
+On 8 November 2026, the user requested a simpler rebuild: guided screens, clicking
+ready-made options, no required typing, Jev working automatically and a useful
+record of the day. This supersedes the earlier everyday UX/mode proposals below.
+Preserve the assessment baseline and evidence, but prioritise simplicity.
+
+0.6 defaults to four setup steps and three destinations (Today, Past days,
+Settings). Generic non-billable app-activity categories can be inferred from
+specialist app functions. That is distinct from establishing work intent,
+client/project assignment, productivity or completed output. Existing strict
+project decisions remain available only through optional advanced controls.
+See [the rebuild review](SIMPLICITY_REVIEW_0.6.md) for the changes, fresh second
+review, test/live evidence and remaining limits. No blanket 9/10 claim is made.
+
 ## Product objective
 
 Jev/TypeSafe quietly organises recorded work with minimal user interaction.
@@ -166,3 +181,13 @@ Candidate version: 0.5.0-rc1. Source tests and local isolated UI checks passed.
 GitHub PR, trusted main package/provenance checks, published artifacts and local
 upgrade must be verified before reporting release completion. Use release notes
 and workflow/source SHAs as the final delivery record.
+
+
+### 0.6 simplicity rebuild
+
+The user found 0.5 too complicated. The new default removes rates, project forms,
+rules, modes and billing from ordinary setup/day screens. Four clickable setup
+steps, generic activity categories, a one-choice review, and a factual day-record
+PDF replace that everyday flow. Advanced existing records/tools remain intact.
+Tests and delivery evidence are recorded in SIMPLICITY_REVIEW_0.6.md and release
+notes. Future improvements must preserve this simpler default.

@@ -242,7 +242,7 @@ class Store:
             if count: self.audit('automatically assigned',{'entries':count})
         return count
 
-    def assign_remaining(self,blocks,task,description='',remember=False):
+    def assign_remaining(self,blocks,task,description='',remember=False,*,billable=True,strict=False):
         count=0
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
@@ -262,8 +262,9 @@ class Store:
                 if not original or original['state'] not in ('active','away'): raise ValueError('Activity is no longer available.')
                 if not original['closed']: raise ValueError('This activity is still being recorded. Assign it once you switch apps or pause.')
                 a=max(block['start'],original['start']); b=min(block['end'],original['end'])
+                if strict and (original['state']!='active' or original['app']!=block['app'] or a!=block['start'] or b!=block['end'] or self.uncovered(a,b)!=[(a,b)]):raise ValueError('This period changed. Reopen the review before choosing a category.')
                 for x,y in self.uncovered(a,b):
-                    cur=self.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id) VALUES(?,?,?,?,'assigned',?)",(task,x,y,description.strip(),original['id']))
+                    cur=self.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id,billable) VALUES(?,?,?,?,'assigned',?,?)",(task,x,y,description.strip(),original['id'],int(billable)))
                     ids.append(cur.lastrowid); count+=1
                 if remember and original['state']=='active':
                     exists=any(r['app'].casefold()==original['app'].casefold() for r in self.rows("SELECT app FROM rules WHERE title='' AND task_id=? AND enabled=1",(task,)))

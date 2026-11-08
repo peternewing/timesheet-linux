@@ -1,121 +1,105 @@
 # Time Sheet Linux
 
-A private Linux desktop app for recording foreground app use, assigning activity to projects and creating client timesheets. Core tracking is local and requires no account. Optional Jev/TypeSafe can organise completed activity into reversible drafts under an explicit background policy, using your own API key. Uncertain work goes to a small decision inbox. Recording works independently and stays local.
+**Set up once. Work as usual. Save a clear record of your day.**
 
-![Today view with example data](docs/screenshots/today.png)
+Time Sheet records Linux app activity and lets Jev organise it into simple activity
+categories. Clear cases happen automatically; uncertain activity needs one choice.
+Core recording stays local and works without AI. Jev uses your own TypeSafe key.
 
-## Install
+![The simple Today screen, using synthetic example data](docs/screenshots/today.png)
 
-Install **Time Sheet Linux 0.5.0-rc1** using either the AppImage or terminal commands. This is a prerelease: desktop support is still being tested, and releases require checksum and provenance verification. Back up existing data before upgrading.
+## Start in four steps
 
-### Option 1: AppImage
+1. Click the ready-made categories you want.
+2. Choose app names only, or optional local title matching.
+3. Click **Use my saved key**, **Paste key and connect**, or **Continue without AI**.
+4. Click **Start**. You can then work as usual.
 
-For x86-64 Linux with glibc 2.39 or newer:
+No project names, rates, rules or typed setup fields are required. There are only
+three everyday destinations: **Today**, **Past days**, and **Settings**. Choose a
+category when Jev asks; **Save day record** produces a PDF of the recorded day.
 
-1. Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.5.0-rc1/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.5.0-rc1/SHA256SUMS) into a permanent folder.
-2. Open a terminal in that folder and run:
+The record separates captured app use, AI estimates, your choices, away time and
+capture gaps. It is evidence of app activity, not independent proof of completed
+outputs or productivity. Simple-flow categories are non-billable drafts.
 
-   ```sh
-   sha256sum --ignore-missing -c SHA256SUMS
-   ```
+## Install 0.6.0-rc1
 
-   Check that the AppImage says **OK**, then run:
+This is a prerelease. Back up existing data before upgrading and reopen any old
+app window afterwards. Existing time, projects and saved reports are preserved.
 
-   ```sh
-   chmod +x TimeSheetLinux-x86_64.AppImage
-   ./TimeSheetLinux-x86_64.AppImage --diagnose
-   ./TimeSheetLinux-x86_64.AppImage --install
-   ```
+### AppImage — x86-64, glibc 2.39 or newer
 
-3. Open **Time Sheet Linux** from Applications. Keep the AppImage in that folder; the launcher and background service use it.
-
-### Option 2: Terminal installation from source
-
-For Ubuntu 24.04+ or Debian 13+, open a terminal and run:
+Download the AppImage, SHA256SUMS and provenance bundle from the
+[release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.6.0-rc1).
+In the download folder:
 
 ```sh
-sudo apt update
-sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-secret-1 python3-reportlab fonts-dejavu-core
-git clone --branch v0.5.0-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.5
-cd timesheet-linux-0.5
-/usr/bin/python3 -m timesheet.diagnostics
-./install.sh
+sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-Run `./install.sh` as your normal user, not with `sudo`, and keep the folder in place. Open **Time Sheet Linux** from Applications. For Fedora, Arch, openSUSE and desktop-specific setup, see the [complete installation guide](docs/INSTALL.md). The command above selects the fixed release tag for a reproducible installation.
-
-On GNOME 50 Wayland, sign out and back in once to load the helper. Other desktops may need extra setup; see the [desktop instructions](docs/INSTALL.md#desktop-setup).
-
-## Jev automation
-
-Read [Let Jev organise your day](docs/AUTOMATION_GUIDE.md) for one-time setup, permitted context, focus, the exception inbox, caps and pause controls. Automatic drafts are experimental; real working-day accuracy has not been established.
-
-## How it works
-
-- Records the foreground application and separates idle, locked, excluded and missing periods from active work.
-- Lets you create projects, assign activity, add manual time, review drafts and approve work before billing.
-- Saves rates and report snapshots. Exports CSV, printable HTML, PDF reports and invoice drafts.
-- Runs a per-user collector and supports local backups, restore, retention settings and app exclusions.
-
-Invoice PDFs are **drafts**: they do not calculate tax or automatically mark work billed. A foreground app is evidence of usage, not proof that time is billable. Review activity before invoicing.
-
-## Review your day
-
-Choose **Review today** to select captured activity, assign tasks or **Ask Jev**. After saving, continue with the remaining activity; unused suggestions stay available during that review. **Open drafts** shows just the date you are reviewing. Today also shows a short summary of saved work by task.
-
-In **Rules**, choose **Create assignment rule**, select a recorded app and choose its task. Check the plain-language preview and Save. Title matching and priority are optional. Use rules for apps dedicated to one task; use daily review for apps shared across projects.
-
-See the [usability review and test evidence](docs/USABILITY_REVIEW.md).
-
-## Optional suggestions
-
-Add your own TypeSafe key in Settings, then choose a suggestion in an assignment or review queue. Each request shows what will be sent and asks for confirmation. Suggestions can be wrong and never approve time. Source and AppImage builds store the key using the desktop secret service. Flatpak uses its application-scoped Secret portal and network access for confirmed requests. See [review assistance](docs/JEV_IDEAS.md).
-
-## Compatibility
-
-| Desktop session | Automatic tracking in 0.5.0-rc1 |
-|---|---|
-| GNOME 50 Wayland | Supported |
-| Plasma 6 Wayland | Capture helper + `swayidle` |
-| Sway Wayland | IPC + `swayidle` and a supported lock service |
-| Hyprland Wayland | Experimental; real GPU-backed testing pending |
-| EWMH X11 | X11 adapter and supported lock service |
-| Other Wayland desktops | Manual time until an adapter is available |
-
-GNOME 50, Plasma 6 and Sway focus/idle were exercised in isolated sessions; X11 was checked on a virtual server. Hardware lock/suspend, Hyprland and additional distributions need further testing. Missing capture evidence is recorded as unknown, not active work. See [compatibility and test details](docs/LINUX_COMPATIBILITY.md).
-
-## Privacy and data
-
-By default, the database and backups are under `~/.local/share/time-sheet-linux/`; source and AppImage installs follow `XDG_DATA_HOME` if set. The database is local and user-only, but **not encrypted**. Optional TypeSafe suggestions send selected application names, active client/project/task names and any context you choose to TypeSafe after a separate confirmation. Window titles are off by default. No keystrokes, screenshots, clipboard contents or browser URLs are recorded.
-
-Keep an external backup if you need protection from disk loss. Uninstalling integration keeps the database and backups. See [privacy and security](SECURITY.md) and [backup and restore](docs/INSTALL.md#backup-and-restore).
-
-## Development direction
-
-The [automation source of truth](docs/AUTOMATION_ROADMAP.md) governs future improvements: Jev should organise the day in the background and ask only about meaningful exceptions.
-
-## Contributing
-
-Run `/usr/bin/python3 -m unittest discover -s tests -v` and see [contributing](CONTRIBUTING.md), [testing](docs/TESTING.md) and [architecture](docs/ARCHITECTURE.md). Licensed under the [MIT License](LICENSE).
-
-
-## Verify release provenance
-
-The main-branch package workflow produces a GitHub/Sigstore provenance bundle.
-For a release listing `provenance.sigstore.json`, download it alongside the binary
-and install the official GitHub CLI, then run from the source checkout:
+Verify publisher provenance before executing. From a source checkout, with the
+official GitHub CLI installed:
 
 ```sh
 python3 packaging/verify_release.py TimeSheetLinux-x86_64.AppImage --bundle provenance.sigstore.json --source-commit FULL_SOURCE_SHA_FROM_RELEASE
 ```
 
-Use the Flatpak filename to verify that bundle instead. A successful verification
-checks the package digest, repository, trusted main workflow, source SHA and hosted
-runner identity. Checksums alone detect corruption, not publisher identity. Do not
-execute the package if verification fails. The release notes must identify the
-source commit and passing trusted build; a listed bundle alone is not verification.
-This is workflow provenance, not a personal code-signing certificate.
+Then keep the image in a permanent folder and install its launcher:
 
-See [automation setup and upgrade behaviour](docs/AUTOMATION_GUIDE.md). Back up data before upgrading. Older versions can read core
-v3 time records but do not implement the optional automation tables; turn off
-automation and keep a pre-upgrade backup when rolling back.
+```sh
+chmod +x TimeSheetLinux-x86_64.AppImage
+./TimeSheetLinux-x86_64.AppImage --diagnose
+./TimeSheetLinux-x86_64.AppImage --install
+```
+
+### Source — Ubuntu 24.04+ / Debian 13+
+
+```sh
+sudo apt update
+sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-secret-1 python3-reportlab fonts-dejavu-core
+git clone --branch v0.6.0-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.6
+cd timesheet-linux-0.6
+./install.sh
+```
+
+Run the installer as your normal user. Keep the source folder in place.
+For Flatpak, other distributions, capture helpers and rollback, use the
+[installation guide](docs/INSTALL.md).
+
+## Existing users
+
+Open the new app and use **Set up in 4 steps**. A new version requires explicit
+setup before background activity sending resumes. The saved personal key can be
+reused with one click; it is never embedded in public packages.
+
+Projects, assignment rules, billing reports, detailed Jev controls, privacy,
+backups and restore are under **Settings → Advanced tools**. These are optional;
+the everyday record does not require them. Older records remain intact.
+
+## Privacy and limits
+
+App names only is the simplest option. Optional titles stay local: only matching
+category IDs and word counts are sent. Simple Jev requests use generic category
+names, not private project/client names. Raw titles, paths, screenshots, times,
+rates and entry descriptions are not automatically added. You choose whether to
+remember corrections. Jev requests use your own TypeSafe account and usage caps;
+unknown usage pauses sending. API failures do not block recording.
+
+TypeSafe processes requests in the US; standard retention has no fixed published
+duration. ZDR is by request. See [security](SECURITY.md) and the setup's expandable
+data details. Saving/connecting a key alone does not enable activity sending.
+
+Flatpak requires the host capture companion. Keep its app window open for
+continuous Jev processing until background behaviour is verified on your desktop.
+GNOME 50 Wayland is supported; Plasma 6, Sway and X11 need their documented helpers.
+Hyprland remains experimental. Hardware and screen-reader acceptance remain open.
+
+## Development
+
+[Simplicity review](docs/SIMPLICITY_REVIEW_0.6.md) ·
+[Accepted roadmap](docs/AUTOMATION_ROADMAP.md) ·
+[Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md)
+
+Run `/usr/bin/python3 -m unittest discover -s tests -v`. Follow [AGENTS.md](AGENTS.md)
+and [contributing](CONTRIBUTING.md). Licensed under the [MIT License](LICENSE).

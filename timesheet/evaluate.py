@@ -17,19 +17,19 @@ def evaluate(cases,*,live=False,request=None,key=None):
     for case in cases:
         if not isinstance(case,dict) or not {'applications','tasks','expected_task','seconds','has_context'}<=case.keys():raise ValueError('Each example needs apps, tasks, expected task, seconds and context flag.')
         if type(case['seconds']) is not int or not 0<case['seconds']<=86400 or type(case['has_context']) is not bool:raise ValueError('Example duration or context is invalid.')
-        jev.prepare_decision(case['applications'],case['tasks'],examples=case.get('examples',[]),clues=case.get('clues',[]),focus=case.get('focus'),focus_default=case.get('focus_default',False),model=case.get('model','jev-latest'))
+        jev.prepare_decision(case['applications'],case['tasks'],examples=case.get('examples',[]),clues=case.get('clues',[]),focus=case.get('focus'),focus_default=case.get('focus_default',False),application_categories=case.get('application_categories',False),model=case.get('model','jev-latest'))
         if case['expected_task'] is not None and (type(case['expected_task']) is not int or case['expected_task'] not in [i for i,_ in case['tasks']]):raise ValueError('The expected task must be an offered option or null.')
     for case in cases:
         if not isinstance(case,dict) or not {'applications','tasks','expected_task','seconds','has_context'}<=case.keys():raise ValueError('Each example needs apps, tasks, expected task, seconds and context flag.')
         if type(case['seconds']) is not int or not 0<case['seconds']<=86400 or type(case['has_context']) is not bool:raise ValueError('Example duration or context is invalid.')
-        tasks=case['tasks'];payload=jev.prepare_decision(case['applications'],tasks,examples=case.get('examples',[]),clues=case.get('clues',[]),focus=case.get('focus'),focus_default=case.get('focus_default',False),model=case.get('model','jev-latest'))
+        tasks=case['tasks'];payload=jev.prepare_decision(case['applications'],tasks,examples=case.get('examples',[]),clues=case.get('clues',[]),focus=case.get('focus'),focus_default=case.get('focus_default',False),application_categories=case.get('application_categories',False),model=case.get('model','jev-latest'))
         if case['expected_task'] is not None and (type(case['expected_task']) is not int or case['expected_task'] not in [i for i,_ in tasks]):raise ValueError('The expected task must be an offered option or null.')
         if live:
             call=request or jev.decide
-            result=call(case['applications'],tasks,key,examples=case.get('examples',[]),clues=case.get('clues',[]),focus=case.get('focus'),focus_default=case.get('focus_default',False),model=case.get('model','jev-latest'))
+            result=call(case['applications'],tasks,key,examples=case.get('examples',[]),clues=case.get('clues',[]),focus=case.get('focus'),focus_default=case.get('focus_default',False),application_categories=case.get('application_categories',False),model=case.get('model','jev-latest'))
         else:result=case.get('result')
         if not valid_result(result,tasks,case.get('model','jev-latest')):raise ValueError('An example has invalid decision metadata.')
-        action,reason=route(result,'automatic',has_context=case['has_context'],focus_task=case.get('focus'),focus_default=case.get('focus_default',False))
+        action,reason=route(result,'automatic',has_context=case['has_context'],focus_task=case.get('focus'),focus_default=case.get('focus_default',False),application_categories=case.get('application_categories',False))
         automated=action=='apply';correct=result['task']==case['expected_task'];minutes=case['seconds']/60
         totals['recorded_minutes']+=minutes
         totals['correct_choices']+=int(correct);totals['input_tokens']+=result['usage']['input_tokens']
@@ -55,7 +55,7 @@ def main():
     cases=json.loads(args.file.read_text())
     if args.preview:
         if not isinstance(cases,list) or len(cases)>1000:parser.error('Use at most 1000 examples.')
-        for case in cases:print(json.dumps(jev.prepare_decision(case['applications'],case['tasks'],examples=case.get('examples',[]),clues=case.get('clues',[]),focus=case.get('focus'),focus_default=case.get('focus_default',False),model=case.get('model','jev-latest')),ensure_ascii=False))
+        for case in cases:print(json.dumps(jev.prepare_decision(case['applications'],case['tasks'],examples=case.get('examples',[]),clues=case.get('clues',[]),focus=case.get('focus'),focus_default=case.get('focus_default',False),application_categories=case.get('application_categories',False),model=case.get('model','jev-latest')),ensure_ascii=False))
         return 0
     if args.live and not args.allow_paid_requests:parser.error('Live evaluation sends the dataset to TypeSafe and may incur charges; add --allow-paid-requests after inspecting --preview.')
     key=jev.get_key() if args.live else None
