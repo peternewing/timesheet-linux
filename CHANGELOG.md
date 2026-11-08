@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0-rc3 — usability and reliability prerelease (2026-11-08)
+
+- Add custom history dates, billable filters, project search and incremental lists.
+- Improve first-run guidance, daily review, timer access and manual time entry.
+- Add grouped internal CSV reports, optional invoice details, editable rules and app exclusions.
+- Add privacy-safe tracking alerts, setup diagnostics and local backup status.
+- Keep the Today view stable during routine updates and expose the exact release version.
+
+This remains a prerelease. Accessibility, extended hardware, long-duration and broader desktop testing remain outstanding; see docs/IMPROVEMENTS.md. Back up data before upgrading. Releases are unsigned.
+
 ## 0.3.0 — compatibility candidate (2026-11-07)
 
 - Preserve GNOME 50 capture; add Plasma 6, Sway and experimental Hyprland Wayland and EWMH X11 adapters.

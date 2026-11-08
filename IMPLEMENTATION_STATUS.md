@@ -4,7 +4,7 @@ Last checked: 7 November 2026.
 
 | | 0.2.0 stable source (`main`) | 0.3.0 release candidate |
 |---|---|---|
-| Availability | Historical source on `main` | [AppImage and source](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc2) |
+| Availability | Historical source on `main` | [AppImage and source](https://github.com/peternewing/timesheet-linux/releases/tag/v0.3.0-rc3) |
 | Automatic capture | GNOME 50 Wayland | GNOME 50, Plasma 6, Sway, experimental Hyprland and EWMH X11; desktop dependencies apply |
 | Reports | CSV and printable HTML | CSV, HTML, PDF and invoice-draft PDF |
 | Data | Local SQLite and backups | Same database schema and report snapshots |
