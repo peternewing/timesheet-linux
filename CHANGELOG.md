@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0-rc1 — optional review assistance (2026-11-08)
+
+- Add local review sessions, readiness checks, optional remembered choices, and clearer assignment rules with a retained-activity preview.
+- Add optional TypeSafe suggestions using a personal key, explicit per-request data previews, and user-reviewed results. Suggestions do not approve or bill time.
+- Add optional categories, cancellation and bounded batch requests; no live API accuracy or calibration claim is made.
+- Enable optional network access and application-scoped Secret portal storage in Flatpak. Package builds and desktop portal compatibility require further testing.
+
+This is an unsigned prerelease. Back up data before upgrading; review all suggestions and drafts before billing.
+
+## 0.3.0-rc3 — usability and reliability prerelease (2026-11-08)
+
+- Add custom history dates, billable filters, project search and incremental lists.
+- Improve first-run guidance, daily review, timer access and manual time entry.
+- Add grouped internal CSV reports, optional invoice details, editable rules and app exclusions.
+- Add privacy-safe tracking alerts, setup diagnostics and local backup status.
+- Keep the Today view stable during routine updates and expose the exact release version.
+
+This remains a prerelease. Accessibility, extended hardware, long-duration and broader desktop testing remain outstanding; see docs/IMPROVEMENTS.md. Back up data before upgrading. Releases are unsigned.
+
 ## 0.3.0 — compatibility candidate (2026-11-07)
 
 - Preserve GNOME 50 capture; add Plasma 6, Sway and experimental Hyprland Wayland and EWMH X11 adapters.

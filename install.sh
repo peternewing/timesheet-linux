@@ -14,4 +14,8 @@ fi
 if ! /usr/bin/python3 -c 'import reportlab' >/dev/null 2>&1; then
     echo 'Optional PDF export: install your distribution reportlab package (see docs/INSTALL.md).' >&2
 fi
+if ! /usr/bin/python3 -c 'import gi; gi.require_version("Secret", "1"); from gi.repository import Secret' >/dev/null 2>&1; then
+    echo 'Optional TypeSafe key storage needs libsecret and a desktop keyring.' >&2
+    echo 'Ubuntu/Debian: sudo apt install gir1.2-secret-1 (see docs/INSTALL.md for other distributions).' >&2
+fi
 exec /usr/bin/python3 -m timesheet.app --install
