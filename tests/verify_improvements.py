@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-improvements-') as directory:
             yield from descendants(child); child=child.get_next_sibling()
     def find(root, cls, predicate=lambda w:True):
         return next(w for w in descendants(root) if isinstance(w,cls) and predicate(w))
-    app=TimeSheet(); app.set_application_id('org.local.TimeSheetImprovementTest')
+    app=TimeSheet();app.store.set('interface_mode','advanced'); app.set_application_id('org.local.TimeSheetImprovementTest')
     task=app.store.quick_project('Test client','Test project','Test task',6000)
     now=int(time.time())
     for i in range(110): app.store.add_entry(task,now-10000+i*60,now-10000+i*60+30,'Synthetic')

@@ -18,7 +18,7 @@ def texts(root):
 with tempfile.TemporaryDirectory(prefix='timesheet-rules-ui-') as tmp:
     os.environ.update(XDG_DATA_HOME=tmp,TIMESHEET_TESTING='1')
     from timesheet.app import TimeSheet,Gtk,GLib,desktop
-    app=TimeSheet(); app.set_application_id('org.local.TimeSheetRulesTest')
+    app=TimeSheet();app.store.set('interface_mode','advanced'); app.set_application_id('org.local.TimeSheetRulesTest')
     first=app.store.quick_project('Example','Work','Design',6000)
     project=app.store.rows('SELECT id FROM projects')[0]['id']
     second=app.store.add_task(project,'Admin')

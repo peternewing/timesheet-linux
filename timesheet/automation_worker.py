@@ -44,7 +44,7 @@ class Engine:
             self.repo.transition(job['id'],'stale','Evidence or permission changed before sending.');return 'stale'
         network=json.loads(job['network']);model=self.store.get('ai_pinned_model','jev-latest')
         try:
-            payload=jev.prepare_decision(network['applications'],network['tasks'],examples=network['examples'],clues=network['clues'],focus=network.get('focus'),focus_default=network.get('focus_default',False),model=model)
+            payload=jev.prepare_decision(network['applications'],network['tasks'],examples=network['examples'],clues=network['clues'],focus=network.get('focus'),focus_default=network.get('focus_default',False),model=model,application_categories=network.get('application_categories',False))
         except jev.JevError:
             self.repo.transition(job['id'],'failed','The selected context or model is not supported. Review task guidance.');return 'failed'
         cache_key=digest(payload)
@@ -65,7 +65,7 @@ class Engine:
                 self.repo.transition(job['id'],'pending',blocked)
                 self.pause(blocked,'budget' if 'limit reached' in blocked else 'attention',now);return 'paused'
             try:
-                result=self.request(network['applications'],network['tasks'],key,examples=network['examples'],clues=network['clues'],focus=network.get('focus'),focus_default=network.get('focus_default',False),model=model)
+                result=self.request(network['applications'],network['tasks'],key,examples=network['examples'],clues=network['clues'],focus=network.get('focus'),focus_default=network.get('focus_default',False),model=model,application_categories=network.get('application_categories',False))
                 if not valid_result(result,network['tasks'],model):raise jev.JevError('The decision metadata is incomplete.')
                 self.repo.account(usage_id,result)
             except Exception as exc:

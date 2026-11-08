@@ -8,7 +8,7 @@ from unittest.mock import patch
 with tempfile.TemporaryDirectory(prefix='timesheet-pages-') as directory:
     os.environ.update(XDG_DATA_HOME=directory,TIMESHEET_TESTING='1')
     from timesheet.app import TimeSheet, PAGES, Gtk, GLib, desktop
-    app=TimeSheet(); app.set_application_id('org.local.TimeSheetPageSmoke')
+    app=TimeSheet();app.store.set('interface_mode','advanced'); app.set_application_id('org.local.TimeSheetPageSmoke')
     task=app.store.quick_project('Example','Compatibility','Review',6000)
     entry=app.store.add_entry(task,1000,4600,'Synthetic work'); app.store.approve(entry)
     app.store.create_report(1,0,5000)

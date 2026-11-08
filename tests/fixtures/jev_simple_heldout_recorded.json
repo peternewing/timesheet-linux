@@ -1,0 +1,490 @@
+[
+  {
+    "applications": [
+      "Krita"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ]
+    ],
+    "expected_task": 1,
+    "seconds": 600,
+    "has_context": true,
+    "application_categories": true,
+    "model": "jev-1.14.0",
+    "result": {
+      "task": 1,
+      "probability": 1.0,
+      "alternatives": [
+        [
+          1,
+          1.0
+        ],
+        [
+          2,
+          0.0
+        ],
+        [
+          3,
+          0.0
+        ],
+        [
+          4,
+          0.0
+        ]
+      ],
+      "personal": 0.24,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 845,
+        "output_tokens": 158
+      },
+      "confidence": 1.0,
+      "none_probability": 0.0,
+      "enough_evidence": 0.92,
+      "work_kind": "design",
+      "work_kind_probability": 0.87
+    }
+  },
+  {
+    "applications": [
+      "Thunderbird"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ]
+    ],
+    "expected_task": 3,
+    "seconds": 600,
+    "has_context": true,
+    "application_categories": true,
+    "model": "jev-1.14.0",
+    "result": {
+      "task": 3,
+      "probability": 1.0,
+      "alternatives": [
+        [
+          3,
+          1.0
+        ],
+        [
+          1,
+          0.0
+        ],
+        [
+          2,
+          0.0
+        ],
+        [
+          4,
+          0.0
+        ]
+      ],
+      "personal": 0.2,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 846,
+        "output_tokens": 158
+      },
+      "confidence": 1.0,
+      "none_probability": 0.0,
+      "enough_evidence": 0.93,
+      "work_kind": "other",
+      "work_kind_probability": 0.75
+    }
+  },
+  {
+    "applications": [
+      "Zoom"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ]
+    ],
+    "expected_task": 3,
+    "seconds": 600,
+    "has_context": true,
+    "application_categories": true,
+    "model": "jev-1.14.0",
+    "result": {
+      "task": 3,
+      "probability": 1.0,
+      "alternatives": [
+        [
+          3,
+          1.0
+        ],
+        [
+          1,
+          0.0
+        ],
+        [
+          2,
+          0.0
+        ],
+        [
+          4,
+          0.0
+        ]
+      ],
+      "personal": 0.19,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 844,
+        "output_tokens": 158
+      },
+      "confidence": 1.0,
+      "none_probability": 0.0,
+      "enough_evidence": 0.86,
+      "work_kind": "meeting",
+      "work_kind_probability": 0.83
+    }
+  },
+  {
+    "applications": [
+      "LibreOffice Calc"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ]
+    ],
+    "expected_task": 4,
+    "seconds": 600,
+    "has_context": true,
+    "application_categories": true,
+    "model": "jev-1.14.0",
+    "result": {
+      "task": 4,
+      "probability": 0.99,
+      "alternatives": [
+        [
+          4,
+          0.99
+        ],
+        [
+          1,
+          0.01
+        ],
+        [
+          2,
+          0.0
+        ],
+        [
+          3,
+          0.0
+        ]
+      ],
+      "personal": 0.17,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 848,
+        "output_tokens": 158
+      },
+      "confidence": 0.99,
+      "none_probability": 0.0,
+      "enough_evidence": 0.86,
+      "work_kind": "other",
+      "work_kind_probability": 0.54
+    }
+  },
+  {
+    "applications": [
+      "Okular"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ]
+    ],
+    "expected_task": 2,
+    "seconds": 600,
+    "has_context": true,
+    "application_categories": true,
+    "model": "jev-1.14.0",
+    "result": {
+      "task": 2,
+      "probability": 0.99,
+      "alternatives": [
+        [
+          2,
+          0.99
+        ],
+        [
+          1,
+          0.0
+        ],
+        [
+          3,
+          0.0
+        ],
+        [
+          4,
+          0.0
+        ]
+      ],
+      "personal": 0.2,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 845,
+        "output_tokens": 158
+      },
+      "confidence": 0.99,
+      "none_probability": 0.01,
+      "enough_evidence": 0.87,
+      "work_kind": "other",
+      "work_kind_probability": 0.7
+    }
+  },
+  {
+    "applications": [
+      "Google Chrome"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ]
+    ],
+    "expected_task": null,
+    "seconds": 600,
+    "has_context": true,
+    "application_categories": true,
+    "model": "jev-1.14.0",
+    "result": {
+      "task": null,
+      "probability": 0.99,
+      "alternatives": [
+        [
+          2,
+          0.01
+        ],
+        [
+          1,
+          0.0
+        ],
+        [
+          3,
+          0.0
+        ],
+        [
+          4,
+          0.0
+        ]
+      ],
+      "personal": 0.17,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 845,
+        "output_tokens": 156
+      },
+      "confidence": 0.99,
+      "none_probability": 0.99,
+      "enough_evidence": 0.07,
+      "work_kind": "other",
+      "work_kind_probability": 0.97
+    }
+  },
+  {
+    "applications": [
+      "Terminal"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ]
+    ],
+    "expected_task": null,
+    "seconds": 600,
+    "has_context": true,
+    "application_categories": true,
+    "model": "jev-1.14.0",
+    "result": {
+      "task": null,
+      "probability": 0.99,
+      "alternatives": [
+        [
+          1,
+          0.01
+        ],
+        [
+          2,
+          0.0
+        ],
+        [
+          3,
+          0.0
+        ],
+        [
+          4,
+          0.0
+        ]
+      ],
+      "personal": 0.21,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 844,
+        "output_tokens": 156
+      },
+      "confidence": 0.99,
+      "none_probability": 0.99,
+      "enough_evidence": 0.88,
+      "work_kind": "other",
+      "work_kind_probability": 0.68
+    }
+  },
+  {
+    "applications": [
+      "Files"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ]
+    ],
+    "expected_task": null,
+    "seconds": 600,
+    "has_context": true,
+    "application_categories": true,
+    "model": "jev-1.14.0",
+    "result": {
+      "task": null,
+      "probability": 0.98,
+      "alternatives": [
+        [
+          4,
+          0.02
+        ],
+        [
+          1,
+          0.0
+        ],
+        [
+          2,
+          0.0
+        ],
+        [
+          3,
+          0.0
+        ]
+      ],
+      "personal": 0.25,
+      "model": "jev-1.14.0",
+      "usage": {
+        "input_tokens": 844,
+        "output_tokens": 156
+      },
+      "confidence": 0.98,
+      "none_probability": 0.98,
+      "enough_evidence": 0.91,
+      "work_kind": "other",
+      "work_kind_probability": 0.82
+    }
+  }
+]

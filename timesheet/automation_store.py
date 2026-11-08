@@ -198,7 +198,7 @@ class Repository:
 
     def complete(self,job,result):
         network=json.loads(job['network'])
-        action,reason=route(result,self.config()['mode'],has_context=bool(job['has_context']),focus_task=network.get('focus'),focus_default=network.get('focus_default',False))
+        action,reason=route(result,self.config()['mode'],has_context=bool(job['has_context']),focus_task=network.get('focus'),focus_default=network.get('focus_default',False),application_categories=network.get('application_categories',False))
         with self.store.db:
             self.store.db.execute('BEGIN IMMEDIATE')
             if not self.fresh(job):
@@ -215,6 +215,7 @@ class Repository:
                 description=task_name+' — '+(category if category not in ('other','application') else 'recorded application use')
                 eid=self.store.db.execute("""INSERT INTO entries(task_id,start,end,description,origin,activity_id)
                     VALUES(?,?,?,?, 'jev',?)""",(result['task'],job['start'],job['end'],description,job['activity_id'])).lastrowid
+                if result['task'] in self.config().get('category_tasks',[]):self.store.db.execute('UPDATE entries SET billable=0 WHERE id=?',(eid,))
                 entry_ids=[eid];self.store._record_change('Jev automatic assignment',[],entry_ids)
                 self.store.audit('Jev draft assigned',{'job_id':job['id'],'entry_id':eid,'policy':1})
             state='applied' if entry_ids else 'exception'
@@ -240,6 +241,7 @@ class Repository:
             for item in chosen:
                 decision=json.loads(item['decision'])
                 eid=self.store.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id) VALUES(?,?,?,'Reviewed work','assigned',?)",(task_id,item['start'],item['end'],item['activity_id'])).lastrowid
+                if task_id in self.config().get('category_tasks',[]):self.store.db.execute('UPDATE entries SET billable=0 WHERE id=?',(eid,))
                 ids.append(eid)
                 self.store.db.execute("UPDATE ai_jobs SET state='applied',entry_ids=?,reason='Task chosen by user.',updated=? WHERE id=?",(canonical([eid]),int(time.time()),item['id']))
                 self.store.db.execute('INSERT OR IGNORE INTO ai_reviews(job_id,suggested_task,chosen_task,seconds,at) VALUES(?,?,?,?,?)',(item['id'],decision.get('task'),task_id,item['end']-item['start'],int(time.time())))

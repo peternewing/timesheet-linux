@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0-rc1 — simplicity rebuild
+
+- Four-step click-only setup: ready-made categories, privacy, saved/pasted personal key, Start.
+- Three everyday destinations and a quiet header; project/rule/billing controls moved to optional advanced tools.
+- Specialist app activity categorised automatically; ambiguous uses get a single category choice.
+- Factual day-record PDF with exact periods, source labels, away time and capture gaps.
+- Category corrections preserve captured evidence and remain reversible/non-billable; existing business data is retained.
+- Separate broad activity-type decisions from project/work-intent decisions; neither app use nor a category proves completed output.
+
 ## 0.5.0-rc1 — automation candidate
 
 - Explicit personal-key background policy, independent worker, durable queue/cache, usage caps and safe recovery.

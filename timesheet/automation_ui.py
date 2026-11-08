@@ -142,7 +142,7 @@ class AutomationUI:
                 context,reason=repo.context(rows[0],candidate)
                 if not context:self.info('No permitted request',reason);return
                 network=context['network']
-                payload=jev.prepare_decision(network['applications'],network['tasks'],examples=network['examples'],clues=network['clues'],focus=network.get('focus'),focus_default=network.get('focus_default',False),model=self.store.get('ai_pinned_model','jev-latest'))
+                payload=jev.prepare_decision(network['applications'],network['tasks'],examples=network['examples'],clues=network['clues'],focus=network.get('focus'),focus_default=network.get('focus_default',False),application_categories=network.get('application_categories',False),model=self.store.get('ai_pinned_model','jev-latest'))
                 self.show_ai_text('Exact next-request data preview',json.dumps(payload,ensure_ascii=False,indent=2))
             tools.append(button('Preview permitted data',preview))
             tools.append(Gtk.LinkButton(uri='https://help.typesafe.ai/articles/5974925716',label='TypeSafe data handling'))
@@ -155,7 +155,7 @@ class AutomationUI:
             if key.get_text().strip():jev.save_key(key.get_text());key.set_text('')
             repo.configure(dict(mode=chosen,consent_version=POLICY_VERSION if consent.get_active() else 0,since=selected(since) if selected(since) is not None else int(time.time()),
                 backend='flatpak' if desktop.FLATPAK else 'native',
-                owner=owner_token(),
+                owner=owner_token(),category_tasks=config.get('category_tasks',[]),
                 allow_guidance=guidance.get_active(),allow_examples=examples.get_active(),allow_project_clues=clues.get_active(),allow_focus=True,
                 daily_requests=selected(requests),daily_tokens=selected(tokens),exclude_apps=[s.strip() for s in excluded.get_text().split(',') if s.strip()]))
             if chosen!='off':desktop.start_automation()

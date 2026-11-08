@@ -72,3 +72,21 @@ automation. `evaluate` separates paid labelled inference from offline replay;
 `updates` reads release metadata without executing downloads. The package workflow
 attests trusted main builds; `packaging/verify_release.py` delegates cryptographic
 verification to the official GitHub CLI.
+
+
+## 0.6 everyday product
+
+`simple_ui` provides the default wizard/day/review/settings screens. `simple_setup`
+creates owned generic categories transactionally without adopting user projects.
+`simple_store` performs strict reversible human assignments/corrections.
+`day_record` reads one coherent local snapshot and exports a non-financial PDF.
+Old business workflows remain behind Advanced tools and retain regression tests.
+
+The policy carries an explicit restricted category ID list. Context must validate
+those IDs against intact app-created presets; it never falls back to all client
+tasks. Requests carry a broad-app-type scope, distinct questions and action gates.
+This can label specialist application use without claiming work intent. General
+apps can still return none. Original project/focus/personal gates remain intact.
+All simple-flow category allocations are non-billable drafts. Local rules targeting
+any active project still take precedence; filtering offered generic tasks must not
+filter out that precedence check.

@@ -98,3 +98,18 @@ GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPA
 ```
 
 The recorded fixture is synthetic live evidence, replayed offline. It does not establish real-work accuracy. Never run tests against the actual user's database or silently enable a background policy while testing an upgrade.
+
+
+## 0.6 simple default
+
+The suite now has 208 unit/regression tests. `tests/verify_simple_ui.py` runs
+30 checks against the default product, including actual mouse clicks through
+all four setup steps with a fake saved key and no typing. Run at normal and
+200% scale. Existing advanced tests explicitly select that retained interface.
+`tests/preview_ui.py` renders the simple documentation screenshots from synthetic
+records with no real key/provider call. See SIMPLICITY_REVIEW_0.6.md for evidence.
+
+```sh
+/usr/bin/python3 -m timesheet.evaluate tests/fixtures/jev_simple_heldout_recorded.json
+GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_simple_ui.py
+```

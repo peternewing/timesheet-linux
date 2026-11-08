@@ -1,3 +1,9 @@
+# 0.6.0-rc1 — simplicity rebuild
+
+The default product is now a four-step click-only setup, Today, Past days and
+Settings. Read [the simplicity review](docs/SIMPLICITY_REVIEW_0.6.md). The prior
+0.5 report remains historical evidence, not the current everyday UX.
+
 # 0.5.0-rc1 automation candidate
 
 The accepted source of truth is [AUTOMATION_ROADMAP.md](docs/AUTOMATION_ROADMAP.md).

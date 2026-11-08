@@ -18,7 +18,7 @@ def descendants(widget):
 with tempfile.TemporaryDirectory(prefix='timesheet-daily-review-') as folder:
     os.environ.update(XDG_DATA_HOME=folder,TIMESHEET_TESTING='1')
     from timesheet.app import TimeSheet,Gtk,GLib,desktop,day_bounds,selected
-    app=TimeSheet();app.set_application_id('org.local.TimeSheetDailyReviewTest')
+    app=TimeSheet();app.store.set('interface_mode','advanced');app.set_application_id('org.local.TimeSheetDailyReviewTest')
     task=app.store.quick_project('Example Studio','Website','Design',6000)
     day=datetime.now().date()-timedelta(days=1)
     base=int(datetime.combine(day,datetime.min.time()).replace(hour=10).timestamp())

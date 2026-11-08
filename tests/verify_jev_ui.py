@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-jev-ui-') as tmp:
     os.environ.update(XDG_DATA_HOME=tmp,TIMESHEET_TESTING='1')
     from timesheet.app import TimeSheet,Gtk,GLib,desktop,selected
     from timesheet import jev
-    app=TimeSheet(); app.set_application_id('org.local.TimeSheetJevTest')
+    app=TimeSheet();app.store.set('interface_mode','advanced'); app.set_application_id('org.local.TimeSheetJevTest')
     tid=app.store.quick_project('Example','Work','Design',6000)
     now=int(time.time())
     with app.store.db:
