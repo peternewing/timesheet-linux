@@ -12,8 +12,10 @@ finished usability or accessibility certification.
   dropdowns, a timeline legend and clearer explanations of time totals.
 - Editing assignment rules, priority guidance and a warning when title capture
   is disabled; recorded-app exclusion controls and setup diagnostics in Settings.
-- Internal CSV exports, including non-billable work, without changing billing
-  state; a display of the latest local automatic backup.
+- Internal CSV exports, including non-billable work and optional all-client
+  export, without changing billing state; the latest local automatic backup.
+- Quick manual-entry durations, optional reusable invoice details, and opt-in
+  notifications when tracking degrades while the app window is open.
 
 ## Still needed
 
@@ -24,8 +26,9 @@ finished usability or accessibility certification.
   windows and high-contrast themes; run moderated usability sessions.
 - Complete guided onboarding, a unified review workflow, richer manual entry,
   project search and organisation, reporting and invoice preferences.
-- Evaluate backup encryption and recovery, desktop notifications, more
-  currencies, update delivery and signing, and additional Linux environments.
+- Evaluate backup encryption and recovery, background notifications when the
+  window is closed, more currencies, update delivery and signing, and additional
+  Linux environments.
 - Profile large datasets and long-running resource use; reduce the size and
   coupling of the interface module and extend end-to-end test coverage.
 

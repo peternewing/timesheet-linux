@@ -24,6 +24,11 @@ with tempfile.TemporaryDirectory(prefix='timesheet-improvements-') as directory:
     failures=[]
     def check():
         try:
+            app.store.set('tracking_notifications','1')
+            with patch.object(app,'send_notification') as send, patch.object(app,'withdraw_notification') as withdraw:
+                app.last_tracking_status='active'; app.update_tracking_notification('error'); send.assert_called_once()
+                app.update_tracking_notification('active'); withdraw.assert_called_once()
+            app.store.set('tracking_notifications','0')
             app.history_period='all'; app.show_page('History')
             assert len(app.history_checks)==50
             more=find(app.body_history,Gtk.Button,lambda w:(w.get_label() or '').startswith('Show more'))
@@ -44,7 +49,21 @@ with tempfile.TemporaryDirectory(prefix='timesheet-improvements-') as directory:
             rid=app.store.add_rule('Editor','',task)
             app.rule_dialog(app.store.db.execute('SELECT * FROM rules WHERE id=?',(rid,)).fetchone())
             assert app.dialogs[-1].get_title()=='Edit rule'; app.dialogs[-1].close()
-            print('PASS: pagination, custom dates, exclusions, timer and rule editor',flush=True)
+            app.entry_dialog(); form=app.dialogs[-1]
+            find(form,Gtk.Button,lambda w:w.get_label()=='Last 15 minutes').emit('clicked')
+            fields=[w for w in descendants(form) if isinstance(w,Gtk.Entry)]
+            assert (datetime.strptime(fields[1].get_text(),'%Y-%m-%d %H:%M:%S')-datetime.strptime(fields[0].get_text(),'%Y-%m-%d %H:%M:%S')).total_seconds()==900
+            form.close()
+            entry=app.store.entries(0,now)[0]['id']; app.store.approve(entry)
+            report=app.store.create_report(1,now-20000,now+1)
+            app.invoice_pdf_dialog(report); form=app.dialogs[-1]
+            fields=[w for w in descendants(form) if isinstance(w,Gtk.Entry)]
+            fields[0].set_text('INV-1'); fields[1].set_text('Seller'); fields[5].set_text('Payment')
+            find(form,Gtk.CheckButton,lambda w:'Remember seller' in w.get_label()).set_active(True)
+            with patch.object(app,'save_file'):
+                find(form,Gtk.Button,lambda w:w.get_label()=='Save').emit('clicked')
+                assert app.store.get('invoice_seller')=='Seller' and app.store.get('invoice_payment')=='Payment'
+            print('PASS: pagination, dates, exclusions, timer, rule editor and invoice preferences',flush=True)
         except Exception: failures.append(traceback.format_exc())
         app.quit(); return False
     with patch.object(desktop,'start_collector'), patch.object(desktop,'read_health',return_value={'status':'paused','error':''}):

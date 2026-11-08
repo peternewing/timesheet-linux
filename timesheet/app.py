@@ -112,6 +112,7 @@ class Timeline(Gtk.Widget):
         self.start,self.end,self.records=start,end,records
         self.set_size_request(100,52)
         self.set_tooltip_text('24-hour activity timeline. The activity list below provides exact times and states.')
+        self.update_property([Gtk.AccessibleProperty.LABEL],['24-hour activity timeline. Exact times and states are listed below.'])
     def do_snapshot(self,snapshot):
         width=self.get_width();height=26
         def rectangle(color,x,w):
@@ -137,7 +138,7 @@ class TimeSheet(Adw.Application):
         super().__init__(application_id=APP_ID)
         self.store=Store(); self.win=None; self.day=datetime.now().date(); self.page='Today'
         self.dialog_count=0; self.last_refresh=0; self.history_search=''; self.history_period='month'; self.history_status='all'
-        self.dialogs=[]
+        self.dialogs=[]; self.last_tracking_status=None
         self.timer_label=None; self.timer_started=None
         self.live_signature=None; self.today_metrics={}; self.today_apps={}; self.calendar_live={}; self.history_live={}
         self.project_live={}; self.task_live={}; self.task_projects={}
@@ -289,6 +290,7 @@ class TimeSheet(Adw.Application):
             self.update_timer_display()
             names={'active':'Tracking automatically','paused':'Tracking paused','setup_required':'Finish setup','stopped':'Tracking stopped','error':'Recording failed','degraded':'Tracking needs attention'}
             self.status.set_text(names.get(status,'Starting…'))
+            self.update_tracking_notification(status)
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
             if self.page=='Today':
                 signature=(rt['state'],rt['capture_status'],rt['app'],datetime.now().date(),int(time.time())//15)
@@ -302,6 +304,16 @@ class TimeSheet(Adw.Application):
                 self.update_live_counts(rt,now); self.live_signature=signature
         except (sqlite3.Error,OSError) as exc: self.status.set_text('Recording needs attention')
         return True
+    def update_tracking_notification(self,status):
+        previous=self.last_tracking_status; self.last_tracking_status=status
+        if self.store.get('tracking_notifications','0')!='1': return
+        if previous=='active' and status in ('stopped','error','degraded','setup_required'):
+            notice=Gio.Notification.new('Time Sheet Linux needs attention')
+            notice.set_body('Automatic tracking may be incomplete. Open the app to check its status.')
+            self.send_notification('tracking-health',notice)
+        elif status=='active' and previous in ('stopped','error','degraded','setup_required'):
+            self.withdraw_notification('tracking-health')
+
     def update_timer_display(self):
         if not self.win: return False
         self.timer_button.set_visible(self.timer_started is not None)
@@ -397,7 +409,11 @@ class TimeSheet(Adw.Application):
         elif state in ('stopped','error','degraded'):
             self.row(b,'Tracking needs attention',health.get('error') or 'Restart the tracker or check setup.',[('Restart tracking',lambda _:self.run_action(lambda:desktop.start_collector(),lambda _:self.toast('Tracker started'))),('Settings',lambda _:self.show_page('Settings'))])
         else:
-            self.row(b,'Now using '+(rt['app'] or 'your desktop'),'Away and locked time are kept separate from active work.', [('Pause 15 min',lambda _:self.pause_for(15))])
+            activity=rt['activity_state']
+            title=('Now using '+rt['app']) if activity=='active' and rt['app'] else {
+                'away':'Away from keyboard','locked':'Screen locked','excluded':'Excluded application',
+                'unknown':'Waiting for reliable activity information','paused':'Tracking paused'}.get(activity,'Tracking is ready')
+            self.row(b,title,'Away and locked time are kept separate from active work.', [('Pause 15 min',lambda _:self.pause_for(15))])
         metrics=Gtk.Box(spacing=12,homogeneous=True)
         for key,title in [('active','Active desktop use'),('assigned','Assigned to tasks'),('unassigned','Needs assignment')]:
             card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4); card.add_css_class('card'); value=label(fmt_duration(summary[key]),'metric'); card.append(value); self.today_metrics[key]=value; card.append(label(title,'dim-label')); metrics.append(card)
@@ -489,6 +505,12 @@ class TimeSheet(Adw.Application):
             d=dropdown(b,'Task',choices); select_id(d,entry['task_id'] if entry else task_id)
             s=field(b,'Start',datetime.fromtimestamp(a).strftime('%Y-%m-%d %H:%M:%S'),'YYYY-MM-DD HH:MM')
             e=field(b,'End',datetime.fromtimestamp(z).strftime('%Y-%m-%d %H:%M:%S'),'YYYY-MM-DD HH:MM')
+            if not entry and start is None and end is None:
+                shortcuts=action_bar(); b.append(shortcuts)
+                def recent(minutes):
+                    finish=datetime.now().replace(microsecond=0); begin=finish-timedelta(minutes=minutes)
+                    s.set_text(begin.strftime('%Y-%m-%d %H:%M:%S')); e.set_text(finish.strftime('%Y-%m-%d %H:%M:%S'))
+                for minutes in (15,30,60): shortcuts.append(button(f'Last {minutes} minutes',lambda _,m=minutes:recent(m)))
             desc=field(b,'Client-facing description',entry['description'] if entry else '')
             bill=Gtk.CheckButton(label='Billable'); bill.set_active(bool(entry['billable']) if entry else True); b.append(bill)
             b.append(label('Overlapping time is prevented. Editing approved time returns it to draft.','dim-label'))
@@ -803,11 +825,12 @@ class TimeSheet(Adw.Application):
                 return self.store.create_report(selected(client),day_bounds(a)[0],day_bounds(z)[1])
             self.run_action(action,self.preview_report)
         b.append(button('Create report from approved time',create,True))
+        all_clients=Gtk.CheckButton(label='Include all clients in internal CSV'); b.append(all_clients)
         def internal(_):
             try:
                 a=datetime.strptime(start.get_text().strip(),'%Y-%m-%d').date(); z=datetime.strptime(end.get_text().strip(),'%Y-%m-%d').date()
                 if z<a: raise ValueError('End date must follow the start date.')
-                content=self.store.internal_csv(day_bounds(a)[0],day_bounds(z)[1],selected(client))
+                content=self.store.internal_csv(day_bounds(a)[0],day_bounds(z)[1],None if all_clients.get_active() else selected(client))
             except ValueError as exc:
                 self.error(str(exc)); return
             self.save_file('Save internal time report','internal-time.csv',lambda path:Path(path).write_text(content,encoding='utf-8'))
@@ -878,15 +901,23 @@ class TimeSheet(Adw.Application):
     def invoice_pdf_dialog(self,rid):
         def build(b):
             b.append(label('Create a draft invoice PDF from this saved report. No tax is calculated; review before issuing. Export does not mark work billed.'))
-            return [field(b,title,value) for title,value in [
-                ('Invoice reference',''),('Seller name and address',''),
+            fields=[field(b,title,value) for title,value in [
+                ('Invoice reference',''),('Seller name and address',self.store.get('invoice_seller','')),
                 ('Customer name and address',self.store.report(rid)[0]['client']),
                 ('Issue date (YYYY-MM-DD)',datetime.now().strftime('%Y-%m-%d')),
-                ('Due date (YYYY-MM-DD)',datetime.now().strftime('%Y-%m-%d')),('Payment details','')]]
-        def save(fields):
+                ('Due date (YYYY-MM-DD)',datetime.now().strftime('%Y-%m-%d')),('Payment details',self.store.get('invoice_payment',''))]]
+            remember=Gtk.CheckButton(label='Remember seller and payment details on this computer')
+            remember.set_active(self.store.get('remember_invoice_details','0')=='1'); b.append(remember)
+            b.append(label('Saved details are stored locally in the unencrypted database. Turn this off and save to forget them.','dim-label'))
+            return fields,remember
+        def save(form):
             from .pdf_export import report_pdf,write_pdf
+            fields,remember=form
             invoice=dict(zip(('number','seller','customer','issued','due','payment'),[w.get_text() for w in fields]))
             content=report_pdf(self.store.report(rid),rid,invoice=invoice)
+            self.store.set('remember_invoice_details',int(remember.get_active()))
+            self.store.set('invoice_seller',invoice['seller'] if remember.get_active() else '')
+            self.store.set('invoice_payment',invoice['payment'] if remember.get_active() else '')
             GLib.idle_add(lambda:(self.save_file('Save invoice draft',f'invoice-draft-{rid}.pdf',lambda path:write_pdf(path,content)),False)[1])
         self.dialog('Invoice PDF',build,save)
 
@@ -912,6 +943,7 @@ class TimeSheet(Adw.Application):
         b.append(Gtk.LinkButton(uri='https://github.com/peternewing/timesheet-linux/blob/linux-compatibility-0.3/docs/INSTALL.md',label='Open installation and desktop setup guide'))
         tracking=Adw.PreferencesGroup(title='Tracking'); b.append(tracking)
         capture=Adw.SwitchRow(title='Track desktop usage automatically',subtitle='Record the foreground app, excluding idle and locked time'); capture.set_active(self.store.get('capture_enabled','0')=='1'); tracking.add(capture)
+        notifications=Adw.SwitchRow(title='Notify me when tracking needs attention',subtitle='While this window is open, alert me if active tracking becomes unavailable'); notifications.set_active(self.store.get('tracking_notifications','0')=='1'); tracking.add(notifications)
         titles=Adw.SwitchRow(title='Include window titles',subtitle='Titles can include document names and other sensitive information'); titles.set_active(self.store.get('capture_titles','0')=='1'); tracking.add(titles)
         startup=None
         if not desktop.FLATPAK:
@@ -942,7 +974,7 @@ class TimeSheet(Adw.Application):
                 except ValueError: raise ValueError('Idle threshold and retention must be whole numbers.')
                 if not 1<=minutes<=240 or not 1<=days<=3650: raise ValueError('Idle: 1–240 minutes. Retention: 1–3650 days.')
                 desktop.set_paused(self.store,not capture.get_active())
-                for key,value in [('capture_titles',int(titles.get_active())),('excluded_apps',exclusions.get_text()),('idle_seconds',minutes*60),('retention_days',days),('auto_backup',int(backups.get_active()))]: self.store.set(key,value)
+                for key,value in [('tracking_notifications',int(notifications.get_active())),('capture_titles',int(titles.get_active())),('excluded_apps',exclusions.get_text()),('idle_seconds',minutes*60),('retention_days',days),('auto_backup',int(backups.get_active()))]: self.store.set(key,value)
                 if startup is not None: desktop.set_autostart(startup.get_active())
                 desktop.start_collector()
             self.run_action(apply,lambda _:self.toast('Preferences saved'))
