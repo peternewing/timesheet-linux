@@ -11,9 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install system Python bindings
-        run: sudo apt-get update && sudo apt-get install -y python3-gi python3-xlib python3-reportlab poppler-utils xvfb dbus-daemon
+        run: sudo apt-get update && sudo apt-get install -y python3-gi python3-xlib python3-reportlab gir1.2-secret-1 poppler-utils xvfb dbus-daemon
       - name: Run accounting, capture and upgrade tests
         run: /usr/bin/python3 -m unittest discover -s tests -v
+      - name: Portal-only encrypted key storage with a private synthetic portal
+        run: dbus-run-session -- /usr/bin/python3 packaging/verify_secret_portal.py
       - name: GNOME collector protocol and privacy
         run: XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=GNOME PYTHONPATH=. dbus-run-session -- /usr/bin/python3 tests/verify_collector.py
       - name: KDE bridge protocol (simulated compositor)
@@ -34,3 +36,7 @@ jobs:
         run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_ui.py
       - name: Exercise review, timer and rule controls
         run: GDK_BACKEND=x11 GSK_RENDERER=cairo PYTHONPATH=. xvfb-run -a -s '-screen 0 1280x1000x24' /usr/bin/python3 tests/verify_improvements.py
+      - name: Exercise optional AI consent and review flow
+        run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_jev_ui.py
+      - name: Exercise assignment rule explanations and validation
+        run: GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 1280x1000x24' /usr/bin/python3 tests/verify_rules_ui.py

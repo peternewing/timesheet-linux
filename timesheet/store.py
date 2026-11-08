@@ -173,8 +173,14 @@ class Store:
         rule=self.matching_rule(app,title)
         return rule['task_id'] if rule else None
 
+    def validate_rule_target(self,task):
+        valid=self.db.execute('''SELECT 1 FROM tasks t JOIN projects p ON p.id=t.project_id
+            JOIN clients c ON c.id=p.client_id WHERE t.id=? AND t.archived=0 AND p.archived=0 AND c.archived=0''',(task,)).fetchone()
+        if not valid: raise ValueError('Choose an active task.')
+
     def add_rule(self,app,title,task,priority=0):
         if not app.strip(): raise ValueError('Choose an application.')
+        self.validate_rule_target(task)
         with self.db:
             rid=self.db.execute('INSERT INTO rules(app,title,task_id,priority,created) VALUES(?,?,?,?,?)',(app.strip(),title.strip(),task,int(priority),int(time.time()))).lastrowid
             self.audit('rule created',{'id':rid})
@@ -182,6 +188,7 @@ class Store:
 
     def update_rule(self,rule_id,app,title,task,priority=0):
         if not app.strip(): raise ValueError('Choose an application.')
+        self.validate_rule_target(task)
         with self.db:
             cur=self.db.execute('UPDATE rules SET app=?,title=?,task_id=?,priority=?,created=? WHERE id=?',
                 (app.strip(),title.strip(),task,int(priority),int(time.time()),rule_id))
@@ -212,6 +219,7 @@ class Store:
         count=0
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
+            self.validate_rule_target(task)
             before=[]; ids=[]
             for block in blocks:
                 original=self.db.execute('SELECT * FROM activity WHERE id=?',(block['id'],)).fetchone()

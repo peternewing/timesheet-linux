@@ -6,6 +6,8 @@ command: timesheet-linux
 build-options:
   no-debuginfo: true
 finish-args:
+  # Optional user-confirmed TypeSafe requests. Core tracking remains offline.
+  - --share=network
   - --share=ipc
   - --socket=wayland
   - --socket=fallback-x11
@@ -13,6 +15,8 @@ finish-args:
   - --filesystem=xdg-data/time-sheet-linux:create
   - --talk-name=org.local.TimeSheetCapture
   - --env=FLATPAK_ID=org.local.TimeSheetLinux
+  # Use the app-scoped Secret portal file backend; never fall back to the host keyring.
+  - --env=SECRET_BACKEND=file
   - --env=PYTHONPATH=/app/lib/python3/site-packages:/app/share/time-sheet-linux
 modules:
   - name: pillow
@@ -55,6 +59,7 @@ modules:
       - install -Dm755 packaging/flatpak/launch /app/bin/timesheet-linux
       - install -Dm644 packaging/flatpak/org.local.TimeSheetLinux.desktop /app/share/applications/org.local.TimeSheetLinux.desktop
       - install -Dm644 resources/timesheet.svg /app/share/icons/hicolor/scalable/apps/org.local.TimeSheetLinux.svg
+      - install -Dm644 packaging/check_runtime.py /app/libexec/timesheet-check-runtime.py
     sources:
       - type: dir
         path: ../..

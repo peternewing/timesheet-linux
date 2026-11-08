@@ -8,6 +8,7 @@ import os
 import sqlite3
 import sys
 import tempfile
+import threading
 import time
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -216,6 +217,30 @@ class TimeSheet(Adw.Application):
     def confirm(self,title,body,action):
         d=Adw.AlertDialog(heading=title,body=body); d.add_response('cancel','Cancel'); d.add_response('confirm','Continue'); d.set_response_appearance('confirm',Adw.ResponseAppearance.DESTRUCTIVE); d.set_close_response('cancel')
         d.connect('response',lambda _,r:self.run_action(action) if r=='confirm' else None); d.present(self.dialogs[-1] if self.dialogs else self.win)
+    def ai_consent(self,title,preview,respond,send_label='Send and suggest'):
+        """Scrollable data preview; opening it never reads a key or sends data."""
+        parent=self.dialogs[-1] if self.dialogs else self.win
+        window=Adw.Window(title=title,transient_for=parent,modal=True,default_width=620,default_height=620)
+        self.dialogs.append(window); self.dialog_count=len(self.dialogs); sent=[False]
+        box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL);window.set_content(box)
+        header=Adw.HeaderBar();box.append(header)
+        header.pack_start(button('Cancel',lambda _:window.close()))
+        def send(_):
+            sent[0]=True;window.close()
+            GLib.idle_add(lambda:(respond(True),False)[1])
+        header.pack_end(button(send_label,send,True))
+        scroll=Gtk.ScrolledWindow(vexpand=True);box.append(scroll)
+        content=margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12),20);scroll.set_child(content)
+        self.heading(content,title,'TypeSafe receives the information below using your own account.')
+        content.append(label(preview))
+        def closed(*_):
+            self.dialog_closed(window)
+            if not sent[0]: respond(False)
+            return False
+        keys=Gtk.EventControllerKey()
+        keys.connect('key-pressed',lambda _,key,*args:(window.close(),True)[1] if key==Gdk.KEY_Escape else False)
+        window.add_controller(keys)
+        window.connect('close-request',closed);window.present()
     def run_action(self,fn,success=None):
         try:
             result=fn()
@@ -415,7 +440,7 @@ class TimeSheet(Adw.Application):
         b.append(metrics)
         b.append(label('Active is desktop use; assigned includes task time, including manual entries. Unassigned is captured activity still to review. Neither total is automatically billable.', 'dim-label'))
         bar=action_bar(); b.append(bar)
-        bar.append(button('Review today',lambda _:self.review_today(),True)); bar.append(button('Add time',lambda _:self.entry_dialog())); bar.append(button('New project',self.quick_setup))
+        bar.append(button('Review today',lambda _:self.review_today(),True)); bar.append(button('Review suggestions',lambda _:self.review_dialog(datetime.now().date()))); bar.append(button('Add time',lambda _:self.entry_dialog())); bar.append(button('New project',self.quick_setup))
         if rt['state']=='running':
             task=next((r for r in self.store.tasks() if r['id']==rt['task_id']),None)
             timer=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8); timer.add_css_class('card'); b.append(timer)
@@ -519,26 +544,279 @@ class TimeSheet(Adw.Application):
     def split_dialog(self,row):
         def build(b): return field(b,'Split at',datetime.fromtimestamp((row['start']+row['end'])//2).strftime('%Y-%m-%d %H:%M:%S'))
         self.dialog('Split time',build,lambda w:self.store.split_entry(row['id'],parse_local(w.get_text())))
-    def assign_dialog(self,blocks,app=None):
+    def assign_dialog(self,blocks,app=None,suggested_task=None,review_result=False,after_save=None):
         if not blocks: self.toast('No completed, unassigned activity yet. Live usage becomes assignable when you switch apps.'); return
-        if not self.task_choices(): self.quick_setup(after=lambda:self.assign_dialog(blocks,app)); return
+        if not self.task_choices(): self.quick_setup(after=lambda:self.assign_dialog(blocks,app,suggested_task,review_result,after_save)); return
         seconds=sum(b['end']-b['start'] for b in blocks)
+        ai_suggestion=[None]; ai_probability=[None]
         def build(b):
             b.append(label(f'{fmt_duration(seconds)} of activity. Time already assigned to a task will be skipped.'))
-            task=dropdown(b,'Assign to',self.task_choices())
+            form=self.dialogs[-1]; closed=threading.Event(); revision=[0]
+            form.connect('close-request',lambda *_:(closed.set(),False)[1])
+            task=dropdown(b,'Assign to',self.task_choices()+[(None,'Neither — choose a task')])
+            task.connect('notify::selected',lambda *_:revision.__setitem__(0,revision[0]+1))
+            budget=label('','dim-label'); b.append(budget)
+            def update_budget(*_):
+                from .review import budget_warning
+                row=self.store.db.execute('''SELECT p.budget,COALESCE((SELECT SUM(e.end-e.start) FROM entries e JOIN tasks q ON q.id=e.task_id WHERE q.project_id=p.id AND e.deleted=0),0) spent FROM tasks t JOIN projects p ON p.id=t.project_id WHERE t.id=?''',(selected(task),)).fetchone()
+                warning=budget_warning(row['spent'],row['budget']) if row else None
+                budget.set_text((warning+' based on saved entries. Check the project budget before assigning.') if warning else '')
+            task.connect('notify::selected',update_budget); update_budget()
             if len(blocks)==1:
                 suggestion=self.store.matching_task(blocks[0]['app'],blocks[0]['title'])
                 if suggestion: select_id(task,suggestion)
+            apps={str(r['app']) for r in blocks if r['state']=='active' and r['app']}
+            from .review import load_preferences
+            preferences=load_preferences(self.store.get('jev_preferences','{}'),[i for i,_ in self.task_choices()])
+            has_rule=any(rule['enabled'] and not (rule['task_archived'] or rule['project_archived'] or rule['client_archived']) and rule['app'].casefold()==r['app'].casefold() and rule['title'].casefold() in r['title'].casefold() for r in blocks for rule in self.rule_rows())
+            if len(apps)==1 and not has_rule:
+                remembered=preferences.get(next(iter(apps)).casefold())
+                if remembered:
+                    select_id(task,remembered); b.append(label('Task preselected from your saved local choice. Check it before saving.','dim-label'))
+            if review_result:
+                select_id(task,suggested_task if suggested_task in [i for i,_ in self.task_choices()] else None)
+                b.append(label('Check the review result and choose a task before saving.','dim-label'))
+            elif suggested_task in [i for i,_ in self.task_choices()]:
+                select_id(task,suggested_task); b.append(label('Preselected from your review queue. Check it before saving.','dim-label'))
+            status=label('Optional: get a TypeSafe suggestion using your own key. Nothing is sent until you confirm.','dim-label'); b.append(status)
+            more=Gtk.Expander(label='Optional context'); context_box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6); more.set_child(context_box); b.append(more)
+            context=field(context_box,'Context to send (remove names and sensitive details)','','Optional; leave empty to send none')
+            context.connect('changed',lambda *_:revision.__setitem__(0,revision[0]+1))
+            context_box.append(label('Only what you type here is sent. Window titles are never added automatically.','dim-label'))
+            alternatives=action_bar(); b.append(alternatives)
+            pending=[None]
+            def cancel_suggestion(_):
+                if pending[0] is not None: pending[0].set()
+                status.set_text('Cancelling. The current request may still finish.')
+                cancel_request.set_sensitive(False)
+            cancel_request=button('Cancel suggestion',cancel_suggestion); cancel_request.set_visible(False); b.append(cancel_request)
+            def ask_jev(_):
+                from . import jev
+                from .review import load_categories,add_categories
+                raw_choices=self.task_choices(); categories=load_categories(self.store.get('jev_categories','{}'),[i for i,_ in raw_choices])
+                candidates=add_categories(raw_choices,categories); apps=sorted({str(r['app']) for r in blocks if r['state']=='active' and r['app']})
+                if not apps: self.error('Select completed application activity to request a suggestion.'); return
+                if len(candidates)>254: self.error('There are too many active tasks for one suggestion. Archive unused tasks first.'); return
+                if len(apps)>5: self.error('Select activity from no more than five applications.'); return
+                current=selected(task); current_revision=revision[0]; extra=context.get_text().strip()
+                if len(extra)>1000: self.error('Optional context must be 1,000 characters or fewer.'); return
+                try: payload=jev.prepare_request(apps,candidates,context=extra)
+                except jev.JevError as exc: self.error(str(exc)); return
+                apps=payload['state']['applications']
+                preview='Applications: '+', '.join(apps)+'\n\nActive client / project / task options:\n'+'\n'.join(name for _,name in candidates)
+                preview+='\n\nOptional context: '+(extra if extra else '(none)')
+                warning='\n\nOnly category labels shown here are included. This information goes to api.typesafe.ai and may use your paid API credits. Window titles, entry descriptions and times are not added automatically. Jev may be wrong.'
+                ask.set_sensitive(False)
+                def response(approved):
+                    if not approved:
+                        if not closed.is_set(): ask.set_sensitive(True)
+                        return
+                    if closed.is_set(): return
+                    cancelled=threading.Event(); pending[0]=cancelled
+                    cancel_request.set_visible(True); cancel_request.set_sensitive(True)
+                    status.set_text('Asking TypeSafe…'); ask.set_sensitive(False); self.clear(alternatives); ai_suggestion[0]=None; ai_probability[0]=None
+                    def work():
+                        try:
+                            key=jev.get_key()
+                            if closed.is_set(): return
+                            answer=None if cancelled.is_set() else jev.suggest(apps,candidates,key,context=extra,detailed=True)
+                            error=None
+                        except jev.JevError as exc: answer=None; error=str(exc)
+                        except Exception: answer=None; error='The suggestion failed. Check your connection and try again.'
+                        def finish():
+                            if closed.is_set() or self.win is None or task.get_root() is None: return False
+                            ask.set_sensitive(True); cancel_request.set_visible(False); pending[0]=None
+                            if cancelled.is_set(): status.set_text('Suggestion cancelled. Your task selection was kept.')
+                            elif error: status.set_text(error)
+                            elif revision[0]!=current_revision or selected(task)!=current: status.set_text('Suggestion arrived after you changed the form; your choice was kept.')
+                            elif answer['task'] is None:
+                                select_id(task,None)
+                                note=' This may be personal; check it on the Calendar.' if answer['personal'] is not None and answer['personal']>=0.8 else ''
+                                status.set_text('No match was selected. Choose a task yourself.'+note)
+                            elif answer['task'] not in [i for i,_ in self.task_choices()]: status.set_text('The suggested task is no longer available. Choose another task.')
+                            else:
+                                ai_suggestion[0]=answer['task']; ai_probability[0]=answer['probability']; options=answer['alternatives']; personal=answer['personal']
+                                note=' This may be personal; check before assigning.' if personal is not None and personal>=0.8 else ''
+                                if len(options)>=2 and options[0][0]==answer['task'] and options[0][1]-options[1][1]<0.15:
+                                    select_id(task,None)
+                                    status.set_text('Two tasks look similar. Choose one, or neither.'+note)
+                                    names=dict(candidates)
+                                    for option,_ in options[:2]:
+                                        alternatives.append(button(names[option],lambda _,i=option:select_id(task,i)))
+                                    alternatives.append(button('Neither',lambda _:select_id(task,None)))
+                                else:
+                                    select_id(task,answer['task']); probability='' if answer['probability'] is None else f" (model probability {answer['probability']:.0%})"
+                                    status.set_text('Suggested task selected'+probability+'. Check it before saving.'+note)
+                            if answer and not error and not cancelled.is_set() and isinstance(answer.get('usage'),dict):
+                                status.set_text(status.get_text()+f" Reported input: {answer['usage']['input_tokens']:,} tokens.")
+                            return False
+                        GLib.idle_add(finish)
+                    threading.Thread(target=work,daemon=True).start()
+                self.ai_consent('Send this data to TypeSafe?',preview+warning,response)
+            ask=button('Suggest a task with TypeSafe',ask_jev); b.append(ask)
             desc=field(b,'Client-facing description (optional)')
             remember=Gtk.CheckButton(label='Always assign this application to this task')
             same=len({r['app'] for r in blocks})==1 and all(r['state']=='active' for r in blocks)
             remember.set_sensitive(same); b.append(remember)
-            b.append(label('Assigned time stays in draft until you review and approve it.','dim-label'))
-            return task,desc,remember
+            local_choice=Gtk.CheckButton(label='Remember this choice locally (and count whether AI was changed)')
+            local_choice.set_sensitive(same); b.append(local_choice)
+            b.append(label('Assigned time stays in draft until you review and approve it. Local choices do not change rules or send data.','dim-label'))
+            return task,desc,remember,local_choice
         def save(f):
-            task,desc,remember=f; count=self.store.assign_remaining(blocks,selected(task),desc.get_text(),remember.get_active())
+            task,desc,remember,local_choice=f; chosen=selected(task)
+            if chosen not in dict(self.task_choices()): raise ValueError('Choose an active task before assigning time.')
+            count=self.store.assign_remaining(blocks,chosen,desc.get_text(),remember.get_active())
+            if local_choice.get_active():
+                from .review import load_preferences,feedback
+                try:
+                    preferences=load_preferences(self.store.get('jev_preferences','{}'),[i for i,_ in self.task_choices()])
+                    preferences[next(iter({str(r['app']) for r in blocks if r['state']=='active' and r['app']})).casefold()]=chosen
+                    self.store.set('jev_preferences',json.dumps(preferences))
+                    if ai_suggestion[0] is not None:
+                        self.store.set('jev_feedback',json.dumps(feedback(self.store.get('jev_feedback','{}'),ai_suggestion[0],chosen,ai_probability[0])))
+                except (sqlite3.Error,ValueError,StopIteration):
+                    self.toast('Time saved, but the local choice could not be remembered.')
+                    if after_save: GLib.idle_add(lambda:(after_save(),False)[1])
+                    return
             self.toast(f'{count} activity periods assigned')
+            if after_save:
+                GLib.idle_add(lambda:(after_save(),False)[1])
         self.dialog('Assign activity',build,save)
+
+    def review_dialog(self,day):
+        """Show local suggestions; the user chooses every action."""
+        from . import review
+        start,end=day_bounds(day)
+        blocks=self.store.activity_for(start,end,True)
+        activity=self.store.activity_for(start,end)
+        facts=review.readiness(self.store.entries(start,end),activity)
+        counts=self.store.rows("""SELECT a.app,e.task_id,COUNT(DISTINCT e.activity_id) count FROM entries e
+            JOIN activity a ON a.id=e.activity_id WHERE e.deleted=0 AND e.origin='assigned'
+            AND a.state='active' GROUP BY a.app,e.task_id""")
+        preferences={app.casefold():task for app,task,_ in review.rule_hints(counts)}
+        assigned_barriers=[dict(start=max(start,e['start']),end=min(end,e['end']),state='assigned',closed=1) for e in self.store.entries(start,end)]
+        groups=review.rank_sessions(review.sessions(blocks,barriers=activity+assigned_barriers),preferences)
+        window=Adw.Window(title='Review suggestions',transient_for=self.dialogs[-1] if self.dialogs else self.win,modal=True,default_width=750,default_height=700)
+        self.dialogs.append(window); self.dialog_count=len(self.dialogs)
+        window.connect('close-request',lambda *_:self.dialog_closed(window))
+        outer=Gtk.Box(orientation=Gtk.Orientation.VERTICAL);window.set_content(outer)
+        header=Adw.HeaderBar();outer.append(header);header.pack_end(button('Close',lambda _:window.close()))
+        scroll=Gtk.ScrolledWindow(vexpand=True);outer.append(scroll)
+        body=margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12),20);scroll.set_child(body)
+        self.heading(body,'Review '+day.strftime('%d %B %Y'),'Local suggestions. Nothing changes until you choose an action.')
+        body.append(label(f"{facts['drafts']} drafts · {facts['missing_description']} without descriptions · {facts['missing_rate']} without a rate · {fmt_duration(facts['gap_seconds'])} of capture gaps",'dim-label'))
+        if facts['gap_seconds']: body.append(label('Capture gaps are unknown time. Add genuine work manually if needed; no time is inferred.','dim-label'))
+        self.row(body,'Check draft time','Review entries and missing details before approving them.',[('Open drafts',lambda _:(window.close(),self.review_drafts()))])
+        selected_blocks=[]
+        toolbar=action_bar();body.append(toolbar)
+        assign=button('Assign selected',lambda _:self.assign_dialog(list(selected_blocks),after_save=window.close),True);assign.set_sensitive(False);toolbar.append(assign)
+        def select_block(widget,block):
+            if widget.get_active(): selected_blocks.append(block)
+            elif block in selected_blocks: selected_blocks.remove(block)
+            assign.set_sensitive(bool(selected_blocks));assign.set_label(f'Assign selected ({len(selected_blocks)})' if selected_blocks else 'Assign selected')
+        batch=Gtk.Expander(label='Optional AI suggestions for selected blocks');body.append(batch)
+        panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8);batch.set_child(panel)
+        panel.append(label('Select blocks below. Each result needs your review before any time is saved.','dim-label'))
+        limit=dropdown(panel,'Maximum requests',[(1,'1'),(3,'3'),(5,'5'),(10,'10')]);select_id(limit,5)
+        batch_status=label('No requests sent.','dim-label');panel.append(batch_status)
+        batch_results=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6);panel.append(batch_results)
+        actions=action_bar();panel.append(actions)
+        closed_window=threading.Event(); job=[None]
+        def stop_batch(_):
+            if job[0] is not None: job[0].set()
+            batch_status.set_text('Cancelling after the current request…');cancel.set_sensitive(False)
+        cancel=button('Cancel remaining requests',stop_batch);cancel.set_visible(False);actions.append(cancel)
+        def close_batch(*_):
+            closed_window.set()
+            if job[0] is not None: job[0].set()
+            return False
+        window.connect('close-request',close_batch)
+        def ask_batch(_):
+            from . import jev
+            from .review import load_categories,add_categories
+            chosen=list(selected_blocks); cap=selected(limit); raw=self.task_choices()
+            if not chosen: self.error('Select activity blocks first.'); return
+            if len(chosen)>cap: self.error(f'Select no more than {cap} blocks, or raise the request limit.'); return
+            if len(chosen)>10 or len(raw)>254: self.error('Select at most ten blocks and 254 active tasks.'); return
+            cats=load_categories(self.store.get('jev_categories','{}'),[i for i,_ in raw]); candidates=add_categories(raw,cats)
+            apps=[]
+            try:
+                for block in chosen:
+                    if not block.get('app') or block.get('state')!='active': raise jev.JevError('Select named application activity only.')
+                    payload=jev.prepare_request([block['app']],candidates)
+                    apps.append(payload['state']['applications'][0])
+            except jev.JevError as exc: self.error(str(exc)); return
+            preview='Applications, one request each:\n'+'\n'.join(apps)+'\n\nActive client / project / task options:\n'+'\n'.join(name for _,name in candidates)
+            preview+=f'\n\nOnly category labels shown here are sent. Up to {len(chosen)} paid requests to api.typesafe.ai, each capped at 32,000 request bytes. No titles, descriptions or times are sent. Actual charges depend on token usage. Cancelling stops later requests; the current request may finish.'
+            ask.set_sensitive(False)
+            def approved(allow):
+                if closed_window.is_set(): return
+                if not allow: ask.set_sensitive(True); return
+                cancelled=threading.Event();job[0]=cancelled
+                cancel.set_visible(True);cancel.set_sensitive(True);self.clear(batch_results);batch_status.set_text('Starting…')
+                def available():
+                    return not closed_window.is_set() and self.win is not None and job[0] is cancelled and batch_status.get_root() is not None
+                def worker():
+                    failure=None
+                    try:
+                        if cancelled.is_set(): key=None
+                        else: key=jev.get_key()
+                    except jev.JevError as exc: key=None;failure=str(exc)
+                    except Exception: key=None;failure='Could not access the keyring. Try again after unlocking it.'
+                    def on_result(index,result,error):
+                        block=chosen[index]
+                        def display():
+                            if not available() or cancelled.is_set():return False
+                            match=result[0] if result else None;active=dict(self.task_choices());name=active.get(match,'No match')
+                            detail=error or ('Suggested: '+name+'. Review before assigning.')
+                            result_actions=[] if error else [('Review' if match in active else 'Choose manually',lambda _,b=block,t=match:self.assign_dialog([b],suggested_task=t,review_result=True,after_save=window.close))]
+                            self.row(batch_results,block['app'],detail,result_actions)
+                            batch_status.set_text(f'{index+1} of {len(chosen)} requests finished.')
+                            return False
+                        GLib.idle_add(display)
+                    if key and not cancelled.is_set() and not closed_window.is_set():
+                        try: jev.suggest_batch(apps,candidates,key,cancelled.is_set,on_result)
+                        except jev.JevError as exc:failure=str(exc)
+                        except Exception:failure='The suggestion request failed.'
+                    def done():
+                        if available():
+                            if cancelled.is_set():batch_status.set_text('Cancelled. No later requests were sent.')
+                            elif failure:batch_status.set_text(failure)
+                            ask.set_sensitive(True);cancel.set_visible(False);job[0]=None
+                        return False
+                    GLib.idle_add(done)
+                threading.Thread(target=worker,daemon=True).start()
+            self.ai_consent('Send selected blocks to TypeSafe?',preview,approved,send_label='Send')
+        ask=button('Suggest for selected blocks',ask_batch);actions.append(ask)
+        body.append(label('Suggested sessions','title-3'))
+        body.append(label('Nearby activity is grouped for review. Select or clear individual blocks to split or combine sessions; gaps are never added to time.','dim-label'))
+        if not groups: body.append(label('No completed unassigned activity for this day.','dim-label'))
+        def show_group(target,group):
+            box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6);box.add_css_class('card');target.append(box)
+            box.append(label(f"{fmt_time(group['start'])} – {datetime.fromtimestamp(group['end']):%H:%M} · {fmt_duration(group['seconds'])}",'heading'))
+            for block in group['blocks']:
+                text=f"{block['app']} · {datetime.fromtimestamp(block['start']):%H:%M:%S}–{datetime.fromtimestamp(block['end']):%H:%M:%S} · {fmt_duration(block['end']-block['start'])}"
+                row=Gtk.Box(spacing=8); box.append(row)
+                cb=Gtk.CheckButton(label=text); cb.set_hexpand(True); cb.connect('toggled',select_block,block);row.append(cb)
+                original=self.store.db.execute('SELECT start,end FROM activity WHERE id=?',(block['id'],)).fetchone()
+                if original and original['start']==block['start'] and original['end']==block['end']:
+                    def mark(_,item=block):
+                        def apply(): self.store.set_personal([item['id']]);window.close();self.toast('Marked personal')
+                        self.confirm('Mark this activity personal?', 'It will leave the assignment queue. You can return it to review from Calendar.',apply)
+                    row.append(button('Mark personal',mark))
+        append_in_batches(body,groups,show_group)
+        hints=review.rule_hints(counts)
+        conflicts=review.inconsistencies(counts)
+        if hints or conflicts: body.append(label('Patterns to check','title-3'))
+        choices=dict(self.task_choices())
+        for app,task,count in hints:
+            if task not in choices or self.store.matching_task(app,'') is not None: continue
+            def offer(_,app=app,task=task):
+                self.confirm('Create this rule?',f"For future settled usage, assign {app} to {choices[task]} as draft time. Existing entries stay unchanged.",lambda:self.store.add_rule(app,'',task))
+            self.row(body,app+' → '+choices[task],f'Assigned this way {count} times. A rule is optional.',[('Create rule',offer)])
+        for app,count in conflicts:
+            self.row(body,app+' has been assigned to multiple tasks',f'{count} tasks found in retained activity. This may be expected; check only if useful.')
+        window.present()
 
     def refresh_calendar(self):
         b=self.body_calendar; self.clear(b); self.selected_blocks=[]
@@ -584,6 +862,7 @@ class TimeSheet(Adw.Application):
         if not groups: b.append(label('No activity to show for this date.','dim-label')); return
         self.selected_blocks=[]
         bar=action_bar(); b.append(bar)
+        bar.append(button('Review suggestions',lambda _:self.review_dialog(self.day)))
         assign_selected=button('Assign selected',lambda _:self.assign_dialog([x for group in self.selected_blocks for x in group]),True)
         assign_selected.set_sensitive(False); bar.append(assign_selected)
         bar.append(button('Apply saved rules to this day',lambda _:self.run_action(lambda:self.store.apply_rules(start=start,end=end),lambda count:self.toast(f'{count} entries assigned'))))
@@ -775,46 +1054,92 @@ class TimeSheet(Adw.Application):
             with self.store.db:
                 self.store.db.execute('UPDATE tasks SET name=?,budget=?,rate=?,archived=? WHERE id=?',(name,budget,r,int(a.get_active()),row['id'])); self.store.audit('task edited',{'id':row['id']})
         self.dialog('Edit task' if row else 'Add task',build,save)
+    def rule_rows(self):
+        return self.store.rows('''SELECT r.*,t.name task,p.name project,c.name client,
+            t.archived task_archived,p.archived project_archived,c.archived client_archived
+            FROM rules r JOIN tasks t ON t.id=r.task_id JOIN projects p ON p.id=t.project_id
+            JOIN clients c ON c.id=p.client_id ORDER BY r.priority DESC,r.id''')
     def refresh_rules(self):
-        b=self.body_rules; self.clear(b); self.heading(b,'Automatic assignment','Teach the app once. Matching usage becomes draft task time for you to review.')
-        b.append(label('Higher priority wins. Conflicting rules at the same priority leave activity unassigned. Rules apply to new settled activity; you can apply them to a past day from Calendar.','dim-label'))
+        from .rules import describe_rule,rule_health
+        b=self.body_rules; self.clear(b); self.heading(b,'Assignment rules','Automatically assign matching recorded usage to a task as draft time.')
+        b.append(label('Rules apply to new settled usage. To apply them to an earlier day, use Calendar. Review drafts before billing. Rules work locally and do not use Jev or an API.','dim-label'))
         b.append(button('New rule',lambda _:self.rule_dialog(),True))
-        rules=self.store.rows('''SELECT r.*,t.name task,p.name project,c.name client FROM rules r JOIN tasks t ON t.id=r.task_id JOIN projects p ON p.id=t.project_id JOIN clients c ON c.id=p.client_id ORDER BY priority DESC,id''')
-        if not rules: self.empty(b,'Less assigning, more doing','Add a rule for a work application, or choose “Always assign” when reviewing its usage. Rules never approve time for billing.'); return
+        rules=self.rule_rows(); titles=self.store.get('capture_titles','0')=='1'
+        if not rules: self.empty(b,'No assignment rules yet','Add a rule to match an application and choose the task that should receive its time.'); return
         for r in rules:
-            self.row(b,f"{r['app']} → {r['client']} / {r['project']} / {r['task']}",f"Title contains: {r['title'] or 'Any title'} · Priority {r['priority']} · "+('Enabled' if r['enabled'] else 'Disabled'),[
-                ('Edit',lambda _,x=r:self.rule_dialog(x)),('Disable' if r['enabled'] else 'Enable',lambda _,x=r:self.run_action(lambda:self.toggle_rule(x))),('Delete',lambda _,i=r['id']:self.confirm('Delete this rule?','Existing time entries stay as they are.',lambda:self.delete_rule(i)))])
+            health=rule_health(r,rules,capture_titles=titles)
+            detail=('Enabled' if r['enabled'] else 'Paused')+f" · Priority {r['priority']}"
+            if health: detail+='\n'+'\n'.join(x['message'] for x in health)
+            self.row(b,describe_rule(r),detail,[
+                ('Edit',lambda _,x=r:self.rule_dialog(x)),('Pause' if r['enabled'] else 'Enable',lambda _,x=r:self.run_action(lambda:self.toggle_rule(x))),('Delete',lambda _,i=r['id']:self.confirm('Delete this rule?','Existing time entries stay as they are.',lambda:self.delete_rule(i)))])
     def toggle_rule(self,row):
+        from .rules import rule_health
+        if not row['enabled']:
+            proposed=dict(row,enabled=1)
+            issues=rule_health(proposed,self.rule_rows(),capture_titles=self.store.get('capture_titles','0')=='1')
+            blocked=[x['message'] for x in issues if x['code'] in ('target_archived','target_missing','duplicate','exact_conflict','titles_off')]
+            if blocked: raise ValueError(' '.join(blocked))
         with self.store.db: self.store.db.execute('UPDATE rules SET enabled=? WHERE id=?',(0 if row['enabled'] else 1,row['id']))
     def delete_rule(self,rid):
         with self.store.db: self.store.db.execute('DELETE FROM rules WHERE id=?',(rid,)); self.store.audit('rule deleted',{'id':rid})
     def rule_dialog(self,row=None):
+        from .rules import describe_rule,evaluate_rule,rule_health
         choices=self.task_choices()
-        if row and not any(i==row['task_id'] for i,_ in choices):
-            old=self.store.db.execute('SELECT c.name client,p.name project,t.name task FROM tasks t JOIN projects p ON p.id=t.project_id JOIN clients c ON c.id=p.client_id WHERE t.id=?',(row['task_id'],)).fetchone()
-            if old: choices.append((row['task_id'],f"{old['client']} / {old['project']} / {old['task']} (archived)"))
         if not choices: self.quick_setup(); return
         apps=[r['app'] for r in self.store.rows("SELECT DISTINCT app FROM activity WHERE state='active' AND app!='' ORDER BY app")]
+        rules=self.rule_rows(); titles=self.store.get('capture_titles','0')=='1'
+        sample=self.store.rows("SELECT * FROM activity WHERE state='active' AND closed=1 ORDER BY end DESC LIMIT 2000")
         def build(b):
-            app=field(b,'Application name',row['app'] if row else '','Use the name shown under Apps today')
+            b.append(label('Choose an application and task. Matching usage becomes draft time; nothing is approved for billing.','dim-label'))
+            app=field(b,'Application name',row['app'] if row else '','Use the name shown in recorded activity')
             if apps:
-                known=dropdown(b,'Or choose a recorded app',[(a,a) for a in apps]); known.connect('notify::selected',lambda *_:app.set_text(selected(known) or '')); app.set_text(row['app'] if row else apps[0])
-            title=field(b,'Only when the title contains (optional)',row['title'] if row else ''); task=dropdown(b,'Assign to task',choices); priority=field(b,'Priority',str(row['priority']) if row else '0')
+                known=dropdown(b,'Choose a recorded app (optional)',[(None,'Choose an application…')]+[(a,a) for a in apps])
+                known.connect('notify::selected',lambda *_:app.set_text(selected(known) or app.get_text()))
+            title=field(b,'Window title contains (optional)',row['title'] if row else '')
+            b.append(label('Leave blank to match any title. A title filter needs window-title collection enabled for new usage.','dim-label'))
+            task=dropdown(b,'Assign to task',[(None,'Choose a task…')]+choices)
             if row: select_id(task,row['task_id'])
-            if self.store.get('capture_titles','0')!='1': b.append(label('Window title collection is off; title-specific rules cannot match new activity until it is enabled in Settings.','dim-label'))
-            preview=label('Choose an application to preview its recent activity.','dim-label'); b.append(preview)
+            advanced=Gtk.Expander(label='Advanced: priority'); b.append(advanced)
+            ab=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6); advanced.set_child(ab)
+            priority=field(ab,'Priority',str(row['priority']) if row else '0')
+            ab.append(label('Higher priority wins. If equal highest priorities select different tasks, matching usage stays unassigned.','dim-label'))
+            preview=label('','dim-label'); b.append(preview)
+            pending=[0]
+            def cancel_preview(*_):
+                if pending[0]: GLib.source_remove(pending[0]); pending[0]=0
+                return False
+            self.dialogs[-1].connect('close-request',cancel_preview)
             def update(*_):
-                seconds=self.store.db.execute("SELECT COALESCE(SUM(end-start),0) FROM activity WHERE state='active' AND lower(app)=lower(?) AND instr(lower(title),lower(?))>0",(app.get_text(),title.get_text())).fetchone()[0]
-                preview.set_text(fmt_duration(seconds)+' of retained activity matches. New rules apply to future settled usage. Use the calendar to apply rules to a past day.')
-            app.connect('changed',update); title.connect('changed',update); update()
+                if pending[0]: GLib.source_remove(pending[0])
+                def render():
+                    pending[0]=0
+                    try: p=int(priority.get_text())
+                    except ValueError: preview.set_text('Enter a whole-number priority to see the preview.'); return False
+                    proposed=dict(id=row['id'] if row else None,app=app.get_text().strip(),title=title.get_text().strip(),task_id=selected(task),priority=p,enabled=1)
+                    result=evaluate_rule(proposed,rules,sample,capture_titles=titles)
+                    text=describe_rule(proposed,dict(choices).get(selected(task),'choose a task'))
+                    text+=f"\n\nPreview of up to 2,000 most recent retained completed activity periods: {fmt_duration(result['matched_seconds'])} matches; {fmt_duration(result['conflict_seconds'])} has an observed conflict; {fmt_duration(result['shadowed_seconds'])} is overridden by higher priority. This includes already assigned time and does not predict new assignments."
+                    if result['examples']:
+                        text+='\nExamples: '+ '; '.join((x['title'] or x['app'])[:100] for x in result['examples'])
+                    if result['health']: text+='\n'+'\n'.join(x['message'] for x in result['health'])
+                    preview.set_text(text); return False
+                pending[0]=GLib.timeout_add(200,render)
+            for widget in (app,title,priority): widget.connect('changed',update)
+            task.connect('notify::selected',update); update()
             return app,title,task,priority
         def save(f):
             app,title,task,priority=f
             try: p=int(priority.get_text())
-            except ValueError: raise ValueError('Priority must be an integer.')
+            except ValueError: raise ValueError('Priority must be a whole number.')
+            if not -(2**63)<=p<2**63: raise ValueError('Priority is too large.')
+            if selected(task) not in dict(self.task_choices()): raise ValueError('Choose an active task.')
+            proposed=dict(id=row['id'] if row else None,app=app.get_text().strip(),title=title.get_text().strip(),task_id=selected(task),priority=p,enabled=1)
+            issues=rule_health(proposed,self.rule_rows(),capture_titles=titles)
+            blocked=[x['message'] for x in issues if x['code'] in ('application_missing','duplicate','exact_conflict')]
+            if blocked: raise ValueError(' '.join(blocked))
             if row: self.store.update_rule(row['id'],app.get_text(),title.get_text(),selected(task),p)
             else: self.store.add_rule(app.get_text(),title.get_text(),selected(task),p)
-            self.toast('Automatic assignment rule saved')
+            self.toast('Assignment rule saved')
         self.dialog('Edit rule' if row else 'New rule',build,save)
     def refresh_reports(self):
         b=self.body_reports; self.clear(b); self.heading(b,'Client reports','Reviewed time, clear amounts and a saved billing history.')
@@ -940,8 +1265,91 @@ class TimeSheet(Adw.Application):
             return
         content=self.store.csv_report(rid) if kind=='csv' else self.store.html_report(rid)
         self.save_file('Save report',f'timesheet-{rid}.{kind}',lambda p:Path(p).write_text(content,encoding='utf-8'))
+    def append_ai_settings(self,b):
+        from . import jev
+        from .review import load_categories
+        self.heading(b,'Optional Jev assistance')
+        b.append(label('Connect your own TypeSafe key to ask for task suggestions. Each suggestion has a data preview before you send it.','dim-label'))
+        b.append(label('The key is held by your desktop keyring or the app’s secret portal, outside your timesheet database.','dim-label'))
+        buttons=action_bar();b.append(buttons)
+        connection=label('No connection check has been made.','dim-label');b.append(connection)
+        def key_dialog(_):
+            def build(box):
+                box.append(label('Enter your own TypeSafe API key. Your account is billed by TypeSafe.'))
+                key=field(box,'TypeSafe API key');key.set_visibility(False);key.set_input_purpose(Gtk.InputPurpose.PASSWORD);return key
+            def save(key):
+                jev.save_key(key.get_text());key.set_text('');self.toast('TypeSafe key saved securely')
+            self.dialog('Connect TypeSafe',build,save)
+        buttons.append(button('Add or replace TypeSafe key',key_dialog))
+        def check(_):
+            check_button.set_sensitive(False);connection.set_text('Checking TypeSafe… No activity is sent.')
+            def work():
+                try:
+                    models=jev.check_connection(jev.get_key())
+                    message='Connected. Jev is available.' if 'jev-latest' in models else 'Key accepted. Jev is not listed for this account; check access in the TypeSafe console.'
+                except jev.JevError as exc:message=str(exc)
+                except Exception:message='The connection check failed. Unlock your keyring and try again.'
+                def done():
+                    if self.win is not None and connection.get_root() is not None:
+                        check_button.set_sensitive(True);connection.set_text(message)
+                    return False
+                GLib.idle_add(done)
+            threading.Thread(target=work,daemon=True).start()
+        check_button=button('Check connection',check);buttons.append(check_button)
+        buttons.append(button('Remove TypeSafe key',lambda _:self.confirm('Remove TypeSafe key?','The saved key will be removed from this app’s secure storage.',lambda:jev.delete_key())))
+        expander=Gtk.Expander(label='Preferences and categories');b.append(expander)
+        advanced=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);expander.set_child(advanced)
+        advanced.append(label('These optional preferences stay in the local database and its backups.','dim-label'))
+        tools=action_bar();advanced.append(tools)
+        def category_dialog(_):
+            choices=self.task_choices()
+            if not choices:self.error('Create a task first.');return
+            def build(box):
+                name=field(box,'Category name','','e.g. design, admin, meetings');target=dropdown(box,'Map to task',choices)
+                preview=label('','dim-label');box.append(preview)
+                def update(*_):
+                    chosen=next((n for i,n in choices if i==selected(target)),'')
+                    preview.set_text((name.get_text().strip() or 'Category')+' → '+chosen+'. Used for future suggestions; existing time is unchanged.')
+                name.connect('changed',update);target.connect('notify::selected',update);update();return name,target
+            def save(form):
+                name,target=form;value=name.get_text().strip()
+                if not value or len(value)>80 or any(ord(c)<32 for c in value):raise ValueError('Enter a category of 1–80 characters without line breaks.')
+                categories=load_categories(self.store.get('jev_categories','{}'),[i for i,_ in choices])
+                previous=next((label for label in categories if label.casefold()==value.casefold()),None)
+                if len(categories)>=50 and previous is None:raise ValueError('At most 50 categories can be saved.')
+                if previous is not None:categories.pop(previous)
+                candidate={**categories,value:selected(target)}
+                validated=load_categories(json.dumps(candidate),[i for i,_ in choices])
+                if value not in validated:raise ValueError('Use a category name without hidden control characters.')
+                self.store.set('jev_categories',json.dumps(validated));self.toast('Category saved')
+            self.dialog('Add or update category',build,save)
+        tools.append(button('Add or update category',category_dialog))
+        categories=load_categories(self.store.get('jev_categories','{}'),[i for i,_ in self.task_choices()])
+        if categories:
+            selector=dropdown(advanced,'Saved category',[(name,name) for name in sorted(categories,key=str.casefold)])
+            def remove_category():
+                categories.pop(selected(selector),None);self.store.set('jev_categories',json.dumps(categories));self.toast('Category removed')
+            tools.append(button('Remove selected category',lambda _:self.confirm('Remove category?','Existing time and tasks remain unchanged.',remove_category)))
+        def clear_learning():
+            self.store.set('jev_preferences','{}');self.store.set('jev_feedback','{}');self.toast('Saved local choices cleared')
+        tools.append(button('Clear saved local choices',lambda _:self.confirm('Clear saved choices?','Saved app-to-task choices and feedback counts will be removed.',clear_learning)))
+        try:
+            counts=json.loads(self.store.get('jev_feedback','{}'));accepted=int(counts.get('accepted',0));changed=int(counts.get('changed',0))
+            if accepted<0 or changed<0:raise ValueError('invalid counts')
+            advanced.append(label(f'Your opt-in sample: {accepted} AI choices kept and {changed} changed. This is not a measure of overall accuracy.','dim-label'))
+            bins=counts.get('bins',{})
+            if isinstance(bins,dict) and bins:
+                details_exp=Gtk.Expander(label='Suggestion feedback by probability');details=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=4);details_exp.set_child(details);advanced.append(details_exp)
+                for label_name in ('0–49%','50–74%','75–89%','90–100%'):
+                    value=bins.get(label_name,{})
+                    if isinstance(value,dict):details.append(label(f"{label_name}: {value.get('accepted',0)} kept, {value.get('changed',0)} changed",'dim-label'))
+                details.append(label('Small, self-selected samples can be misleading. No automatic confidence threshold is set.','dim-label'))
+        except (ValueError,TypeError,AttributeError,OverflowError):advanced.append(label('Local feedback counts unavailable.','dim-label'))
+        advanced.append(Gtk.LinkButton(uri='https://console.typesafe.ai/',label='Open TypeSafe console'))
+        advanced.append(Gtk.LinkButton(uri='https://help.typesafe.ai/articles/5974925716',label='TypeSafe data handling information'))
+
     def refresh_settings(self):
-        b=self.body_settings; self.clear(b); self.heading(b,'Settings','Control what is recorded and keep your data on this computer.')
+        b=self.body_settings; self.clear(b); self.heading(b,'Settings','Control tracking, local data and optional AI services.')
         available=desktop.capture_available()
         if available: self.row(b,'Automatic tracking is ready','The desktop capture adapter is connected. App names are recorded; window titles are optional.')
         elif desktop.supported_desktop(): self.row(b,'Finish automatic tracking setup','Check desktop dependencies and helper activation in docs/INSTALL.md. After installation, save your work and sign out and back in once.',[('Install / repair setup',lambda _:self.install_setup())])
@@ -990,6 +1398,7 @@ class TimeSheet(Adw.Application):
                 desktop.start_collector()
             self.run_action(apply,lambda _:self.toast('Preferences saved'))
         b.append(button('Save preferences',save,True))
+        self.append_ai_settings(b)
         self.heading(b,'Data and recovery')
         b.append(label('Data is stored at '+str(self.store.path),'dim-label'))
         try:
