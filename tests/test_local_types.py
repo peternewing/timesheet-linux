@@ -108,7 +108,8 @@ class DesktopMetadataTests(unittest.TestCase):
             apps=[desktop_info.new_from_filename(str(path)) for path in paths];self.assertTrue(all(apps))
             registry=Registry()
             with patch.object(Gio.AppInfo,'get_all',return_value=apps):registry.refresh()
-            self.assertIsNone(registry.lookup('Shared Fixture'));self.assertEqual(registry.lookup('Fixture0')['bucket'],'browse')
+            self.assertIsNone(registry.lookup('Shared Fixture'))
+            known=registry.lookup('Fixture0');self.assertIsNotNone(known,str(registry.index));self.assertEqual(known['bucket'],'browse')
             self.assertIsNone(registry.lookup('Fixture1'));self.assertFalse(marker.exists())
     def test_refresh_publishes_complete_snapshot_and_keeps_old_snapshot_during_refresh(self):
         registry=Registry();registry.index={'browser':[dict(bucket='browse',categories=['WebBrowser'])]};registry.loaded=0

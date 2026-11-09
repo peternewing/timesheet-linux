@@ -50,7 +50,10 @@ class Registry:
             apps=Gio.AppInfo.get_all()
             if len(apps)>10000:raise ValueError('Incomplete local catalogue')
             for app in apps:
-                if not hasattr(app,'get_categories') or (hasattr(app,'get_is_hidden') and app.get_is_hidden()):continue
+                if not hasattr(app,'get_categories'):continue
+                # Hidden is a deleted desktop entry; NoDisplay only hides a menu
+                # item. Read the exact key rather than a legacy binding's helper.
+                if hasattr(app,'get_boolean') and app.get_boolean('Hidden'):continue
                 raw=app.get_categories() or ''
                 categories=raw.strip(';').split(';') if len(raw)<=8000 else []
                 bucket=classify(categories)

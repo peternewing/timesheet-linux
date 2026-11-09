@@ -12,8 +12,13 @@ class StorageRecoveryTests(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory();self.store=Store(Path(self.tmp.name)/'db');self.now=int(time.time())
         finish_setup(self.store,list(BUCKETS),connected=False,now=self.now-86400)
     def tearDown(self):self.store.close();self.tmp.cleanup()
-    def quota(self):
-        with self.store.db:self.store.db.execute('CREATE TABLE quota_filler(value BLOB)')
+    def quota(self,*,schedule_write=False):
+        with self.store.db:
+            self.store.db.execute('CREATE TABLE quota_filler(value BLOB)')
+            if schedule_write:
+                # Force a real page allocation after schedule insertion. UTC's
+                # tiny TZif can fit an existing page, unlike larger local zones.
+                self.store.db.execute('CREATE TRIGGER quota_schedule AFTER INSERT ON screen_space_schedules BEGIN INSERT INTO quota_filler VALUES(zeroblob(65536)); END')
         count=self.store.db.execute('PRAGMA page_count').fetchone()[0]
         self.store.db.execute(f'PRAGMA max_page_count={count}')
         while True:
@@ -24,7 +29,7 @@ class StorageRecoveryTests(unittest.TestCase):
     def release(self):self.store.db.execute('PRAGMA max_page_count=1073741823')
     def test_schedule_full_storage_rolls_back_marker_and_recovers(self):
         screen_spaces.switch(self.store,'personal',self.now-100)
-        before=screen_spaces.current(self.store);version=screen_spaces.revision(self.store);self.quota()
+        before=screen_spaces.current(self.store);version=screen_spaces.revision(self.store);self.quota(schedule_write=True)
         with self.assertRaises(sqlite3.OperationalError) as error:screen_spaces.use_schedule(self.store,'weekdays_9_17',self.now)
         self.assertEqual(error.exception.sqlite_errorcode,sqlite3.SQLITE_FULL)
         self.assertEqual(screen_spaces.current(self.store),before);self.assertEqual(screen_spaces.revision(self.store),version)
