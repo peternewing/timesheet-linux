@@ -139,12 +139,11 @@ jobs:
             exit 0
           fi
           tag="v$version"
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > /tmp/existing-release.json 2>/dev/null; then
-            if jq -e '.draft == false' /tmp/existing-release.json >/dev/null; then
-              echo "Official release $tag already exists; leaving published assets unchanged."
-              exit 0
-            fi
-            test "$(jq -r .target_commitish /tmp/existing-release.json)" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq --arg tag "$tag" '[.[] | select(.tag_name == $tag)]' > /tmp/existing-releases.json
+          test "$(jq length /tmp/existing-releases.json)" -le 1
+          if jq -e 'any(.[]; .draft == false)' /tmp/existing-releases.json >/dev/null; then
+            echo "Official release $tag already exists; leaving published assets unchanged."
+            exit 0
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo 'publish=true' >> "$GITHUB_OUTPUT"
@@ -181,14 +180,34 @@ jobs:
         run: |
           cp "docs/RELEASE_${RELEASE_TAG#v}.md" /tmp/release-notes.md
           printf '\nSource commit: `%s`\n\n[Verified build](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> /tmp/release-notes.md
-          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Time Sheet Linux ${RELEASE_TAG#v}" --notes-file /tmp/release-notes.md --draft --prerelease=false --latest=false
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq --arg tag "$RELEASE_TAG" '[.[] | select(.tag_name == $tag)]' > /tmp/existing-releases.json
+          test "$(jq length /tmp/existing-releases.json)" -le 1
+          jq -n --arg tag "$RELEASE_TAG" --arg sha "$GITHUB_SHA" --rawfile body /tmp/release-notes.md '{tag_name:$tag,target_commitish:$sha,name:("Time Sheet Linux " + ($tag | ltrimstr("v"))),body:$body,draft:true,prerelease:false,make_latest:"false"}' > /tmp/release-request.json
+          if [[ "$(jq length /tmp/existing-releases.json)" = 0 ]]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/releases" --input /tmp/release-request.json > /tmp/release-draft.json
+          else
+            jq -e '.[0].draft == true' /tmp/existing-releases.json
+            release_id=$(jq -r '.[0].id' /tmp/existing-releases.json)
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" --input /tmp/release-request.json > /tmp/release-draft.json
           fi
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > /tmp/release-draft.json
           jq -e '.draft == true' /tmp/release-draft.json
           test "$(jq -r .target_commitish /tmp/release-draft.json)" = "$GITHUB_SHA"
-          gh release upload "$RELEASE_TAG" dist/TimeSheetLinux-x86_64.AppImage dist/TimeSheetLinux-x86_64.flatpak dist/SHA256SUMS dist/provenance.sigstore.json --clobber
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" | jq -e '([.assets[].name] | sort) == (["TimeSheetLinux-x86_64.AppImage","TimeSheetLinux-x86_64.flatpak","SHA256SUMS","provenance.sigstore.json"] | sort)'
-          gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest --notes-file /tmp/release-notes.md
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" | jq -e '.draft == false and .prerelease == false and (.assets | length) == 4'
+          release_id=$(jq -r .id /tmp/release-draft.json)
+          for name in TimeSheetLinux-x86_64.AppImage TimeSheetLinux-x86_64.flatpak SHA256SUMS provenance.sigstore.json; do
+            asset_id=$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .id' /tmp/release-draft.json)
+            if [[ -n "$asset_id" ]]; then
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+            fi
+            curl --fail-with-body --silent --show-error --request POST --header "Authorization: Bearer $GH_TOKEN" --header 'Content-Type: application/octet-stream' --data-binary "@dist/$name" "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$name" --output /tmp/uploaded-asset.json
+            digest=$(sha256sum "dist/$name" | cut -d ' ' -f 1)
+            jq -e --arg digest "sha256:$digest" '.state == "uploaded" and .digest == $digest and .size > 0' /tmp/uploaded-asset.json
+          done
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" | jq -e '([.assets[].name] | sort) == (["TimeSheetLinux-x86_64.AppImage","TimeSheetLinux-x86_64.flatpak","SHA256SUMS","provenance.sigstore.json"] | sort)'
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" > /tmp/release-tag.json 2>/dev/null; then
+            jq -e --arg sha "$GITHUB_SHA" '.object.type == "commit" and .object.sha == $sha' /tmp/release-tag.json
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$RELEASE_TAG" -f "sha=$GITHUB_SHA"
+          fi
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false -F prerelease=false -f make_latest=true > /tmp/published-release.json
+          jq -e '.draft == false and .prerelease == false and (.assets | length) == 4' /tmp/published-release.json
           gh api "repos/$GITHUB_REPOSITORY/releases/latest" | jq -e --arg tag "$RELEASE_TAG" '.tag_name == $tag'

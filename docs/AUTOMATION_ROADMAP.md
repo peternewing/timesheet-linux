@@ -326,3 +326,11 @@ gate. The harness now lets that refresh finish before locating its native target
 asserts modal unmapping and waits a bounded interval for the actual click result;
 it neither retries the click nor bypasses review assertions. Record the following
 build's result separately from the first failed GUI attempt.
+
+The subsequent source passed all core/UI/package/provenance checks. Publication
+found that GitHub's release-by-tag API does not resolve the unpublished draft.
+The publisher now lists authenticated draft metadata and uses the release ID for
+asset management/publication. Each uploaded asset's server digest must match its
+local SHA256 before creating the exact source tag and making the release public.
+Existing published releases remain untouched. This fixes delivery infrastructure;
+it does not change capture, AI policy or historical validation scope.
