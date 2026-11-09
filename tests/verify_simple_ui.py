@@ -137,7 +137,16 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
             yield
         check(find(organiser_window,'Review 1 uncertain activity').get_visible(),'Whole-day pass consolidates uncertain periods into one activity choice')
         click(organiser_window,'Back to my day');yield
+        # Let the closed modal unmap and one background day-refresh cycle finish
+        # before locating the new native click target. Its predecessor can be
+        # replaced after the XTest event is queued on a busy headless runner.
+        for _ in range(8):yield
+        check(not organiser_window.get_mapped(),'Closed organiser releases its native modal window')
         screenshot(app.win,'past-day');mouse(find(app.simple_details,'Assign'));yield
+        for _ in range(16):
+            if app.dialogs:break
+            yield
+        check(bool(app.dialogs),'Native Assign click opens the daily category choice')
         review=app.dialogs[-1];check(not any(isinstance(w,Gtk.Entry) for w in descendants(review)),'Review requires choosing a category, not completing a form')
         screenshot(review,'one-choice');click(review,'Creating & building');yield
         entry=app.store.entries(base,base+600)[0]

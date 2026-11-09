@@ -318,3 +318,11 @@ pass. The workflow stages assets in a draft and publishes with prerelease=false
 and latest=true only after verifying the expected asset set. See
 [release notes](RELEASE_0.7.0.md). This release-status decision does not change
 historical scores or claim representative real-day/hardware/Orca acceptance.
+
+The first official build passed core/package/provenance checks but its native
+Assign regression encountered a replaced click target while the organiser closed
+and the background day view refreshed. Publication stopped at the required Tests
+gate. The harness now lets that refresh finish before locating its native target,
+asserts modal unmapping and waits a bounded interval for the actual click result;
+it neither retries the click nor bypasses review assertions. Record the following
+build's result separately from the first failed GUI attempt.
