@@ -11,7 +11,8 @@ worker. It processes settled recorded activity for the selected day within the
 already-authorised period (maximum seven days). It never extends consent, changes
 sending fields/mode, resets a pause or overrides request/token limits. Off or an
 unconnected installation opens setup. A paused worker opens its recovery actions.
-Progress updates locally; closing the window lets processing continue.
+Progress updates locally; closing the window lets processing continue. The review
+action appears after the pass, so unprocessed apps are not presented as uncertain.
 
 Equivalent requests reuse the validated durable cache, including ambiguous results.
 Clear, supported decisions become reversible draft categories. Uncertain results
@@ -59,7 +60,7 @@ fields, privacy switches or inference modes on ordinary day screens.
 ## Evidence
 
 242 offline unit/regression tests passed, including 15 whole-day organiser tests.
-68 default-flow GTK checks at normal and 200% scale cover setup, real mouse clicks
+69 default-flow GTK checks at normal and 200% scale cover setup, real mouse clicks
 on card text and Assign, whole-day progress, consolidated exceptions, optional
 sidebar pages, detailed assignment return, second counters, correction and export.
 The existing 53 scaled advanced mouse/keyboard checks and separate worker-process/

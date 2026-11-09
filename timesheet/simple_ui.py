@@ -340,7 +340,7 @@ class SimpleUI:
             progress=day_organiser.progress(self.store,batch);current=day_organiser.active(self.store)
             running=bool(current and current['id']==batch['id']);reason=self.store.get('ai_pause_reason','')
             status.set_text(('Jev needs attention. ' if reason else 'Organising… ' if running else 'Pass finished. ')+f"{progress['organised']} periods organised · {progress['waiting']} waiting")
-            waiting=simple_store.review_items(self.store,day);choices.set_visible(bool(waiting));choices.set_label(f'Review {len(waiting)} uncertain '+('activity' if len(waiting)==1 else 'activities'))
+            waiting=simple_store.review_items(self.store,day);choices.set_visible(bool(waiting) and not running);choices.set_label(f'Review {len(waiting)} uncertain '+('activity' if len(waiting)==1 else 'activities'))
             fix.set_visible(bool(reason))
             if not running and progress['waiting']:status.set_text('This pass stopped. Remaining activity will continue in the background within your settings.')
             if not running and not progress['waiting'] and not waiting:status.set_text('All eligible activity is organised. Recent, excluded or deliberately uncategorised activity stays separate.')

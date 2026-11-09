@@ -112,6 +112,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         organiser_window=app.dialogs[-1]
         check(organiser_window.get_title()=='Organise my day','One-click Jev action opens live progress without a form')
         check(app.store.get('ai_policy')==before_policy,'Organise my day preserves standing privacy and usage settings')
+        check(not any(isinstance(w,Gtk.Button) and (w.get_label() or '').startswith('Review ') and w.get_visible() for w in descendants(organiser_window)),'Uncertain review waits for the Jev pass instead of asking about unprocessed activity')
         for _ in range(4):Engine(app.store,request=lambda *a,**kw:result,key=lambda:'synthetic').step()
         for _ in range(8):yield
         check(find(organiser_window,'Review 1 uncertain activity').get_visible(),'Whole-day pass consolidates uncertain periods into one activity choice')
