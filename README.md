@@ -7,8 +7,8 @@ Clear installed app types can be organised locally; Jev can help with remaining
 permitted activity using your own TypeSafe key. Core recording and screen-time
 insights stay local and work without AI.
 
-The current source candidate is **0.7.0-rc1**. It includes the personal/work additions
-below; the older published 0.6.1-rc2 packages do not. See the [delivery notes](docs/DELIVERY_0.7.0.md)
+The current official release is **0.7.0**, including the personal/work additions
+below. See the [release notes](docs/RELEASE_0.7.0.md)
 and [28-category reassessment](docs/PERSONAL_WORK_REASSESSMENT_2026-11-09.md).
 
 ![The simple Today screen, using synthetic example data](docs/screenshots/today.png)
@@ -52,21 +52,20 @@ identities and conservative declared categories. Ambiguous apps stay unclassifie
 It creates reversible, non-billable drafts and respects your choices and rules.
 Existing users do not silently enable it on upgrade.
 
-Development capture limit: the desktop's idle signal determines away time. Passive
+Capture limit: the desktop's idle signal determines away time. Passive
 reading/video may be marked away, and background audio is not measured. Screen-time
 figures describe detected foreground use, not a validated screen-on or attention
 total. The real-desktop acceptance plan includes these cases before any stronger
 phone-equivalence claim.
 
-## Install 0.6.1-rc2
+## Install 0.7.0
 
-This is a prerelease. Back up existing data before upgrading and reopen any old
-app window afterwards. Existing time, projects and saved reports are preserved.
+Back up existing data before upgrading and reopen any old app window afterwards. Existing time, projects and saved reports are preserved.
 
 ### AppImage — x86-64, glibc 2.39 or newer
 
 Download the AppImage, SHA256SUMS and provenance bundle from the
-[release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.6.1-rc2).
+[release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.7.0).
 In the download folder:
 
 ```sh
@@ -93,8 +92,8 @@ chmod +x TimeSheetLinux-x86_64.AppImage
 ```sh
 sudo apt update
 sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-secret-1 python3-reportlab fonts-dejavu-core
-git clone --branch v0.6.1-rc2 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.6
-cd timesheet-linux-0.6
+git clone --branch v0.7.0 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.7
+cd timesheet-linux-0.7
 ./install.sh
 ```
 

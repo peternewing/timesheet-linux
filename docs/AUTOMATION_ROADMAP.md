@@ -308,3 +308,13 @@ checkout for rollback, and verify the launcher/collector after switching. Keep
 all previous data/usage policies unchanged except compatible installation ownership.
 Existing off policies stay off; no extra paid synthetic calls are covered by the
 old exhausted 20-request approval. Real-day, hardware and human gates remain open.
+
+### Official 0.7.0 release — 9 November 2026
+
+The user explicitly requested public assets and an official release rather than
+another prerelease. Promote the source version to 0.7.0, publish AppImage, Flatpak,
+combined checksums and verified trusted-main provenance after the current tests
+pass. The workflow stages assets in a draft and publishes with prerelease=false
+and latest=true only after verifying the expected asset set. See
+[release notes](RELEASE_0.7.0.md). This release-status decision does not change
+historical scores or claim representative real-day/hardware/Orca acceptance.

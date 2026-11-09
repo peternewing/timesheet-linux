@@ -1,4 +1,4 @@
-name: Candidate Linux packages
+name: Linux packages and official release
 on:
   push:
     branches: [main, linux-compatibility-0.3]
@@ -113,3 +113,82 @@ jobs:
         with:
           name: TimeSheetLinux-provenance
           path: dist/provenance.sigstore.json
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [provenance]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: official-release-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+      attestations: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select an unpublished stable version
+        id: version
+        run: |
+          version=$(/usr/bin/python3 -c 'from timesheet import __version__; print(__version__)')
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'Skipping official publication for a development version.'
+            exit 0
+          fi
+          tag="v$version"
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > /tmp/existing-release.json 2>/dev/null; then
+            if jq -e '.draft == false' /tmp/existing-release.json >/dev/null; then
+              echo "Official release $tag already exists; leaving published assets unchanged."
+              exit 0
+            fi
+            test "$(jq -r .target_commitish /tmp/existing-release.json)" = "$GITHUB_SHA"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo 'publish=true' >> "$GITHUB_OUTPUT"
+      - name: Require successful core and UI tests for this exact source
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          for attempt in {1..60}; do
+            result=$(gh run list --workflow tests.yml --commit "$GITHUB_SHA" --event push --json status,conclusion --limit 1)
+            if [[ "$(jq -r '.[0].status' <<< "$result")" = completed ]]; then
+              test "$(jq -r '.[0].conclusion' <<< "$result")" = success
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'No successful completed Tests workflow for this source.' >&2
+          exit 1
+      - uses: actions/download-artifact@v4
+        if: steps.version.outputs.publish == 'true'
+        with:
+          pattern: TimeSheetLinux-*
+          merge-multiple: true
+          path: dist
+      - name: Verify exact release files and provenance
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          cat dist/AppImage-SHA256SUMS dist/Flatpak-SHA256SUMS > dist/SHA256SUMS
+          (cd dist && sha256sum -c SHA256SUMS)
+          gh attestation verify dist/TimeSheetLinux-x86_64.AppImage --repo "$GITHUB_REPOSITORY" --bundle dist/provenance.sigstore.json --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/packages.yml" --source-digest "$GITHUB_SHA" --source-ref refs/heads/main --deny-self-hosted-runners
+          gh attestation verify dist/TimeSheetLinux-x86_64.flatpak --repo "$GITHUB_REPOSITORY" --bundle dist/provenance.sigstore.json --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/packages.yml" --source-digest "$GITHUB_SHA" --source-ref refs/heads/main --deny-self-hosted-runners
+      - name: Upload assets and publish the official latest release
+        if: steps.version.outputs.publish == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          cp "docs/RELEASE_${RELEASE_TAG#v}.md" /tmp/release-notes.md
+          printf '\nSource commit: `%s`\n\n[Verified build](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> /tmp/release-notes.md
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Time Sheet Linux ${RELEASE_TAG#v}" --notes-file /tmp/release-notes.md --draft --prerelease=false --latest=false
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > /tmp/release-draft.json
+          jq -e '.draft == true' /tmp/release-draft.json
+          test "$(jq -r .target_commitish /tmp/release-draft.json)" = "$GITHUB_SHA"
+          gh release upload "$RELEASE_TAG" dist/TimeSheetLinux-x86_64.AppImage dist/TimeSheetLinux-x86_64.flatpak dist/SHA256SUMS dist/provenance.sigstore.json --clobber
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" | jq -e '([.assets[].name] | sort) == (["TimeSheetLinux-x86_64.AppImage","TimeSheetLinux-x86_64.flatpak","SHA256SUMS","provenance.sigstore.json"] | sort)'
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest --notes-file /tmp/release-notes.md
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" | jq -e '.draft == false and .prerelease == false and (.assets | length) == 4'
+          gh api "repos/$GITHUB_REPOSITORY/releases/latest" | jq -e --arg tag "$RELEASE_TAG" '.tag_name == $tag'
