@@ -23,7 +23,7 @@ The record separates captured app use, AI estimates, your choices, away time and
 capture gaps. It is evidence of app activity, not independent proof of completed
 outputs or productivity. Simple-flow categories are non-billable drafts.
 
-## Install 0.6.1-rc1
+## Install 0.6.1-rc2
 
 This is a prerelease. Back up existing data before upgrading and reopen any old
 app window afterwards. Existing time, projects and saved reports are preserved.
@@ -31,7 +31,7 @@ app window afterwards. Existing time, projects and saved reports are preserved.
 ### AppImage — x86-64, glibc 2.39 or newer
 
 Download the AppImage, SHA256SUMS and provenance bundle from the
-[release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.6.1-rc1).
+[release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.6.1-rc2).
 In the download folder:
 
 ```sh
@@ -58,7 +58,7 @@ chmod +x TimeSheetLinux-x86_64.AppImage
 ```sh
 sudo apt update
 sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-secret-1 python3-reportlab fonts-dejavu-core
-git clone --branch v0.6.1-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.6
+git clone --branch v0.6.1-rc2 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.6
 cd timesheet-linux-0.6
 ./install.sh
 ```
@@ -73,6 +73,15 @@ Click a time card to see its matching information below. Recorded app use shows
 top activities ranked by total active time. All counters display hours, minutes
 and seconds and refresh together. Daily choices also cover later recorded use
 of the same app that day; existing explicit assignments stay intact.
+
+Click **Organise my day** to prioritise Jev's pass through that day. Clear matches
+become drafts; only uncertain apps need your choice. **Assign** beside an activity
+lets you choose its category directly. Equivalent decisions are reused.
+
+**More actions** holds task timers, manual time and detailed project assignment.
+In **Settings**, enable **Show advanced tools in sidebar** for regular access to
+projects, rules, history and reports. These use the same records; setup stays simple.
+Expandable help explains what Jev and each set of tools actually do.
 
 ## Existing users
 

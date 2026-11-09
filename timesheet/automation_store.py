@@ -111,20 +111,27 @@ class Repository:
 
     def context(self,activity,config=None,*,start=None,end=None):return build(self.store,activity,self,config or self.config(),start=start,end=end)
 
-    def discover(self,now=None,limit=100):
+    def discover(self,now=None,limit=100,*,batch=None):
         now=int(time.time() if now is None else now);config=self.config()
         if config['mode']=='off':return 0
         since=max(config['since'],now-7*86400);cutoff=now-int(self.store.get('idle_seconds','300'))
         try:cursor=int(self.store.get('ai_discover_after','0'))
         except ValueError:cursor=0
+        window='';parameters=[cursor,since,cutoff]
+        if batch:
+            parameters[0]=batch['cursor'];window=' AND a.start<? AND a.end>?'
+            parameters.extend((batch['end'],batch['start']))
+        parameters.append(min(max(1,limit),200))
         rows=self.store.rows("""SELECT a.* FROM activity a WHERE a.id>? AND a.start>=? AND a.end<=?
             AND a.closed=1 AND a.state='active' AND NOT EXISTS(SELECT 1 FROM ai_jobs j WHERE j.activity_id=a.id
-            AND j.state IN ('applied','dismissed')) ORDER BY a.id LIMIT ?""",(cursor,since,cutoff,min(max(1,limit),200)))
+            AND j.state IN ('applied','dismissed') AND j.start<=a.start AND j.end>=a.end)"""+window+' ORDER BY a.id LIMIT ?',parameters)
         count=0
         with self.store.db:
             for activity in rows:
                 periods=[]
-                for start,end in self.store.uncovered(activity['start'],activity['end'],now):
+                a,z=activity['start'],activity['end']
+                if batch:a,z=max(a,batch['start']),min(z,batch['end'])
+                for start,end in self.store.uncovered(a,z,now):
                     boundaries={start,end}
                     if config['allow_focus']:
                         for focus in self.store.rows('SELECT start,end FROM ai_focus WHERE start<? AND end>?',(end,start)):
@@ -146,7 +153,12 @@ class Repository:
                         VALUES(?,?,?,?,?,?,?,?)''',(fingerprint,activity['id'],start,end,canonical(context['network']),int(context['has_context']),now,now)).rowcount
                     count+=changed
                     if not changed:self.store.db.execute("UPDATE ai_jobs SET state='pending',reason='',attempts=0,due=0,updated=? WHERE fingerprint=? AND state='stale'",(now,fingerprint))
-            self.store.set('ai_discover_after',rows[-1]['id'] if rows else 0)
+            if batch is None:self.store.set('ai_discover_after',rows[-1]['id'] if rows else 0)
+        if batch is not None:
+            batch['cursor']=rows[-1]['id'] if rows else batch['cursor']
+            batch['scanned']=len(rows)<min(max(1,limit),200)
+            from .day_organiser import save
+            save(self.store,batch)
         return count
 
     def fresh(self,job):
@@ -160,14 +172,17 @@ class Repository:
                     and activity['start']<=job['start']<job['end']<=activity['end']
                     and self.store.uncovered(job['start'],job['end'])==[(job['start'],job['end'])])
 
-    def claim(self,now=None):
+    def claim(self,now=None,*,batch=None):
         now=int(time.time() if now is None else now)
         with self.store.db:
             self.store.db.execute('BEGIN IMMEDIATE')
             # A request might already have reached the provider. Recover the lease
             # into review instead of sending the same unknown request again.
             self.store.db.execute("UPDATE ai_jobs SET state='failed',reason='Interrupted request: outcome unknown. Retry explicitly if needed.',updated=? WHERE state='running' AND lease_until<?",(now,now))
-            job=self.store.db.execute("SELECT * FROM ai_jobs WHERE state='pending' AND due<=? ORDER BY id LIMIT 1",(now,)).fetchone()
+            if batch is None:
+                job=self.store.db.execute("SELECT * FROM ai_jobs WHERE state='pending' AND due<=? ORDER BY id LIMIT 1",(now,)).fetchone()
+            else:
+                job=self.store.db.execute("SELECT * FROM ai_jobs WHERE state='pending' AND due<=? AND start>=? AND end<=? ORDER BY id LIMIT 1",(now,batch['start'],batch['end'])).fetchone()
             if not job:return None
             self.store.db.execute("UPDATE ai_jobs SET state='running',attempts=attempts+1,lease_until=?,updated=? WHERE id=?",(now+120,now,job['id']))
             return dict(self.store.db.execute('SELECT * FROM ai_jobs WHERE id=?',(job['id'],)).fetchone())
