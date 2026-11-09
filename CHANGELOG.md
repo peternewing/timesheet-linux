@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1-rc1 — choose once per day
+
+- Group matching app activity across the selected day into one category choice and reuse it locally for later settled periods.
+- Synchronise HH:MM:SS counters from one clock; restore ranked top activities.
+- Make each statistic card show its relevant periods, live values or empty state inline.
+- Protect concurrent human edits, in-flight AI decisions, undo and privacy retention.
+- Preserve compatible native/source automation choices and paused state on authorised upgrades.
+
 ## 0.6.0-rc1 — simplicity rebuild
 
 - Four-step click-only setup: ready-made categories, privacy, saved/pasted personal key, Start.

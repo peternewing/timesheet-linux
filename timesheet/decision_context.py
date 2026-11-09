@@ -16,7 +16,7 @@ def plain(value,limit):
     return isinstance(value,str) and len(value)<=limit and not any(ord(c)<32 or ord(c)==127 or 0x202a<=ord(c)<=0x202e or 0x2066<=ord(c)<=0x2069 for c in value)
 
 
-def build(store,activity,repo,config,*,start=None,end=None):
+def build(store,activity,repo,config,*,start=None,end=None,ignore_daily_choice=False):
     """Return network context + local fingerprint, or a reason to skip sending."""
     if activity['state']!='active' or not activity['closed'] or not activity['app']:return None,'Not completed work activity.'
     if not plain(activity['app'],200):return None,'Application name cannot be sent.'
@@ -27,6 +27,10 @@ def build(store,activity,repo,config,*,start=None,end=None):
     if not isinstance(raw_exclusions,str) or len(raw_exclusions)>100000:return None,'Capture exclusions could not be verified.'
     excluded.extend(x.strip().casefold() for x in raw_exclusions.split(',') if x.strip())
     if activity['app'].casefold() in excluded:return None,'This application is excluded.'
+    from .daily_choices import choice
+    from datetime import datetime
+    local_choice=choice(store,datetime.fromtimestamp(activity['start'] if start is None else start).date(),activity['app'])
+    if local_choice is not None and not ignore_daily_choice:return None,'Your daily choice handles this app locally.'
     tasks=store.tasks();rule_targets={r['id'] for r in tasks}
     generic=bool(config.get('category_tasks'))
     if generic:

@@ -113,3 +113,11 @@ records with no real key/provider call. See SIMPLICITY_REVIEW_0.6.md for evidenc
 /usr/bin/python3 -m timesheet.evaluate tests/fixtures/jev_simple_heldout_recorded.json
 GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_simple_ui.py
 ```
+
+
+## 0.6.1 daily choices and cards
+
+226 unit tests and 41 default UI checks (normal/200%) cover the requested grouped
+decisions, live counters, rankings and clickable card details. Retained advanced
+workflows are tested separately. See DAILY_REVIEW_0.6.1.md. Synthetic test data
+only; no real account inference or activity transmission is needed for this change.

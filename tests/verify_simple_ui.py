@@ -17,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
     from timesheet.app import TimeSheet,Gtk,GLib,desktop
     from timesheet.automation_worker import Engine
     from timesheet.day_record import bounds
-    app=TimeSheet();app.set_application_id('org.local.TimeSheetSimpleTest')
+    app=TimeSheet();app.set_application_id('org.local.TimeSheetSimpleTest.Run'+str(os.getpid()))
     import gi
     gi.require_version('GdkX11','4.0')
     from gi.repository import GdkX11
@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         x.XTranslateCoordinates(display,xid,x.XDefaultRootWindow(display),0,0,ctypes.byref(rx),ctypes.byref(ry),ctypes.byref(child));x.XRaiseWindow(display,xid);x.XSetInputFocus(display,xid,1,0)
         xt.XTestFakeMotionEvent(display,-1,rx.value+int((rect.get_x()+rect.get_width()/2+sx)*scale),ry.value+int((rect.get_y()+rect.get_height()/2+sy)*scale),0)
         xt.XTestFakeButtonEvent(display,1,1,0);xt.XTestFakeButtonEvent(display,1,0,0);x.XFlush(display)
-    checks=[];failures=[];out=Path('/tmp/timesheet-simple-ui');out.mkdir(exist_ok=True)
+    checks=[];failures=[];completed=[];out=Path('/tmp/timesheet-simple-ui');out.mkdir(exist_ok=True)
     def check(value,message):assert value,message;checks.append(message);print('PASS:',message,flush=True)
     def find(root,text):return next(w for w in descendants(root) if isinstance(w,Gtk.Button) and w.get_label()==text)
     def click(root,text):
@@ -87,27 +87,55 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         day=datetime.now().date()-timedelta(days=1);base=bounds(day)[0]+12*3600
         repo=app.automation_repo();repo.configure({**repo.config(),'since':bounds(day)[0]})
         ids=repo.config()['category_tasks']
-        with app.store.db:app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,'Editor','active',1)",(base,base+600))
+        with app.store.db:
+            for offset,length,name in [(0,600,'Editor'),(3600,600,'Editor'),(7200,300,'EDITOR')]:app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,?,'active',1)",(base+offset,base+offset+length,name))
         result=dict(task=None,probability=.6,none_probability=.6,alternatives=[(i,.1) for i in sorted(ids)],personal=.1,enough_evidence=.4,work_kind='other',model='jev-simple-ui',usage={'input_tokens':100,'output_tokens':10})
         check(Engine(app.store,request=lambda *a,**kw:result,key=lambda:'synthetic').step()=='exception','An unclear decision becomes one human choice')
         app.day=day;app.show_page('Calendar');yield;yield;yield
         check(find(app.body_calendar,'Help Jev with 1 choice').get_sensitive(),'Past days presents the same simple daily record')
+        mouse(app.simple_metric_buttons['ai']);yield
+        check(any(isinstance(w,Gtk.Label) and w.get_text()=='No automatically organised periods yet.' for w in descendants(app.simple_details)),'Automatic card reveals its relevant empty state below')
+        mouse(app.simple_metric_buttons['human']);yield
+        check(any(isinstance(w,Gtk.Label) and w.get_text()=='No category choices or manual time saved yet.' for w in descendants(app.simple_details)),'Chosen-by-you card reveals its relevant empty state below')
+        mouse(app.simple_metric_buttons['active']);yield
+        check(list(app.simple_top_rows)==['Editor'] and app.simple_top_rows['Editor'][0].get_text()=='00:25:00','Recorded card shows top activities ranked by combined daily seconds')
         screenshot(app.win,'past-day');click(app.body_calendar,'Help Jev with 1 choice');yield
         review=app.dialogs[-1];check(not any(isinstance(w,Gtk.Entry) for w in descendants(review)),'Review requires choosing a category, not completing a form')
         screenshot(review,'one-choice');click(review,'Creating & building');yield
         entry=app.store.entries(base,base+600)[0]
         check(entry['billable']==0 and entry['status']=='draft','A category choice cannot bill or approve time')
-        check(len(app.store.rows('SELECT * FROM ai_examples'))==1,'The selected remember policy keeps a local correction example')
+        check(len(app.store.rows('SELECT * FROM ai_examples'))==3,'The selected remember policy keeps a local correction example')
+        check(len(app.store.entries(base,base+8000))==3,'One decision categorises separated matching periods across the whole day')
         check(any(isinstance(w,Gtk.Label) and w.get_text()=='You’re done' for w in descendants(review)),'One category click finishes a single-item review')
         click(review,'Back to my day');yield
         click(app.body_calendar,'Save day record');yield
         export=app.dialogs[-1];screenshot(export,'save-record')
         check(not any(isinstance(w,Gtk.Entry) for w in descendants(export)),'Day export has no invoice or accounting form')
         click(export,'Close');yield
-        expander=next(w for w in descendants(app.body_calendar) if isinstance(w,Gtk.Expander) and w.get_label()=='Check or change a period');expander.set_expanded(True);yield
+        app.simple_metric_buttons['human'].emit('clicked');yield
         click(app.body_calendar,'Change category');yield
         correction=app.dialogs[-1];click(correction,'Research & learning');yield
         check(app.store.entries(base,base+600)[0]['task']=='Research & learning','Changing a category is another single choice')
+        with app.store.db:aid=app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,'Writer','active',1)",(base+10000,base+10300)).lastrowid
+        confident=dict(task=ids[3],probability=.99,none_probability=.004,alternatives=[(ids[3],.99)]+[(i,.002) for i in sorted(ids[:3])],personal=.1,enough_evidence=.99,work_kind='other',model='jev-simple-ui',usage={'input_tokens':100,'output_tokens':10})
+        check(Engine(app.store,request=lambda *a,**kw:confident,key=lambda:'synthetic').step()=='applied','A separate app has an automatically organised period to inspect')
+        app.show_page('Calendar');yield
+        app.simple_metric_buttons['ai'].emit('clicked');yield
+        check(any(isinstance(w,Gtk.Label) and w.get_text()=='Planning & admin' for w in descendants(app.simple_details)) and not any(isinstance(w,Gtk.Label) and w.get_text()=='Research & learning' for w in descendants(app.simple_details)),'Automatic card shows only automatically organised periods')
+        app.simple_metric_buttons['human'].emit('clicked');yield
+        check(any(isinstance(w,Gtk.Label) and w.get_text()=='Research & learning' for w in descendants(app.simple_details)) and not any(isinstance(w,Gtk.Label) and w.get_text()=='Planning & admin' for w in descendants(app.simple_details)),'Chosen-by-you card shows only user choices and manual entries')
+        app.show_page('Today');yield;yield
+        clock=int(time.time());app.store.start_timer(ids[0],clock-10)
+        with app.store.db:live=app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,'Live editor','active',0)",(clock-20,clock-1)).lastrowid
+        app.show_page('Today');yield
+        app.simple_metric_buttons['human'].emit('clicked');yield
+        for offset in (0,1,3,8):
+            with patch('time.time',return_value=clock+offset):
+                with app.store.db:app.store.db.execute('UPDATE activity SET end=? WHERE id=?',(clock+offset,live))
+                app.simple_last_tick=None;app.tick()
+                expected=f'00:00:{10+offset:02d}'
+                check(app.timer_button.get_label()==expected and app.simple_metrics['human'].get_text()==expected and app.simple_metrics['active'].get_text()==f'00:00:{20+offset:02d}','Shared-clock counters stay exact at +'+str(offset)+' seconds without accumulated drift')
+        app.store.stop_timer(clock+8)
         app.show_page('Settings');yield;yield;yield
         check(not any(isinstance(w,Gtk.Entry) for w in descendants(app.body_settings)),'Everyday settings has no typing fields')
         advanced=next(w for w in descendants(app.body_settings) if isinstance(w,Gtk.Expander) and w.get_label()=='Advanced tools')
@@ -116,11 +144,11 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         click(app.body_settings,'Turn Jev off');yield
         check(repo.config()['mode']=='off','AI can be turned off with one clear action')
         check(app.store.db.execute('PRAGMA integrity_check').fetchone()[0]=='ok','Database remains valid after setup, review, correction and pause')
-        print('PASS:',len(checks),'simplicity UI checks',flush=True)
+        completed.append(True);print('PASS:',len(checks),'simplicity UI checks',flush=True)
     iterator=steps()
     def advance():
         try:next(iterator);return True
         except StopIteration:app.quit();return False
     app.connect('activate',lambda _:GLib.timeout_add(180,advance))
     with patch.object(desktop,'start_collector'),patch.object(desktop,'start_automation'),patch.object(desktop,'read_health',return_value={'status':'active','at':time.time(),'error':''}),patch('timesheet.jev.get_key',key),patch('timesheet.jev.check_connection',connection):app.run([])
-    if failures:raise SystemExit(1)
+    if failures or not completed:raise SystemExit(1)

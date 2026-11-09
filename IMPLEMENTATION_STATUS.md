@@ -1,3 +1,7 @@
+# 0.6.1-rc1 — daily choices and live cards
+
+Read [the current change review](docs/DAILY_REVIEW_0.6.1.md).
+
 # 0.6.0-rc1 — simplicity rebuild
 
 The default product is now a four-step click-only setup, Today, Past days and

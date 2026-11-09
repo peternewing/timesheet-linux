@@ -147,6 +147,8 @@ class Collector:
             self.store.db.execute("UPDATE runtime SET collector_seen=?,capture_status=?,app=?,activity_state=?,last_error='',checkpoint=CASE WHEN state='running' THEN ? ELSE checkpoint END WHERE id=1",(int(now),status,app,activity_state,int(now)))
         self.last_wall,self.last_mono=now,mono
         if now-self.last_rules>=10:
+            from .daily_choices import apply_saved
+            apply_saved(self.store,now)
             self.store.apply_rules(now)
             self.last_rules=now
         return status
@@ -225,7 +227,7 @@ def run():
                 if should_notify(last_status,'error',notifications_enabled): notify_tracking_problem()
                 last_status='error'
                 # Error text intentionally excludes paths, titles and content.
-            time.sleep(1)
+            time.sleep(max(.01,1-time.time()%1))
     finally:
         try:
             collector.close()

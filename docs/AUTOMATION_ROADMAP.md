@@ -191,3 +191,13 @@ steps, generic activity categories, a one-choice review, and a factual day-recor
 PDF replace that everyday flow. Advanced existing records/tools remain intact.
 Tests and delivery evidence are recorded in SIMPLICITY_REVIEW_0.6.md and release
 notes. Future improvements must preserve this simpler default.
+
+
+### 0.6.1 — daily grouping and useful live cards (9 November 2026)
+
+The user requested one decision for all like activity in a day, second-synchronised
+counters, top activity totals and functioning statistic cards. The simple flow
+now groups by app/day with a local daily choice, retains protected explicit work,
+and shows inline filtered details and ranked apps. See DAILY_REVIEW_0.6.1.md for
+the implementation, fresh race/privacy/undo review, tests and delivery gates.
+Do not regress to per-observation questions or add configuration to this flow.

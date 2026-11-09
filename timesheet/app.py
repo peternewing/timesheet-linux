@@ -201,7 +201,7 @@ class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
             clamp.set_child(body); scroll.set_child(clamp); self.stack.add_named(scroll,name); setattr(self,'body_'+name.lower(),body)
         desktop.start_collector(); self.show_page('Today'); self.tick()
         self.tick_source=GLib.timeout_add(250,self.tick)
-        self.timer_source=GLib.timeout_add(200,self.update_timer_display); self.win.present()
+        self.timer_source=None if self.simple_mode() else GLib.timeout_add(200,self.update_timer_display); self.win.present()
         for name,callback,keys in [
             ('today',lambda *_:self.show_page('Today'),['<Control>1']),
             ('calendar',lambda *_:self.show_page('Calendar'),['<Control>2']),
@@ -321,16 +321,17 @@ class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
     def tick(self):
         if not self.win: return False
         try:
+            now=int(time.time())
             health=desktop.read_health(self.store); status=health['status']; rt=self.store.runtime()
             self.timer_started=rt['started'] if rt['state']=='running' else None
             self.start_timer_button.set_visible(not self.simple_mode() and self.timer_started is None)
-            self.update_timer_display()
+            self.update_timer_display(now)
             names={'active':'Tracking automatically','paused':'Tracking paused','setup_required':'Finish setup','stopped':'Tracking stopped','error':'Recording failed','degraded':'Tracking needs attention'}
             self.status.set_text(names.get(status,'Starting…'))
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
             if self.simple_mode():
                 self.status.set_text({'active':'Recording','paused':'Paused','setup_required':'Needs setup','stopped':'Stopped','error':'Needs attention','degraded':'Needs attention'}.get(status,'Starting…'))
-                self.simple_tick(rt,health);return True
+                self.simple_tick(rt,health,now=now);return True
             if self.page=='Today':
                 ai=self.store.db.execute('SELECT MAX(updated) FROM ai_jobs').fetchone()
                 focus=self.store.db.execute('SELECT task_id,end FROM ai_focus WHERE start<=? AND end>? ORDER BY start DESC LIMIT 1',(int(time.time()),int(time.time()))).fetchone()
@@ -345,11 +346,11 @@ class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
                 self.update_live_counts(rt,now); self.live_signature=signature
         except (sqlite3.Error,OSError) as exc: self.status.set_text('Recording needs attention')
         return True
-    def update_timer_display(self):
+    def update_timer_display(self,now=None):
         if not self.win: return False
         self.timer_button.set_visible(self.timer_started is not None)
         if self.timer_started is not None:
-            text=fmt_timer(time.time()-self.timer_started)
+            text=fmt_timer((time.time() if now is None else now)-self.timer_started)
             if self.timer_button.get_label()!=text: self.timer_button.set_label(text)
             if self.timer_label is not None and self.timer_label.get_text()!=text: self.timer_label.set_text(text)
         return True

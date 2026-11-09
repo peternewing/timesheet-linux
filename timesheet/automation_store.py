@@ -32,7 +32,8 @@ CREATE INDEX IF NOT EXISTS ai_focus_time ON ai_focus(start,end);
 class Repository:
     def __init__(self,store):
         self.store=store
-        store.db.executescript(SCHEMA)
+        from .daily_choices import SCHEMA as DAILY_SCHEMA
+        store.db.executescript(SCHEMA+DAILY_SCHEMA)
         if 'scope' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_examples)')}:
             with store.db:store.db.execute("ALTER TABLE ai_examples ADD COLUMN scope TEXT NOT NULL DEFAULT '[]'")
         if 'draft_default' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_focus)')}:
@@ -201,11 +202,11 @@ class Repository:
         action,reason=route(result,self.config()['mode'],has_context=bool(job['has_context']),focus_task=network.get('focus'),focus_default=network.get('focus_default',False),application_categories=network.get('application_categories',False))
         with self.store.db:
             self.store.db.execute('BEGIN IMMEDIATE')
+            current=self.store.db.execute('SELECT state FROM ai_jobs WHERE id=?',(job['id'],)).fetchone()
+            if not current or current['state']!='running':return 'stale'
             if not self.fresh(job):
                 self.store.db.execute("UPDATE ai_jobs SET state='stale',reason='Evidence, privacy choices, tasks or assignments changed.',updated=?,lease_until=0 WHERE id=?",(int(time.time()),job['id']))
                 return 'stale'
-            current=self.store.db.execute('SELECT state FROM ai_jobs WHERE id=?',(job['id'],)).fetchone()
-            if not current or current['state']!='running':return 'stale'
             entry_ids=[]
             if action=='apply':
                 self.store.validate_rule_target(result['task'])
@@ -322,6 +323,8 @@ class Repository:
                 except (ValueError,TypeError,RecursionError):minimal={}
                 self.store.db.execute("UPDATE ai_jobs SET network='{}',decision=?,has_context=0,reason='Detailed context removed with source activity.',state=CASE WHEN state='applied' THEN 'applied' ELSE 'stale' END WHERE id=?",(canonical(minimal),row['id']))
             self.store.db.execute('DELETE FROM ai_examples WHERE NOT EXISTS(SELECT 1 FROM activity a WHERE a.id=ai_examples.activity_id)')
+            from .daily_choices import prune as prune_daily_choices
+            prune_daily_choices(self.store)
             self.store.db.execute('DELETE FROM ai_focus WHERE end<?',(now-int(self.store.get('retention_days','30'))*86400,))
 
     def forget_examples(self):

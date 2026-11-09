@@ -10,7 +10,7 @@ def bounds(day):
     return int(datetime.combine(day,datetime.min.time()).timestamp()),int(datetime.combine(day+timedelta(days=1),datetime.min.time()).timestamp())
 
 
-def snapshot(store,day,now=None):
+def snapshot(store,day,now=None,*,include_running=False):
     now=int(datetime.now().timestamp() if now is None else now);start,end=bounds(day)
     # Export a coherent SQLite snapshot while capture may continue independently.
     from contextlib import nullcontext
@@ -40,9 +40,26 @@ def snapshot(store,day,now=None):
             categories[entry['task']]=categories.get(entry['task'],0)+seconds
             if automatic:ai+=seconds
             else:human+=seconds
+        running=None
+        if include_running:
+            rt=store.runtime()
+            if rt['state']=='running' and rt['started'] is not None:
+                a=max(start,rt['started']);z=min(end,now)
+                if z>a:
+                    seconds=z-a-sum(max(0,min(z,r['end'])-max(a,r['start'])) for r in entries)
+                    task=store.db.execute('SELECT name FROM tasks WHERE id=?',(rt['task_id'],)).fetchone()
+                    if task and seconds>0:
+                        human+=seconds;categories[task['name']]=categories.get(task['name'],0)+seconds
+                        running=dict(task=task['name'],seconds=seconds,start=a,end=z)
+        apps={}
+        for row in rows:
+            if row['state']=='active':
+                key=row['app'].casefold()
+                name,seconds=apps.get(key,(row['app'],0));apps[key]=(name,seconds+row['end']-row['start'])
+        top_apps=sorted(apps.values(),key=lambda x:(-x[1],x[0].casefold()))
         unclassified=sum(r['end']-r['start'] for r in store.activity_for(start,min(end,now),True,now=now) if r['state']=='active') if now>start else 0
         return dict(day=day.isoformat(),generated=now,active=active,away=away,gaps=gaps,private=hidden,ai=ai,human=human,
-                    unclassified=unclassified,categories=sorted(categories.items(),key=lambda x:(-x[1],x[0])),activity=rows,entries=allocations)
+                    unclassified=unclassified,top_apps=top_apps,running=running,categories=sorted(categories.items(),key=lambda x:(-x[1],x[0])),activity=rows,entries=allocations)
 
 
 def duration(seconds):

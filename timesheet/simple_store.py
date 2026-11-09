@@ -8,17 +8,26 @@ from .simple_setup import preset_ids
 
 
 def review_items(store,day,limit=100):
+    from .daily_choices import choice
     repo=Repository(store);start,end=bounds(day);now=int(time.time());cutoff=now-int(store.get('idle_seconds','300'))
-    jobs=[dict(r) for r in repo.review_rows() if r['state']=='exception' and r['start']>=start and r['end']<=end]
-    busy={r['activity_id'] for r in store.rows("SELECT activity_id FROM ai_jobs WHERE state IN ('pending','running','dismissed') AND start<? AND end>?",(end,start))}
-    busy.update(r['activity_id'] for r in jobs)
-    items=[dict(kind='job',job=r,start=r['start'],end=r['end'],app=json.loads(r['network'])['applications'][0]) for r in jobs]
+    groups={}
+    saved={r['app_key'] for r in store.rows('SELECT app_key FROM daily_choices WHERE day=?',(day.isoformat(),))}
+    pending={r['activity_id'] for r in store.rows("SELECT activity_id FROM ai_jobs WHERE state IN ('pending','running','dismissed') AND start<? AND end>?",(end,start))}
+    ready={r['activity_id'] for r in store.rows("SELECT activity_id FROM ai_jobs WHERE state IN ('exception','failed') AND start<? AND end>?",(end,start))}
+    # One app is one activity type in the simple daily view, even if its
+    # observations span hours, title changes or several Jev contexts.
     for row in store.activity_for(start,min(end,now),True,now=now):
-        if row['state']!='active' or not row['closed'] or row['end']>cutoff or row['id'] in busy or store.get('simple_skip_'+str(row['id']),'0')=='1':continue
-        if items and items[-1]['kind']=='manual' and items[-1]['app']==row['app'] and items[-1]['end']==row['start']:
-            items[-1]['blocks'].append(dict(row));items[-1]['end']=row['end']
-        else:items.append(dict(kind='manual',blocks=[dict(row)],start=row['start'],end=row['end'],app=row['app']))
-    return sorted(items,key=lambda r:(r['start'],r['end']))[:limit]
+        if row['state']!='active' or not row['closed'] or row['end']>cutoff:continue
+        if row['app'].casefold() in saved:continue
+        if store.get('simple_skip_'+str(row['id']),'0')=='1':continue
+        key=row['app'].casefold()
+        group=groups.setdefault(key,dict(kind='daily',day=day.isoformat(),app=row['app'],app_key=key,blocks=[],start=row['start'],end=row['end'],seconds=0))
+        group['eligible']=group.get('eligible',False) or row['id'] not in pending or row['id'] in ready
+        group['blocks'].append(dict(row));group['end']=max(group['end'],row['end']);group['seconds']+=row['end']-row['start']
+    from .daily_choices import automatic_drafts
+    for group in groups.values():
+        group['auto_entries']=automatic_drafts(store,day,group['app']);group['seconds']+=sum(e['end']-e['start'] for e in group['auto_entries'])
+    return sorted((g for g in groups.values() if g.get('eligible')),key=lambda r:(-r['seconds'],r['app_key']))[:limit]
 
 
 def assign_manual(store,blocks,task_id):
@@ -51,6 +60,9 @@ def change_category(store,entry_id,task_id,revision,remember=False):
 
 
 def skip_item(store,item):
+    if item['kind']=='daily':
+        from .daily_choices import choose
+        choose(store,item,None);return
     if item['kind']=='job':Repository(store).dismiss(item['job']['id']);return
     with store.db:
         # Persist only a local dismiss marker, no invented allocation or AI call.
