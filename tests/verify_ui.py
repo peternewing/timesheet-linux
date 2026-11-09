@@ -71,8 +71,16 @@ def main():
         def entries(): return [w for w in descendants(app.dialogs[-1]) if isinstance(w,Gtk.Entry)]
         def save(): click(find_button(app.dialogs[-1],'Save'))
         def snapshot(name,win=None):
-            win=win or app.win; paint=Gtk.WidgetPaintable.new(win); snap=Gtk.Snapshot.new(); paint.snapshot(snap,win.get_width(),win.get_height())
-            node=snap.to_node(); assert node
+            win=win or app.win; paint=Gtk.WidgetPaintable.new(win)
+            deadline=time.monotonic()+3; node=None
+            while node is None and time.monotonic()<deadline:
+                win.queue_draw()
+                context=GLib.MainContext.default()
+                while context.pending():context.iteration(False)
+                snap=Gtk.Snapshot.new(); paint.snapshot(snap,win.get_width(),win.get_height())
+                node=snap.to_node()
+                if node is None:time.sleep(.01)
+            assert node,'Window did not render within three seconds'
             win.get_renderer().render_texture(node,None).save_to_png(str(output/(name+'.png')))
         def steps():
             snapshot('01-empty-today')
