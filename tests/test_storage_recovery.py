@@ -25,13 +25,18 @@ class StorageRecoveryTests(unittest.TestCase):
             try:
                 with self.store.db:self.store.db.execute('INSERT INTO quota_filler VALUES(zeroblob(4096))')
             except sqlite3.OperationalError as error:
-                self.assertEqual(error.sqlite_errorcode,sqlite3.SQLITE_FULL);break
+                self.assert_full(error);break
+    def assert_full(self,error):
+        # Python 3.10 does not expose SQLite error-code attributes yet. Match the
+        # specific engine message there; do not accept unrelated write failures.
+        if hasattr(error,'sqlite_errorcode'):self.assertEqual(error.sqlite_errorcode,getattr(sqlite3,'SQLITE_FULL',13))
+        else:self.assertEqual(str(error),'database or disk is full')
     def release(self):self.store.db.execute('PRAGMA max_page_count=1073741823')
     def test_schedule_full_storage_rolls_back_marker_and_recovers(self):
         screen_spaces.switch(self.store,'personal',self.now-100)
         before=screen_spaces.current(self.store);version=screen_spaces.revision(self.store);self.quota(schedule_write=True)
         with self.assertRaises(sqlite3.OperationalError) as error:screen_spaces.use_schedule(self.store,'weekdays_9_17',self.now)
-        self.assertEqual(error.exception.sqlite_errorcode,sqlite3.SQLITE_FULL)
+        self.assert_full(error.exception)
         self.assertEqual(screen_spaces.current(self.store),before);self.assertEqual(screen_spaces.revision(self.store),version)
         self.assertEqual(self.store.rows('SELECT * FROM screen_space_schedules'),[])
         self.release();screen_spaces.use_schedule(self.store,'weekdays_9_17',self.now)
@@ -43,7 +48,7 @@ class StorageRecoveryTests(unittest.TestCase):
         catalog=Mock();catalog.lookup.return_value=dict(bucket='browse',categories=['Network','WebBrowser'])
         self.quota();before=self.store.entries(0,self.now);undo=self.store.rows('SELECT * FROM entry_changes')
         with self.assertRaises(sqlite3.OperationalError) as error:apply(self.store,self.now,catalog=catalog)
-        self.assertEqual(error.exception.sqlite_errorcode,sqlite3.SQLITE_FULL)
+        self.assert_full(error.exception)
         self.assertEqual(self.store.entries(0,self.now),before);self.assertEqual(self.store.rows('SELECT * FROM local_type_assignments'),[])
         self.assertEqual(self.store.get('local_type_cursor'),'0');self.assertEqual(self.store.rows('SELECT COUNT(*) n FROM activity')[0]['n'],2000)
         self.assertEqual(self.store.rows('SELECT * FROM entry_changes'),undo)
