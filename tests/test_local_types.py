@@ -1,5 +1,5 @@
 """Installed app types never establish client intent or bypass explicit choices."""
-import json,tempfile,time,unittest,sys
+import json,tempfile,time,unittest
 from pathlib import Path
 from datetime import datetime
 from unittest.mock import Mock,patch
@@ -96,29 +96,20 @@ class DesktopMetadataTests(unittest.TestCase):
     def test_real_desktop_entries_are_read_locally_and_unknown_name_collisions_abstain(self):
         import gi
         from gi.repository import Gio
-        try:
+        if hasattr(Gio,'DesktopAppInfo'):desktop_info=Gio.DesktopAppInfo
+        else:
             gi.require_version('GioUnix','2.0')
             from gi.repository import GioUnix
             desktop_info=GioUnix.DesktopAppInfo
-        except (ImportError,ValueError):desktop_info=Gio.DesktopAppInfo
         with tempfile.TemporaryDirectory() as folder:
             paths=[];marker=Path(folder)/'NEVER_EXECUTE'
             for i,tags in enumerate(('Network;WebBrowser;','Office;')):
                 path=Path(folder)/f'fixture{i}.desktop';path.write_text('[Desktop Entry]\nType=Application\nName=Shared Fixture\nNoDisplay=true\nStartupWMClass=Fixture'+str(i)+'\nCategories='+tags+'\nExec=/usr/bin/touch '+str(marker)+'\n');paths.append(path)
             apps=[desktop_info.new_from_filename(str(path)) for path in paths];self.assertTrue(all(apps))
             registry=Registry()
-            errors=[]
-            def trace(frame,event,arg):
-                if frame.f_code is Registry.refresh.__code__ and event=='exception':
-                    errors.append((arg[0].__name__,str(arg[1])))
-                return trace
-            previous=sys.gettrace()
-            try:
-                sys.settrace(trace)
-                with patch.object(Gio.AppInfo,'get_all',return_value=apps):registry.refresh()
-            finally:sys.settrace(previous)
+            with patch.object(Gio.AppInfo,'get_all',return_value=apps):registry.refresh()
             self.assertIsNone(registry.lookup('Shared Fixture'))
-            known=registry.lookup('Fixture0');self.assertIsNotNone(known,str((registry.index,errors)));self.assertEqual(known['bucket'],'browse')
+            known=registry.lookup('Fixture0');self.assertIsNotNone(known,str(registry.index));self.assertEqual(known['bucket'],'browse')
             self.assertIsNone(registry.lookup('Fixture1'));self.assertFalse(marker.exists())
     def test_refresh_publishes_complete_snapshot_and_keeps_old_snapshot_during_refresh(self):
         registry=Registry();registry.index={'browser':[dict(bucket='browse',categories=['WebBrowser'])]};registry.loaded=0

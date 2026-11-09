@@ -55,3 +55,11 @@ human/hardware acceptance is claimed for this delivery step.
 Three synthetic QA screenshots were visually reviewed and then explicitly approved
 by the user for public upload on 9 November 2026. No real activity database, private
 backup or API key is part of this source delivery.
+
+Public CI exposed compatibility issues absent on the development desktop. The
+candidate now uses the legacy Gio desktop-app wrapper where available, avoids
+loading conflicting desktop-app namespaces, forces real SQLite allocation in the
+quota rollback test, handles Python 3.10's SQLite exception API, waits for an actual
+rendered GTK frame in screenshot checks, and bundles pinned Xlib/six in Flatpak.
+The fresh local advanced workflow passed all 53 checks at 200% scale. Final CI
+results and the installed version must still be verified before claiming delivery.

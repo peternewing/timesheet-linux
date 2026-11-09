@@ -40,11 +40,12 @@ class Registry:
         index={}
         try:
             import gi
-            try:
+            from gi.repository import Gio
+            # Older GLib exposes this type in Gio. Loading both namespaces can
+            # replace its Python wrapper with incorrectly bound instance methods.
+            if not hasattr(Gio,'DesktopAppInfo'):
                 gi.require_version('GioUnix','2.0')
                 from gi.repository import GioUnix
-            except (ImportError,ValueError):pass
-            from gi.repository import Gio
             # AppInfo reads local registered metadata. Never read or execute Exec,
             # launch an app, send its paths, or use fuzzy/prefix identity matches.
             apps=Gio.AppInfo.get_all()
