@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "routing_version": 1,
+  "dataset_fingerprint": "934c131c1c0bb7eeda9ff6476afe6bf84d362dbc6386229fc1c85e084c021d0a",
+  "models": [
+    "jev-1.14.0"
+  ],
+  "limitations": [
+    "Labelled samples are not representative daily accuracy unless the sampling process establishes that.",
+    "Exception-only reviews cannot estimate automatic precision."
+  ],
+  "slices": {
+    "all": {
+      "cases": 8,
+      "seconds": 4800,
+      "automated": 4,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    }
+  },
+  "evidence": "offline replay: does not measure live Jev accuracy",
+  "metrics": {
+    "cases": 8,
+    "automated": 4,
+    "correct_automated": 4,
+    "wrong_minutes": 0,
+    "recorded_minutes": 80.0,
+    "exception_cases": 4,
+    "automated_minutes": 40.0,
+    "correct_choices": 8,
+    "input_tokens": 5873,
+    "automation_coverage": 0.5,
+    "time_coverage": 0.5,
+    "choice_accuracy": 1.0,
+    "automated_precision": 1.0
+  },
+  "results": [
+    {
+      "case_id": "1",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "User-authorised focus default; Jev agreed. Reversible draft only.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "2",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "User-authorised focus default; Jev agreed. Reversible draft only.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "3",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "User-authorised focus default; Jev agreed. Reversible draft only.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "4",
+      "slice": "all",
+      "seconds": 600,
+      "action": "exception",
+      "correct": true,
+      "reason": "Jev could not identify a task.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "5",
+      "slice": "all",
+      "seconds": 600,
+      "action": "exception",
+      "correct": true,
+      "reason": "Jev could not identify a task.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "6",
+      "slice": "all",
+      "seconds": 600,
+      "action": "exception",
+      "correct": true,
+      "reason": "Jev could not identify a task.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "7",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "User-authorised focus default; Jev agreed. Reversible draft only.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "8",
+      "slice": "all",
+      "seconds": 600,
+      "action": "exception",
+      "correct": true,
+      "reason": "More context is needed to distinguish the task.",
+      "model": "jev-1.14.0"
+    }
+  ]
+}

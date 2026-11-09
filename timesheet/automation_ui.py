@@ -27,11 +27,15 @@ class AutomationUI:
 
     def automation_escape(self,window):
         from .app import Gtk,Gdk
+        import weakref
+        owner=weakref.ref(window)
         keys=Gtk.EventControllerKey()
         def pressed(_,key,*args):
-            if key==Gdk.KEY_Escape:window.close();return True
+            window=owner()
+            if key==Gdk.KEY_Escape and window is not None:window.close();return True
             return False
         keys.connect('key-pressed',pressed);window.add_controller(keys)
+        return keys
 
     def automation_summary(self,box):
         from .app import day_bounds
@@ -85,14 +89,22 @@ class AutomationUI:
         self.dialog('Choose Jev focus',build,save)
 
     def task_guidance_dialog(self,task_id=None):
-        from .app import dropdown,field,label,selected,select_id
-        choices=self.task_choices()
-        if not choices:self.quick_setup(after=lambda:self.task_guidance_dialog(task_id));return
+        from .app import Gtk,button,dropdown,field,label,selected,select_id
+        from .simple_setup import preset_ids
+        owned=set(preset_ids(self.store).values())
+        choices=[row for row in self.task_choices() if row[0] not in owned]
+        if not choices:
+            self.info('Activity types are ready','The ready-made activity types already have descriptions. Add a project with its own tasks in optional Projects if you need more specific work descriptions.');return
         repo=self.automation_repo()
         def build(box):
             box.append(label('Describe what belongs to this task and how it differs from other tasks. Keep it brief and exclude credentials, private document text and sensitive details. Guidance is local until you allow it in outgoing requests.'))
+            box.append(label('Changing a description clears remembered examples for this task, so an old definition cannot steer new decisions. Saved time entries remain intact.','dim-label'))
             task=dropdown(box,'Task',choices);select_id(task,task_id)
             guidance=field(box,'What belongs here? (up to 250 characters)','','e.g. Acme Falcon implementation and testing; excludes marketing work')
+            templates=Gtk.Expander(label='Use a starter description (optional)');options=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8);templates.set_child(options);box.append(templates)
+            from .simple_setup import BUCKETS
+            for name,description in BUCKETS.values():options.append(button(name,lambda _,description=description:guidance.set_text(description)))
+            options.append(label('A starter describes the activity type. Add what distinguishes this project before relying on project matching. Save keeps it local until your sending policy allows guidance.','dim-label'))
             def load(*_):
                 row=self.store.db.execute('SELECT guidance FROM ai_task_profiles WHERE task_id=?',(selected(task),)).fetchone()
                 guidance.set_text(row['guidance'] if row else '')
@@ -103,6 +115,20 @@ class AutomationUI:
             return task,guidance
         self.dialog('Describe work for Jev',build,lambda fields:repo.save_profile(selected(fields[0]),fields[1].get_text()))
 
+    def forget_app_corrections(self):
+        from .app import button,dropdown,label,selected
+        rows=self.store.rows('SELECT app_key,MIN(application) application FROM ai_examples GROUP BY app_key ORDER BY MIN(application) COLLATE NOCASE LIMIT 200')
+        if not rows:self.info('No remembered corrections','There are no app examples to forget. Saved time entries are separate.');return
+        window,body,_=self.simple_window('Forget app corrections',height=400)
+        body.append(label('Choose one app whose remembered AI examples should be cleared. Saved activity, daily choices, rules and time entries stay saved. The next decision will use the remaining permitted evidence.'))
+        choice=dropdown(body,'Application',[(None,'Choose an app…')]+[(r['app_key'],r['application']) for r in rows])
+        def forget(_):
+            application=selected(choice)
+            if application is None:return
+            self.confirm('Forget this app’s examples?','This clears its remembered examples and saved AI cache. Existing time entries and daily choices stay saved.',lambda:(self.automation_repo().forget_examples(application),window.close()))
+        action=button('Forget this app’s examples',forget);action.set_sensitive(False);body.append(action)
+        choice.connect('notify::selected',lambda *_:action.set_sensitive(selected(choice) is not None));window.present()
+
     def automation_dialog(self):
         from .app import Gtk,button,label,field,dropdown,selected,select_id,action_bar,day_bounds,desktop
         from . import jev
@@ -110,10 +136,11 @@ class AutomationUI:
         def build(box):
             box.append(label('Jev can organise completed work while you use other apps. Recording stays local and continues if Jev is unavailable. Automatic decisions create reversible drafts only.'))
             if desktop.FLATPAK:box.append(label('Flatpak automation runs in this app’s sandbox. Some desktops restrict apps after their windows close; keep the app open for continuous Jev processing until background permission is verified on your desktop. Host recording is independent.','dim-label'))
-            box.append(label('After setup, choose a focus on Today. You can explicitly make it a draft default when Jev agrees, or provide context only. Without distinguishing context, Jev leaves a decision for you.','dim-label'))
+            box.append(label('Activity-type setup uses generic app functions. Project focus applies only when a separate project policy explicitly permits it. A focus never fills gaps or approves time.','dim-label'))
             box.append(button('Describe my tasks',lambda _:self.task_guidance_dialog()))
             tools=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8)
             tools.append(button('Review decisions',lambda _:self.automation_inbox()))
+            tools.append(button('Forget corrections for one app',lambda _:self.forget_app_corrections()))
             tools.append(button('Forget remembered corrections',lambda _:self.confirm('Forget correction examples?','Existing time entries remain unchanged. Future decisions will stop using remembered correction examples.',repo.forget_examples)))
             tools.append(button('Use current Jev model',lambda _:self.confirm('Reset the pinned model?', 'Cached responses will be cleared and automation switches to suggestion-only mode. Check results before enabling automatic drafts again.',repo.reset_model)))
             key=field(box,'TypeSafe key (leave blank to keep your saved key)');key.set_visibility(False);key.set_input_purpose(Gtk.InputPurpose.PASSWORD)
@@ -172,7 +199,7 @@ class AutomationUI:
         outer=Gtk.Box(orientation=Gtk.Orientation.VERTICAL);window.set_content(outer);header=Adw.HeaderBar();outer.append(header);header.pack_end(button('Close',lambda _:window.close()))
         scroll=Gtk.ScrolledWindow(vexpand=True);outer.append(scroll);body=margins(Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12),20);scroll.set_child(body)
         self.heading(body,'Only the decisions that need you','Choose a task once. Clear cases can be organised automatically; nothing is approved or billed by Jev.')
-        used=repo.usage();body.append(label(f"Today’s background usage: {used['requests']} requests · {used['tokens']:,} reported input tokens · {used['unknown']} unknown-usage requests",'dim-label'))
+        used=repo.usage();body.append(label(f"Today’s background usage: {used['requests']} requests · {used['tokens']:,} reported input tokens. Unresolved usage across all days: {used['unknown']} requests.",'dim-label'))
         reason=self.store.get('ai_pause_reason','')
         if reason:body.append(label('Paused: '+reason))
         def refresh():window.close();self.automation_inbox();self.refresh_after_action()

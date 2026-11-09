@@ -1,0 +1,37 @@
+{
+  "evidence": "offline comparison; human review required before model promotion",
+  "dataset_fingerprint": "28efcf9866185e1f97c57c90021fe74c02d32d2b72619ba6ece9307c3655121c",
+  "reference": {
+    "cases": 8,
+    "automated": 5,
+    "correct_automated": 5,
+    "wrong_minutes": 0,
+    "recorded_minutes": 80.0,
+    "exception_cases": 3,
+    "automated_minutes": 50.0,
+    "correct_choices": 8,
+    "input_tokens": 6761,
+    "automation_coverage": 0.625,
+    "time_coverage": 0.625,
+    "choice_accuracy": 1.0,
+    "automated_precision": 1.0
+  },
+  "candidate": {
+    "cases": 8,
+    "automated": 5,
+    "correct_automated": 5,
+    "wrong_minutes": 0,
+    "recorded_minutes": 80.0,
+    "exception_cases": 3,
+    "automated_minutes": 50.0,
+    "correct_choices": 8,
+    "input_tokens": 6761,
+    "automation_coverage": 0.625,
+    "time_coverage": 0.625,
+    "choice_accuracy": 1.0,
+    "automated_precision": 1.0
+  },
+  "newly_wrong_automated_cases": [],
+  "coverage_change": 0.0,
+  "wrong_minutes_change": 0
+}

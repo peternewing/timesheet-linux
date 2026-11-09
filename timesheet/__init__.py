@@ -1,2 +1,2 @@
-"""Time Sheet Linux — private desktop activity and client timesheets."""
-__version__ = '0.6.1-rc2'
+"""Time Sheet Linux — personal/work screen time and optional client timesheets."""
+__version__ = '0.7.0-rc1'

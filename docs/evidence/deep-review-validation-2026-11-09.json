@@ -1,0 +1,489 @@
+{
+  "date": "2026-11-09",
+  "timezone": "Europe/London",
+  "evidence": "local development validation; synthetic records and fake providers only",
+  "base_commit": "ea94c1004822d698c23e8e1ad68a127e7129e65c",
+  "working_tree": true,
+  "source_fingerprint_sha256": "864be13a2044f8add450d72243de698266fe6c403e5a36c95587381e2d9c547e",
+  "source_fingerprint_scope": "timesheet, tests, resources, packaging, .github, AGENTS/README and launchers; excludes documentation/artifacts and bytecode",
+  "source_files": [
+    {
+      "path": ".github/workflows/packages.yml",
+      "sha256": "fc4e4eb7d9c2b0fcf8f6323a7b62d7b7f471a6ff6543afd865d4e96ea5860f2a"
+    },
+    {
+      "path": ".github/workflows/tests.yml",
+      "sha256": "feb000a956bb38cb95cb8ef41d99267dbed65ca52fe66ccf45aa3e7e73095686"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "2109a3fb1ccc076d01849c4c46b0325f329a7cf283b0c1511844ec2b1c20a31f"
+    },
+    {
+      "path": "README.md",
+      "sha256": "df1bd47fdfd43a074742269b06f335a4b12c1ecdaecf7bb8ac9f4411299c103e"
+    },
+    {
+      "path": "install.sh",
+      "sha256": "b142881f2ae80e33e6f9647439369b143fa91972f8d715a0a5bbeee4dffe3e9e"
+    },
+    {
+      "path": "packaging/README.md",
+      "sha256": "32178c1d4ba01642769ec8b4db6768b7cf080825a19797054d894ef30a21289f"
+    },
+    {
+      "path": "packaging/appimage/AppRun",
+      "sha256": "7b2fafada5c511e720b1848258e844979874d789f681849a406058fa19d083bb"
+    },
+    {
+      "path": "packaging/appimage/build.py",
+      "sha256": "7ebb02e21625e149999ba2d5770d9c797d59e25d9a5ad24854697df07d1de641"
+    },
+    {
+      "path": "packaging/appimage/org.local.TimeSheetLinux.desktop",
+      "sha256": "8e6d1489f4659b4ce214b343b3b498c11a775dea7defe1ea3c98615a21f0080b"
+    },
+    {
+      "path": "packaging/check_runtime.py",
+      "sha256": "4954d53d612fd090e2ef13230b08b4b57a83afdd5eae8b04a12a875b350c971e"
+    },
+    {
+      "path": "packaging/flatpak/launch",
+      "sha256": "5ba9921614a38b3a6cb40deb0b2c345f3a8117c0ce92c9bf3a28ce8acc737467"
+    },
+    {
+      "path": "packaging/flatpak/org.local.TimeSheetLinux.desktop",
+      "sha256": "4fa6fb90791be2b2b616666ce5360cfd87442cc81be210bbfc4da34a7074af3e"
+    },
+    {
+      "path": "packaging/flatpak/org.local.TimeSheetLinux.yml",
+      "sha256": "3665fabfcd4e617f1db86aa58d18554b956a68c48730fb44cca4ec14fea09cc2"
+    },
+    {
+      "path": "packaging/verify_release.py",
+      "sha256": "56392b2a95bde201b02a7fbd49dfac317734ed9a70832adc6034b916ccb5f054"
+    },
+    {
+      "path": "packaging/verify_secret_portal.py",
+      "sha256": "88ad000971b5ec957f36b8fc0210bd5fbfc98d56f0808789ac8aa03b60c24b95"
+    },
+    {
+      "path": "resources/gnome-extension/extension.js",
+      "sha256": "802cf980127ec6132f211629469d7ad46a0b0c9ba48cc7c8c6bebc1cbfcd26d1"
+    },
+    {
+      "path": "resources/gnome-extension/metadata.json",
+      "sha256": "759f858ed5a0ad72211bf0681e4fd65181450ccb0fca60b29d33a47de4d66bfa"
+    },
+    {
+      "path": "resources/kwin-script/contents/code/main.js",
+      "sha256": "8af4079e2352e17274a0de223362e57399c0956132ad00bff7f5f81d042519da"
+    },
+    {
+      "path": "resources/kwin-script/metadata.json",
+      "sha256": "52e42e5e8247f34df7f54890d745e3222da9c20c210af943e26bdf51c50bef43"
+    },
+    {
+      "path": "resources/style.css",
+      "sha256": "f42bfca00ae7b3d0c2e9931434c85913aea6b8b6030ba341db4ef7d452b9164d"
+    },
+    {
+      "path": "resources/timesheet.svg",
+      "sha256": "471b4d3bed8bef9cbe09f4d3a4f5c151949fb54aebc7a7af911351b5c194bccf"
+    },
+    {
+      "path": "run-collector",
+      "sha256": "308cb1855959f80370d005a1252cfe71ed8a8ccf55e0cc493c15cdf5c0b4b926"
+    },
+    {
+      "path": "run-host",
+      "sha256": "742bae12e2dd223a1e0b7591c0d5f889007cc93d2cacc95f67647f4783ad844a"
+    },
+    {
+      "path": "run-timesheet",
+      "sha256": "8c4ece19e89e9aeb21bbc47108304d44b03684ee9b83ed5cca884f29c72fbe01"
+    },
+    {
+      "path": "tests/fake_capture.py",
+      "sha256": "972d20007785844fd6cb559b10258a7e916bba709938b188fbfa9787f5ec8cb0"
+    },
+    {
+      "path": "tests/fixture_window.py",
+      "sha256": "95af10fe44a54a9a36d9517c1b6a21a6bc74cd2f542d6cf1ac74cdf96fc179ea"
+    },
+    {
+      "path": "tests/fixtures/jev_heldout_synthetic_cases.json",
+      "sha256": "7e149f05ff1e5c76912cde497b624fbc755c6dadf8568f43827366ea059ba6ee"
+    },
+    {
+      "path": "tests/fixtures/jev_live_heldout_recorded.json",
+      "sha256": "288a02a73a7a1c8d4cbcdc2e88353fd8b720d24827ab4985b07730d2d68c2c58"
+    },
+    {
+      "path": "tests/fixtures/jev_simple_heldout_recorded.json",
+      "sha256": "b4dd03e8f9bc16896f9b3e8614abd63f12fdd38a33d29f5387da8031ca21f70b"
+    },
+    {
+      "path": "tests/fixtures/jev_synthetic_cases.json",
+      "sha256": "e2dccfb9e73cf6110d5e27b0078da4d95b0c2065689c2db97fb411c27b15e27c"
+    },
+    {
+      "path": "tests/preview_ui.py",
+      "sha256": "c51318a78409ce6f2f7cd5567ee4f6b5abc496c2dc30b42743869fd11067518a"
+    },
+    {
+      "path": "tests/test_audit.py",
+      "sha256": "2ff2dd5dede4c71cb832a3d5d9c3c2b7e327e3fc1d21dd0cfb564029aaed9597"
+    },
+    {
+      "path": "tests/test_automation.py",
+      "sha256": "0d0ddfcdfb0605e1019a3000467c59b5a1e81b2968abf0c67482c17a2fa0f526"
+    },
+    {
+      "path": "tests/test_capture.py",
+      "sha256": "f514a747f90aa9ebcaeb185678c6e3ee861f44a32ded0f24a28fe2a1c21f1f00"
+    },
+    {
+      "path": "tests/test_daily_choices.py",
+      "sha256": "a34438386f5984f561cb54f155c9220d471c25fa6b8b17d13839954c00f87a84"
+    },
+    {
+      "path": "tests/test_day_organiser.py",
+      "sha256": "6fb57a27b0d511e1e99c3d36b46a8dae536f2f98d2c69682e2a7ea1c57538dcb"
+    },
+    {
+      "path": "tests/test_decision_client.py",
+      "sha256": "ed5b4a3d881af50ec55749da5d19c26f4b0dbf535adcf4699f5b0e67d641aa4e"
+    },
+    {
+      "path": "tests/test_deep_review.py",
+      "sha256": "bb9b066260bddad0d1a8c879ee2189e0b02120b2bbb7161e28166cd3b01ae8ad"
+    },
+    {
+      "path": "tests/test_evaluate.py",
+      "sha256": "207d06e73f5cd7fb01e1705e675ac0d2f205136a841801867e0a6ab7b168ebd6"
+    },
+    {
+      "path": "tests/test_jev.py",
+      "sha256": "c3200aedb59440714830cd5e92f24eccece5eb24ac9c98c14bee04bd2db514e9"
+    },
+    {
+      "path": "tests/test_pdf_export.py",
+      "sha256": "73a4c1a8a695450d318c76cf130569ba6013f5f89cf1bca3135fba3a18fe6119"
+    },
+    {
+      "path": "tests/test_review.py",
+      "sha256": "b850c133a78371058bbb0ad9d16e4d3fea9e942e07d5f273f9c42e606ab3532d"
+    },
+    {
+      "path": "tests/test_rules.py",
+      "sha256": "c2986fed6ecea4296be574459a9436071e63577ab1895eedc2e3f6118bd19184"
+    },
+    {
+      "path": "tests/test_simplicity.py",
+      "sha256": "d24f1aac96672f83dd05fe681571ba9135f76805b5bf1124cad6bfab266cd9d3"
+    },
+    {
+      "path": "tests/test_store.py",
+      "sha256": "e40322873d33eeefead332a1c516e5a034103eaf321bfabea489594226142365"
+    },
+    {
+      "path": "tests/test_updates.py",
+      "sha256": "5de558b75cccf60279669a7abfe72db457a48b837ac1b0f7007425f874fd66af"
+    },
+    {
+      "path": "tests/test_v2.py",
+      "sha256": "c6f58f340269522365e7664577abe4c431dd64b8f7cc17eabd4ee913087478a8"
+    },
+    {
+      "path": "tests/verify_automation_ui.py",
+      "sha256": "023cf1aa93c0685610ad50356ec3f40a5307caad5bb9ef69410dbbfa863b3d1d"
+    },
+    {
+      "path": "tests/verify_collector.py",
+      "sha256": "8699fbb7c8a93824bbedc9e60c1cec4a36053140d10bafdd651a1a4dd244aa26"
+    },
+    {
+      "path": "tests/verify_daily_review.py",
+      "sha256": "f839441c3bdb698712df502c0e723ee3f2c919d3fe4b74852fd33aebf22c1e79"
+    },
+    {
+      "path": "tests/verify_gnome.py",
+      "sha256": "9ceb15b52725c971039eeb9cdd7a73185f7e72c1b9e0af666df02ec5dc038a11"
+    },
+    {
+      "path": "tests/verify_hyprland.py",
+      "sha256": "8bde7d8e98218fb7656ce9196dd64746dbebc620e5e16355f23c845ed293996d"
+    },
+    {
+      "path": "tests/verify_improvements.py",
+      "sha256": "b9dd3965aa85e5e42c7a9c5e80072052c9f86c3f445fafae68076b8225815220"
+    },
+    {
+      "path": "tests/verify_jev_ui.py",
+      "sha256": "fa78c03182fccd75fdd5e4f3794ee19b8ba7cd85df65e3247d930acb3184adc1"
+    },
+    {
+      "path": "tests/verify_kde_capture.py",
+      "sha256": "708e44156a88cb56d7c689fc7889d3185b99897de1c00c034e9afbf53cb1a59b"
+    },
+    {
+      "path": "tests/verify_pages.py",
+      "sha256": "7aa8a7e8b6ba78aade5b244828b62de01b1bbdacc4643eaf352cf9322fdca577"
+    },
+    {
+      "path": "tests/verify_plasma.py",
+      "sha256": "ff871f6629f92bd7d59626f68275d22c6e3ced303f0510db026a1030c2a85d6a"
+    },
+    {
+      "path": "tests/verify_rules_ui.py",
+      "sha256": "01bbd146c54214a5a29f8e07ec09482b8c400514a7d236f810ec21e091cc766a"
+    },
+    {
+      "path": "tests/verify_simple_ui.py",
+      "sha256": "b240cad746846d4bcb38cc7e99231f37c8c482b8eed86f2d9868ae9206701b80"
+    },
+    {
+      "path": "tests/verify_sway.py",
+      "sha256": "c868355cb2465d792276f629e771afc3024180ca41c77b848c7517ca588cb3ec"
+    },
+    {
+      "path": "tests/verify_ui.py",
+      "sha256": "4a1f586686d2629d7bffa8b86d7a64f3692f8d7b918a6dda45ec665716fb13bc"
+    },
+    {
+      "path": "tests/verify_worker_process.py",
+      "sha256": "d4aa8613592f54c7ff8052a57ec9a40e09e5c5e0f551967d4830d4b87e89440a"
+    },
+    {
+      "path": "tests/verify_x11_capture.py",
+      "sha256": "2fa273b2cab2c3b80298d0a1117cbcaceef2eae7a253747aa565e2cf1dde67ee"
+    },
+    {
+      "path": "timesheet/__init__.py",
+      "sha256": "c952a9deace447074b1ff46d6b45163f994757cdd47d3a59fea7b4d9d660164e"
+    },
+    {
+      "path": "timesheet/app.py",
+      "sha256": "676d282bf8ec237657c2b667b81fcbbfa1bd5e8f621cd9eca983eef926be2791"
+    },
+    {
+      "path": "timesheet/automation_status.py",
+      "sha256": "70debcbbfa8fb30e2956d61aeeb35b58b02dc4d19341c1820fd7405dbfc0874b"
+    },
+    {
+      "path": "timesheet/automation_store.py",
+      "sha256": "4eae5ff3acbb0e91c71e4e94e9c3bcd95a8bda79081593603486674ccf746eb9"
+    },
+    {
+      "path": "timesheet/automation_ui.py",
+      "sha256": "829a24bcf9cb026c3fa2c30df4d6677dace8214d0f1a8243a1408af5d3723a2d"
+    },
+    {
+      "path": "timesheet/automation_worker.py",
+      "sha256": "86c6c15527a5e92e86769aa58cdb645c60c734cf823e635d55a9c9f87ea75499"
+    },
+    {
+      "path": "timesheet/benchmark.py",
+      "sha256": "ae6721af2c9918f9aebfb2ccd7a8ab2c570d8205fb4debd6c0d044c2aaca5a19"
+    },
+    {
+      "path": "timesheet/capture.py",
+      "sha256": "08395012ec5a95d8b790153d8bc9adac77390d0427acc8e0bd5e254e2b4bad80"
+    },
+    {
+      "path": "timesheet/collector.py",
+      "sha256": "732ef5d979e8b06da189f201b1fd08d265555dc4aa14645fe924091c21be702f"
+    },
+    {
+      "path": "timesheet/daily_choices.py",
+      "sha256": "ad87c42186e394df42f89759d4c20c274286d06ccf6c3f5f81e021d7a3aa0c73"
+    },
+    {
+      "path": "timesheet/day_organiser.py",
+      "sha256": "799e6aa7b7f601c5eb0385d5e1efad0acb711fa7430f1a61aa5cbd81ffabede1"
+    },
+    {
+      "path": "timesheet/day_record.py",
+      "sha256": "1aeb9809f9397c2ad6ec0bb5077afdf9b848e049a5ea0ea100a22dc5eb028cb8"
+    },
+    {
+      "path": "timesheet/decision_context.py",
+      "sha256": "52eb975946af4bc6913cd13d4d8eb36f2b9cc36e58025e4d73f551cc1417b357"
+    },
+    {
+      "path": "timesheet/decision_contract.py",
+      "sha256": "d9158a8d461d70e6af65984ac258778325685fc541df01ae9c0183410cc03c69"
+    },
+    {
+      "path": "timesheet/decision_memory.py",
+      "sha256": "fce79f86e09784c04953aaecd2ee560aaee05cb0a2187ac19344938837aa29bd"
+    },
+    {
+      "path": "timesheet/decision_policy.py",
+      "sha256": "34d9b0085b8da45694f1fff3b772e270921e5532344c9f395105eb7a7b817f2d"
+    },
+    {
+      "path": "timesheet/desktop.py",
+      "sha256": "4ba878b784d4cb579306078982beb47652a8a11690fb09e0bf992c14a1e06fdb"
+    },
+    {
+      "path": "timesheet/diagnostics.py",
+      "sha256": "1f81560756ecb7f4820345116c4afbcedd7194d1561703da8d6d59b5e6ea6cbb"
+    },
+    {
+      "path": "timesheet/evaluate.py",
+      "sha256": "757a7775fd344103e1907ee22da071fdb60dacd5733c9b20b363aee22c344174"
+    },
+    {
+      "path": "timesheet/host.py",
+      "sha256": "05c8d111c8e613dae5f194f2f8dff344cbebe921da9bb5146bdb4ea454b043a4"
+    },
+    {
+      "path": "timesheet/jev.py",
+      "sha256": "a1234f84f55d1a883a4a59db18fde9330433e5009d4973f69e373fb0cde06a71"
+    },
+    {
+      "path": "timesheet/pdf_export.py",
+      "sha256": "9fad70ace3a36b5ebf5528556a45f34ae9d318db0edc8ec8d093b97f00a379b6"
+    },
+    {
+      "path": "timesheet/review.py",
+      "sha256": "115096c95935f42805452c5ff8eb4a15e71129e0fda8a94039b1d178f5b371df"
+    },
+    {
+      "path": "timesheet/rules.py",
+      "sha256": "e32efc53b0046e16e368f8ead0f0de5d6d10a337f853099fd1a765157083abf3"
+    },
+    {
+      "path": "timesheet/setup_ui.py",
+      "sha256": "1b8d81dd8193d6ea1d1623321ccfe260d58f45893817a49825a0b5ba7f2eefdd"
+    },
+    {
+      "path": "timesheet/simple_setup.py",
+      "sha256": "4c4ddc4f88340a545dba846403d1d4a75539848e180cbc7201b0ab2f7ddaf591"
+    },
+    {
+      "path": "timesheet/simple_store.py",
+      "sha256": "759f846530d46ce8f512fcb42cdaf30b1161d6fab10b52f5be10a6fb97ebcec2"
+    },
+    {
+      "path": "timesheet/simple_ui.py",
+      "sha256": "06e9ed91af2ace8fb5980ceeaeb6ab69206f7f6f5e17d96d73b394e4c475664d"
+    },
+    {
+      "path": "timesheet/store.py",
+      "sha256": "452394c9bda1247aa8288e5b3414738021f59f2aedf83d5fda8d0e5aadd2d759"
+    },
+    {
+      "path": "timesheet/updates.py",
+      "sha256": "19f3cfaf91e3e0546cb6baf424763482af6c690106743e618aa18cf73db86faa"
+    },
+    {
+      "path": "uninstall.sh",
+      "sha256": "a61814d025408891ce689297d5e582b1a08bfca6251cc70e547fe279a7b1db0e"
+    }
+  ],
+  "checks": [
+    {
+      "name": "core_regressions",
+      "status": "passed",
+      "completion_marker": "Ran 263 tests",
+      "log_sha256": "40e20c5b3096876887823680854425b9de58a9e8cf65d249a0409151e74377e3"
+    },
+    {
+      "name": "simple_ui_normal",
+      "status": "passed",
+      "completion_marker": "PASS: 81 simplicity UI checks",
+      "log_sha256": "7d627574c2cdcfd6a4691b442d0080b6d199dcc60b232774a26489b1288c5349"
+    },
+    {
+      "name": "simple_ui_200_percent",
+      "status": "passed",
+      "completion_marker": "PASS: 81 simplicity UI checks",
+      "log_sha256": "7d627574c2cdcfd6a4691b442d0080b6d199dcc60b232774a26489b1288c5349"
+    },
+    {
+      "name": "advanced_ui_200_percent",
+      "status": "passed",
+      "completion_marker": "PASS: 53 GUI checks",
+      "log_sha256": "df57c10d211ccd5c169a634ff40f730bb307eee48a59404d7c62afb2a3139de1"
+    },
+    {
+      "name": "automation_ui_200_percent",
+      "status": "passed",
+      "completion_marker": "PASS: 23 automation UI checks",
+      "log_sha256": "b463836ba2d1c0e63b63316545c1f436250530f4d8441d09f30b4d9bb7fd8cf5"
+    },
+    {
+      "name": "independent_worker",
+      "status": "passed",
+      "completion_marker": "PASS: one-shot daemon entry point is safe by default and cleans its PID file",
+      "log_sha256": "9bfd16b4cdc206f7816e97b28cc99108a4aa8a2001f8b1cd32bf4abae270fec9"
+    },
+    {
+      "name": "private_secret_portal",
+      "status": "passed",
+      "completion_marker": "PASS: legacy request without handle_token",
+      "log_sha256": "3e27cf98b8bc177dca741e58e5c4b6aa4b2dc47272b6927df43d5cc77b869ef8"
+    },
+    {
+      "name": "synthetic_gnome_protocol",
+      "status": "passed",
+      "completion_marker": "PASS: D-Bus capture, idle stop and title privacy",
+      "log_sha256": "8a5dc311e96f12b1dba9e6a6dd5f1e86a224e9d92d60adc2f2a34c1f753f3a64"
+    },
+    {
+      "name": "synthetic_kde_protocol",
+      "status": "passed",
+      "completion_marker": "simulated KWin",
+      "log_sha256": "468c2d818a5a58952a343c3dc7db530d3e7916650da21d98f6d4a911e9ff180d"
+    },
+    {
+      "name": "virtual_x11_capture",
+      "status": "passed",
+      "completion_marker": "PASS: real X11 properties",
+      "log_sha256": "073d531dc9310f99bb21b4a85ba62317b6676baeda00cf3448368ae3110e3d61"
+    },
+    {
+      "name": "compile",
+      "status": "passed",
+      "command": [
+        "/usr/bin/python3",
+        "-m",
+        "compileall",
+        "-q",
+        "timesheet",
+        "tests"
+      ]
+    },
+    {
+      "name": "shell_syntax",
+      "status": "passed",
+      "command": [
+        "sh",
+        "-n",
+        "install.sh",
+        "uninstall.sh",
+        "run-timesheet",
+        "run-collector",
+        "run-host"
+      ]
+    },
+    {
+      "name": "whitespace",
+      "status": "passed",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ]
+    }
+  ],
+  "network_inference_performed": false,
+  "real_key_accessed": false,
+  "user_policy_changed": false,
+  "public_ci": "Not run for this uncommitted working tree; workflow configuration is not CI evidence.",
+  "installed_or_published": false,
+  "external_acceptance": "Open: representative real days, novice/Orca, sustained hardware/desktop/package coverage and final trusted release gates."
+}

@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "request_version": 2,
+  "routing_version": 1,
+  "dataset_fingerprint": "262003f9c8096fd30e0bb2d6d6c3a2b619cc047b0718f511256230e73f5d80ad",
+  "models": [
+    "jev-1.14.0"
+  ],
+  "limitations": [
+    "Labelled samples are not representative daily accuracy unless the sampling process establishes that.",
+    "Exception-only reviews cannot estimate automatic precision."
+  ],
+  "slices": {
+    "ambiguous": {
+      "cases": 2,
+      "seconds": 600,
+      "automated": 0,
+      "wrong_seconds": 0,
+      "automated_precision": null
+    },
+    "browse": {
+      "cases": 2,
+      "seconds": 600,
+      "automated": 0,
+      "wrong_seconds": 0,
+      "automated_precision": null
+    },
+    "communicate": {
+      "cases": 2,
+      "seconds": 600,
+      "automated": 2,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    },
+    "computer": {
+      "cases": 2,
+      "seconds": 600,
+      "automated": 2,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    },
+    "create": {
+      "cases": 4,
+      "seconds": 1200,
+      "automated": 4,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    },
+    "learn": {
+      "cases": 1,
+      "seconds": 300,
+      "automated": 1,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    },
+    "media": {
+      "cases": 3,
+      "seconds": 900,
+      "automated": 3,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    },
+    "plan": {
+      "cases": 2,
+      "seconds": 600,
+      "automated": 2,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    },
+    "play": {
+      "cases": 2,
+      "seconds": 600,
+      "automated": 2,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    }
+  },
+  "evidence": "offline replay: does not measure live Jev accuracy",
+  "metrics": {
+    "cases": 20,
+    "automated": 16,
+    "correct_automated": 16,
+    "wrong_minutes": 0,
+    "recorded_minutes": 100.0,
+    "exception_cases": 4,
+    "automated_minutes": 80.0,
+    "correct_choices": 20,
+    "input_tokens": 21054,
+    "automation_coverage": 0.8,
+    "time_coverage": 0.8,
+    "choice_accuracy": 1.0,
+    "automated_precision": 1.0
+  },
+  "results": [
+    {
+      "case_id": "personal-work-01",
+      "slice": "create",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-02",
+      "slice": "create",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-03",
+      "slice": "create",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-04",
+      "slice": "learn",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-05",
+      "slice": "communicate",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-06",
+      "slice": "communicate",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-07",
+      "slice": "plan",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-08",
+      "slice": "plan",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-09",
+      "slice": "play",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-10",
+      "slice": "play",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-11",
+      "slice": "media",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-12",
+      "slice": "media",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-13",
+      "slice": "browse",
+      "seconds": 300,
+      "action": "exception",
+      "correct": true,
+      "reason": "This app could fit several activity types. Choose a category.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-14",
+      "slice": "browse",
+      "seconds": 300,
+      "action": "exception",
+      "correct": true,
+      "reason": "This app could fit several activity types. Choose a category.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-15",
+      "slice": "computer",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-16",
+      "slice": "computer",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-17",
+      "slice": "ambiguous",
+      "seconds": 300,
+      "action": "exception",
+      "correct": true,
+      "reason": "Jev could not identify a task.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-18",
+      "slice": "ambiguous",
+      "seconds": 300,
+      "action": "exception",
+      "correct": true,
+      "reason": "Jev could not identify a task.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-19",
+      "slice": "create",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "personal-work-20",
+      "slice": "media",
+      "seconds": 300,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    }
+  ],
+  "exact_approved_payloads_match": true,
+  "approved_payload_fingerprints": [
+    "3bdfad2d407b7c7b7d224018dfa6faf73d3c83cf880f174c8f424d1f15c9d2c1",
+    "5791932438d0977f74ba4213b688ce0c1b350875289fce5685b41173b4b10d9a",
+    "7ce8096a94f6f3ecfec108b622b8998b461275254467f5c122b9f523649c13a6",
+    "e93d42fa395e1ad03fc4c621120e6a35ca0550ad8e38703c4a83b3b05d73ae61",
+    "cc88fe2b9073fda018a826c927b1b024b6cf09f00e9f0733c556e7d22b6b934a",
+    "596330175f08e5bcc23b6a466d7202f5fd56dc1170ac07e241b3c5f4153b47ea",
+    "5472a5bfc3055c9d970bd8529d75b9af948dc7ac5af85ce68dd8494720346e45",
+    "3a50d8bdf8d33e9d2e64309d708df371ed2cf48fa75bc8fa7d153c1d34c618fd",
+    "cd72469742d4ea7ba440ee1db77a099893b30841a5919f9bf04c2d02070d43cd",
+    "a26a05bec4d04eede1009ed4b0d74438173944521dc43c06ed3ed37f607795fc",
+    "a6f3cde4ec4f5f6cf27e353072402bafd91db84bc482734b13501819e6bea395",
+    "7fb9fd525d9537baa1ae0688a0b4b5b459015123a1b0a0dc0c4b7ca9f6f52f5e",
+    "c28ba875f6c7cab144483b06826e9cee9896779e28f7c547bdab23022f472f73",
+    "0bbadac8108ac792a39b0f11122857b60a41323e90ec45a3cb421416fdb1d392",
+    "0dc27544fadc8e6caf606226f8d61daf806cff8815515fcfde4ad125ad7c2110",
+    "4f8355d9bdb1e4fa3adbabb19b5c335c5f144d81c7889dcfae3bb407b7a22dab",
+    "8f9ae1b5faaed3775d1e035c1756dd57d7072ee19b84e71ea0f9e1a84735e6a6",
+    "14bba35aa464bec94e603aea889cfe4786e09111989b1d0160653e24d2f4a60d",
+    "051668e4a15d36e0ec2c4fab1506c636b389588f35811af555024edd50073160",
+    "c56b5de8ca9217efffc806df0a29accc90ceda0416f230521eabddc611d81b98"
+  ],
+  "local_request_version": 2,
+  "request_version_mapped_after_live_collection": true,
+  "new_provider_requests": 0,
+  "source_sha256": {
+    "timesheet/jev.py": "52e611d55967f2d538652d4ac1163634fe9272dacd9bac579c147caef22b591b",
+    "timesheet/evaluate.py": "127005fa0abc91bf42f9e5f5c4be7ac1bfea13b1fe2a4f986376b86370d51a4d",
+    "timesheet/decision_contract.py": "d9158a8d461d70e6af65984ac258778325685fc541df01ae9c0183410cc03c69",
+    "timesheet/decision_policy.py": "34d9b0085b8da45694f1fff3b772e270921e5532344c9f395105eb7a7b817f2d"
+  }
+}

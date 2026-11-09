@@ -1,0 +1,902 @@
+[
+  {
+    "case_id": "personal-work-01",
+    "slice": "create",
+    "applications": [
+      "Visual Studio Code"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 1,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-02",
+    "slice": "create",
+    "applications": [
+      "Krita"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 1,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-03",
+    "slice": "create",
+    "applications": [
+      "LibreOffice Writer"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 1,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-04",
+    "slice": "learn",
+    "applications": [
+      "Okular"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 2,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-05",
+    "slice": "communicate",
+    "applications": [
+      "Thunderbird"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 3,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-06",
+    "slice": "communicate",
+    "applications": [
+      "Zoom"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 3,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-07",
+    "slice": "plan",
+    "applications": [
+      "LibreOffice Calc"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 4,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-08",
+    "slice": "plan",
+    "applications": [
+      "Calendar"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 4,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-09",
+    "slice": "play",
+    "applications": [
+      "Chess"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 5,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-10",
+    "slice": "play",
+    "applications": [
+      "Stardew Valley"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 5,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-11",
+    "slice": "media",
+    "applications": [
+      "VLC media player"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 6,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-12",
+    "slice": "media",
+    "applications": [
+      "Video Player"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 6,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-13",
+    "slice": "browse",
+    "applications": [
+      "Firefox"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 7,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-14",
+    "slice": "browse",
+    "applications": [
+      "Chromium"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 7,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-15",
+    "slice": "computer",
+    "applications": [
+      "File Manager"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 8,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-16",
+    "slice": "computer",
+    "applications": [
+      "Terminal"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 8,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-17",
+    "slice": "ambiguous",
+    "applications": [
+      "Unknown application 27"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": null,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-18",
+    "slice": "ambiguous",
+    "applications": [
+      "Example Helper 91"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": null,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-19",
+    "slice": "create",
+    "applications": [
+      "Image Editor"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 1,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  },
+  {
+    "case_id": "personal-work-20",
+    "slice": "media",
+    "applications": [
+      "Music Player"
+    ],
+    "tasks": [
+      [
+        1,
+        "Creating & building | Work guidance: Creating, writing, coding, designing or editing an output; excludes passive research, messages and administrative work."
+      ],
+      [
+        2,
+        "Research & learning | Work guidance: Reading, investigating, comparing sources or learning; excludes creating outputs and messages."
+      ],
+      [
+        3,
+        "Communication | Work guidance: Messaging, email, calls and meetings. Describes the application activity type, whether work or personal."
+      ],
+      [
+        4,
+        "Planning & admin | Work guidance: Planning, scheduling, organising, spreadsheets and administration. Describes activity type, not work intent."
+      ],
+      [
+        5,
+        "Games | Work guidance: Playing computer games and interactive entertainment. This is a legitimate screen-time activity, not a judgment about productivity."
+      ],
+      [
+        6,
+        "Videos & listening | Work guidance: Watching video or listening to audio in media players and streaming apps. Does not infer the content, purpose or whether a person paid attention."
+      ],
+      [
+        7,
+        "Web browsing | Work guidance: Use of a general web browser or web-viewing app. Labels the application function only, without guessing sites, content or personal/work intent."
+      ],
+      [
+        8,
+        "Computer & utilities | Work guidance: File management, terminals, system settings and general computer utilities. Describes broad app use without inferring the task or work intent."
+      ]
+    ],
+    "expected_task": 6,
+    "seconds": 300,
+    "has_context": true,
+    "application_categories": true
+  }
+]

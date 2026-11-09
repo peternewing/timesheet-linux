@@ -30,6 +30,12 @@ jobs:
           /usr/bin/python3 -m timesheet.evaluate tests/fixtures/jev_simple_heldout_recorded.json
       - name: Compile Python modules
         run: /usr/bin/python3 -m compileall -q timesheet
+      - name: Record bounded synthetic discovery performance (no timing pass threshold)
+        run: /usr/bin/python3 -m timesheet.benchmark --observations 20000 --batches 5
+      - name: Exercise concurrent personal/work recording and summaries without network
+        run: PYTHONPATH=. /usr/bin/python3 tests/soak_screen_time.py --seconds 60 --exercise-schedules --output /tmp/screen-time-soak.json
+      - name: Record retained-data screen-time performance (no timing pass threshold)
+        run: PYTHONPATH=. /usr/bin/python3 tests/benchmark_screen_time.py --observations 20000 --repeats 2
       - name: Check launcher syntax
         run: sh -n install.sh uninstall.sh run-timesheet run-collector run-host
   ui-scaled:
@@ -52,3 +58,5 @@ jobs:
         run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_automation_ui.py
       - name: Exercise the default click-only setup and simple day record
         run: GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 2880x2000x24' /usr/bin/python3 tests/verify_simple_ui.py
+      - name: Exercise responsive read-only insights and stale-result cancellation
+        run: GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPATH=. xvfb-run -a -s '-screen 0 1440x1000x24' /usr/bin/python3 tests/verify_screen_reader_ui.py

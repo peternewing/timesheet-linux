@@ -1,0 +1,23 @@
+{
+  "evidence": "synthetic bounded discovery; not sustained desktop performance",
+  "version": "0.6.1-rc2",
+  "python": "3.14.4",
+  "observations": 20000,
+  "tasks": 20,
+  "batch_limit": 100,
+  "created_jobs": [
+    100,
+    100,
+    100,
+    100,
+    100
+  ],
+  "batch_seconds": [
+    0.021402932000000874,
+    0.019659761999946568,
+    0.019591143000070588,
+    0.019156503000203884,
+    0.019102421000070535
+  ],
+  "peak_process_rss_kib": 30080
+}

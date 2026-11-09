@@ -4,6 +4,9 @@
 Creates no database, keyring item, or network request.
 """
 import ssl
+from Xlib import display as xlib_display
+assert callable(xlib_display.Display)
+print('PASS: bundled X11 protocol client deep imports')
 
 import gi
 gi.require_version('Secret','1')
@@ -25,7 +28,7 @@ assert callable(automation_worker.Engine.step) and callable(automation_store.Rep
 print('PASS: bundled automation policy, worker, queue, evaluation and update modules; default off')
 
 from timesheet import simple_ui, simple_setup, simple_store, day_record
-assert len(simple_setup.BUCKETS)==4 and callable(day_record.pdf)
+assert len(simple_setup.BUCKETS)==8 and {'play','media','browse','computer'}<=simple_setup.BUCKETS.keys() and callable(day_record.pdf)
 print('PASS: bundled simple setup, daily record and category controls')
 
 record=dict(day='2026-11-08',generated=0,active=0,away=0,gaps=0,ai=0,human=0,unclassified=0,categories=[],entries=[],activity=[])
@@ -39,3 +42,10 @@ print('PASS: bundled local daily-choice continuation')
 from timesheet import day_organiser
 assert callable(day_organiser.request) and callable(day_organiser.ready_to_work)
 print('PASS: bundled one-click day organiser')
+
+from timesheet import screen_time,screen_spaces,screen_ui,screen_export,screen_reader,local_types,review_metrics,evaluation_template
+assert callable(screen_time.week) and callable(screen_spaces.label_period) and callable(screen_export.csv_bytes)
+assert local_types.classify(['WebBrowser','Network'])=='browse'
+assert local_types.classify(['Network']) is None
+assert callable(screen_reader.load_week) and callable(evaluation_template.build)
+print('PASS: bundled personal/work screen time, local app labels, private CSV and review metrics')

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Create an AppDir from distro packages. Build on the oldest target glibc."""
-import glob,os,re,shutil,subprocess,sys
+import glob,os,re,shutil,subprocess,sys,importlib.util
 from pathlib import Path
 root=Path(__file__).resolve().parents[2]; app=Path(sys.argv[1]).resolve()
 if app.exists(): raise SystemExit('Build directory already exists: '+str(app))
@@ -17,8 +17,14 @@ cp('/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders',app/'usr/
 version=f'python{sys.version_info.major}.{sys.version_info.minor}'
 cp('/usr/lib/'+version,app/'usr/lib'/version)
 site=app/'usr/lib/python3/dist-packages';site.mkdir(parents=True)
-for module in ('gi','cairo','reportlab','PIL','Xlib'):
-    mod=__import__(module);cp(Path(mod.__file__).parent,site/module)
+modules=['gi','cairo','reportlab','PIL','Xlib']
+# Older distro Xlib builds need six; newer ones no longer do. A single-file
+# dependency must be copied as a file, not as its entire site-packages directory.
+if importlib.util.find_spec('six') is not None:modules.append('six')
+for module in modules:
+    mod=__import__(module);source=Path(mod.__file__)
+    if source.name=='__init__.py':cp(source.parent,site/module)
+    else:cp(source,site/source.name)
 code=app/'usr/share/time-sheet-linux';code.mkdir()
 for name in ('timesheet','resources'):cp(root/name,code/name)
 cp(root/'packaging/check_runtime.py',code/'check-runtime.py')

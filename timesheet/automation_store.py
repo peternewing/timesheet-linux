@@ -4,7 +4,9 @@ import json
 import time
 from datetime import datetime
 from .decision_context import build,canonical,digest,plain
-from .decision_policy import settings,route
+from .decision_policy import settings,route,ROUTING_VERSION
+from .decision_memory import remember as remember_example
+from .jev import REQUEST_VERSION
 
 SCHEMA='''
 CREATE TABLE IF NOT EXISTS ai_task_profiles(task_id INTEGER PRIMARY KEY REFERENCES tasks(id),guidance TEXT NOT NULL);
@@ -33,19 +35,41 @@ class Repository:
     def __init__(self,store):
         self.store=store
         from .daily_choices import SCHEMA as DAILY_SCHEMA
-        store.db.executescript(SCHEMA+DAILY_SCHEMA)
-        if 'scope' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_examples)')}:
-            with store.db:store.db.execute("ALTER TABLE ai_examples ADD COLUMN scope TEXT NOT NULL DEFAULT '[]'")
-        if 'draft_default' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_focus)')}:
-            with store.db:store.db.execute('ALTER TABLE ai_focus ADD COLUMN draft_default INTEGER NOT NULL DEFAULT 0')
+        from contextlib import nullcontext
+        # executescript() commits an existing caller transaction. Schema checks
+        # must never make a half-finished correction/setup durable.
+        joined=store.db.in_transaction
+        with nullcontext() if joined else store.db:
+            if not joined:store.db.execute('BEGIN IMMEDIATE')
+            for statement in (SCHEMA+DAILY_SCHEMA).split(';'):
+                if statement.strip():store.db.execute(statement)
+            if 'scope' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_examples)')}:
+                store.db.execute("ALTER TABLE ai_examples ADD COLUMN scope TEXT NOT NULL DEFAULT '[]'")
+            if 'draft_default' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_focus)')}:
+                store.db.execute('ALTER TABLE ai_focus ADD COLUMN draft_default INTEGER NOT NULL DEFAULT 0')
+            if 'routing_version' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_jobs)')}:
+                # Zero means historical/unknown, not fabricated prior evidence.
+                store.db.execute('ALTER TABLE ai_jobs ADD COLUMN routing_version INTEGER NOT NULL DEFAULT 0')
+            if 'decision_source' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_jobs)')}:
+                store.db.execute("ALTER TABLE ai_jobs ADD COLUMN decision_source TEXT NOT NULL DEFAULT 'unknown'")
+            if 'request_version' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_jobs)')}:
+                store.db.execute('ALTER TABLE ai_jobs ADD COLUMN request_version INTEGER NOT NULL DEFAULT 0')
+            if 'app_key' not in {r['name'] for r in store.rows('PRAGMA table_info(ai_examples)')}:
+                store.db.execute("ALTER TABLE ai_examples ADD COLUMN app_key TEXT NOT NULL DEFAULT ''")
+                for row in store.rows('SELECT id,application FROM ai_examples'):
+                    store.db.execute('UPDATE ai_examples SET app_key=? WHERE id=?',(row['application'].casefold(),row['id']))
+            store.db.execute('CREATE INDEX IF NOT EXISTS ai_examples_context ON ai_examples(app_key,scope,at DESC,id DESC)')
+            store.db.execute("CREATE INDEX IF NOT EXISTS ai_usage_unknown ON ai_usage(outcome) WHERE input_tokens IS NULL")
 
     def config(self):return settings(self.store.get('ai_policy','{}'))
 
     def configure(self,value):
         parsed=settings(canonical(value))
         if value.get('mode')!='off' and parsed['mode']=='off':raise ValueError('Review and accept the current automation data policy.')
-        with self.store.db:
-            self.store.db.execute('BEGIN IMMEDIATE')
+        from contextlib import nullcontext
+        joined=self.store.db.in_transaction
+        with nullcontext() if joined else self.store.db:
+            if not joined:self.store.db.execute('BEGIN IMMEDIATE')
             self.store.set('ai_policy',canonical(parsed))
             self.store.set('ai_pause_reason','')
             self.store.set('ai_discover_after','0')
@@ -61,7 +85,11 @@ class Repository:
         name=' / '.join(row[k] for k in ('client','project','task'))
         if len(name)+len(guidance)+19>500:raise ValueError('Shorten the task name or guidance to fit a 500-character option.')
         with self.store.db:
+            previous=self.store.db.execute('SELECT guidance FROM ai_task_profiles WHERE task_id=?',(task_id,)).fetchone()
             self.store.db.execute('INSERT INTO ai_task_profiles VALUES(?,?) ON CONFLICT(task_id) DO UPDATE SET guidance=excluded.guidance',(task_id,guidance))
+            if previous and previous['guidance']!=guidance:
+                self.store.db.execute('DELETE FROM ai_examples WHERE task_id=?',(task_id,))
+                self.store.db.execute('DELETE FROM ai_cache')
             self.store.set('ai_discover_after','0')
 
     def profile_warnings(self,task_id,guidance):
@@ -148,9 +176,9 @@ class Repository:
                     context,reason=self.context(activity,config,start=start,end=end)
                     if context is None:continue
                     # Job ranges reserve no time; application rechecks allocation.
-                    fingerprint=digest([context['fingerprint'],start,end])
-                    changed=self.store.db.execute('''INSERT OR IGNORE INTO ai_jobs(fingerprint,activity_id,start,end,network,has_context,created,updated)
-                        VALUES(?,?,?,?,?,?,?,?)''',(fingerprint,activity['id'],start,end,canonical(context['network']),int(context['has_context']),now,now)).rowcount
+                    fingerprint=digest([REQUEST_VERSION,context['fingerprint'],start,end])
+                    changed=self.store.db.execute('''INSERT OR IGNORE INTO ai_jobs(fingerprint,activity_id,start,end,network,has_context,created,updated,request_version)
+                        VALUES(?,?,?,?,?,?,?,?,?)''',(fingerprint,activity['id'],start,end,canonical(context['network']),int(context['has_context']),now,now,REQUEST_VERSION)).rowcount
                     count+=changed
                     if not changed:self.store.db.execute("UPDATE ai_jobs SET state='pending',reason='',attempts=0,due=0,updated=? WHERE fingerprint=? AND state='stale'",(now,fingerprint))
             if batch is None:self.store.set('ai_discover_after',rows[-1]['id'] if rows else 0)
@@ -167,7 +195,8 @@ class Repository:
         activity=self.store.db.execute('SELECT * FROM activity WHERE id=?',(job['activity_id'],)).fetchone()
         if not activity:return False
         context,_=self.context(activity,config,start=job['start'],end=job['end'])
-        return bool(context and job['fingerprint']==digest([context['fingerprint'],job['start'],job['end']])
+        return bool(context and job['request_version']==REQUEST_VERSION
+                    and job['fingerprint']==digest([REQUEST_VERSION,context['fingerprint'],job['start'],job['end']])
                     and job['network']==canonical(context['network']) and bool(job['has_context'])==context['has_context']
                     and activity['start']<=job['start']<job['end']<=activity['end']
                     and self.store.uncovered(job['start'],job['end'])==[(job['start'],job['end'])])
@@ -193,8 +222,13 @@ class Repository:
     def usage(self,now=None):
         now=int(time.time() if now is None else now);day=datetime.fromtimestamp(now).date()
         start=int(datetime.combine(day,datetime.min.time()).timestamp())
-        row=self.store.db.execute("SELECT COUNT(*) requests,COALESCE(SUM(input_tokens),0) tokens,SUM(input_tokens IS NULL AND outcome!='acknowledged unknown') unknown FROM ai_usage WHERE at>=?",(start,)).fetchone()
-        return dict(requests=row['requests'],tokens=row['tokens'],unknown=row['unknown'] or 0)
+        from .day_record import bounds
+        _,end=bounds(day)
+        row=self.store.db.execute('SELECT COUNT(*) requests,COALESCE(SUM(input_tokens),0) tokens FROM ai_usage WHERE at>=? AND at<?',(start,end)).fetchone()
+        # An unresolved charge does not become known at midnight. Keep this gate
+        # across days, even after Resume or a setup/policy change clears a pause.
+        unknown=self.store.db.execute("SELECT COUNT(*) FROM ai_usage WHERE input_tokens IS NULL AND outcome!='acknowledged unknown'").fetchone()[0]
+        return dict(requests=row['requests'],tokens=row['tokens'],unknown=unknown)
 
     def reserve_request(self,job,now=None):
         now=int(time.time() if now is None else now)
@@ -202,17 +236,29 @@ class Repository:
             self.store.db.execute('BEGIN IMMEDIATE');config=self.config();used=self.usage(now)
             if config['mode']=='off':return None,'Automation is off.'
             if not self.fresh(job):return None,'The activity or automation policy changed.'
-            if used['unknown']:return None,'A request has unknown usage. Review usage before sending more.'
-            if used['requests']>=config['daily_requests']:return None,'Daily request limit reached.'
-            if used['tokens']>=config['daily_tokens']:return None,'Daily reported input-token limit reached.'
+            reason=self.spend_reason(config,used)
+            if reason:return None,reason
             return self.store.db.execute('INSERT INTO ai_usage(job_id,at) VALUES(?,?)',(job['id'],now)).lastrowid,None
+
+    @staticmethod
+    def spend_reason(config,used):
+        if config['mode']=='off':return 'Automation is off.'
+        if used['unknown']:return 'A request has unknown usage. Review usage before sending more.'
+        if used['requests']>=config['daily_requests']:return 'Daily request limit reached.'
+        if used['tokens']>=config['daily_tokens']:return 'Daily reported input-token limit reached.'
+        return None
+
+    def request_blocker(self,now=None):
+        """Cheap preflight before unlocking a key; reservation rechecks under lock."""
+        return self.spend_reason(self.config(),self.usage(now))
 
     def account(self,usage_id,result=None,outcome='success'):
         usage=(result or {}).get('usage')
         with self.store.db:self.store.db.execute('UPDATE ai_usage SET input_tokens=?,output_tokens=?,outcome=? WHERE id=?',
             (usage.get('input_tokens') if usage else None,usage.get('output_tokens') if usage else None,outcome,usage_id))
 
-    def complete(self,job,result):
+    def complete(self,job,result,*,source='provider'):
+        if source not in ('provider','cache'):raise ValueError('Choose a valid decision source.')
         network=json.loads(job['network'])
         action,reason=route(result,self.config()['mode'],has_context=bool(job['has_context']),focus_task=network.get('focus'),focus_default=network.get('focus_default',False),application_categories=network.get('application_categories',False))
         with self.store.db:
@@ -233,10 +279,10 @@ class Repository:
                     VALUES(?,?,?,?, 'jev',?)""",(result['task'],job['start'],job['end'],description,job['activity_id'])).lastrowid
                 if result['task'] in self.config().get('category_tasks',[]):self.store.db.execute('UPDATE entries SET billable=0 WHERE id=?',(eid,))
                 entry_ids=[eid];self.store._record_change('Jev automatic assignment',[],entry_ids)
-                self.store.audit('Jev draft assigned',{'job_id':job['id'],'entry_id':eid,'policy':1})
+                self.store.audit('Jev draft assigned',{'job_id':job['id'],'entry_id':eid,'policy':ROUTING_VERSION,'decision_source':source})
             state='applied' if entry_ids else 'exception'
-            self.store.db.execute('UPDATE ai_jobs SET state=?,decision=?,reason=?,entry_ids=?,updated=?,lease_until=0 WHERE id=?',
-                (state,canonical(result),reason,canonical(entry_ids),int(time.time()),job['id']))
+            self.store.db.execute('UPDATE ai_jobs SET state=?,decision=?,reason=?,entry_ids=?,updated=?,lease_until=0,routing_version=?,decision_source=? WHERE id=?',
+                (state,canonical(result),reason,canonical(entry_ids),int(time.time()),ROUTING_VERSION,source,job['id']))
             return state
 
     def correct(self,job_id,task_id,*,remember=False,similar=False,job_ids=None):
@@ -265,7 +311,7 @@ class Repository:
                     app=json.loads(item['network'])['applications'][0]
                     saved_network=json.loads(item['network'])
                     scope=canonical({'clues':saved_network.get('clues',[]),'focus':saved_network.get('focus')})
-                    self.store.db.execute('INSERT INTO ai_examples(activity_id,application,task_id,at,scope) VALUES(?,?,?,?,?) ON CONFLICT(activity_id) DO UPDATE SET task_id=excluded.task_id,at=excluded.at,scope=excluded.scope',(item['activity_id'],app,task_id,int(time.time()),scope))
+                    remember_example(self.store,item['activity_id'],app,task_id,scope,int(time.time()))
             self.store._record_change('Review Jev decisions',[],ids)
             self.store.audit('Jev decisions reviewed',{'jobs':len(chosen),'remember':remember})
         return len(ids)
@@ -337,14 +383,18 @@ class Repository:
                     minimal={k:result[k] for k in ('model','task','probability','work_kind') if isinstance(result,dict) and k in result}
                 except (ValueError,TypeError,RecursionError):minimal={}
                 self.store.db.execute("UPDATE ai_jobs SET network='{}',decision=?,has_context=0,reason='Detailed context removed with source activity.',state=CASE WHEN state='applied' THEN 'applied' ELSE 'stale' END WHERE id=?",(canonical(minimal),row['id']))
-            self.store.db.execute('DELETE FROM ai_examples WHERE NOT EXISTS(SELECT 1 FROM activity a WHERE a.id=ai_examples.activity_id)')
+            self.store.db.execute("DELETE FROM ai_examples WHERE NOT EXISTS(SELECT 1 FROM activity a WHERE a.id=ai_examples.activity_id AND a.state='active' AND a.closed=1)")
             from .daily_choices import prune as prune_daily_choices
             prune_daily_choices(self.store)
             self.store.db.execute('DELETE FROM ai_focus WHERE end<?',(now-int(self.store.get('retention_days','30'))*86400,))
 
-    def forget_examples(self):
+    def forget_examples(self,application=None):
+        if application is not None and (not isinstance(application,str) or not 1<=len(application)<=200):raise ValueError('Choose an application to forget.')
         with self.store.db:
-            self.store.db.execute('DELETE FROM ai_examples')
+            if application is None:self.store.db.execute('DELETE FROM ai_examples')
+            else:self.store.db.execute('DELETE FROM ai_examples WHERE app_key=?',(application.casefold(),))
+            self.store.db.execute('DELETE FROM ai_cache')
+            self.store.db.execute("UPDATE ai_jobs SET state='stale',reason='Remembered corrections cleared.',lease_until=0 WHERE state IN ('pending','running','exception','failed')")
             self.store.set('ai_discover_after','0')
             self.store.audit('remembered Jev corrections cleared',{})
 

@@ -1451,8 +1451,9 @@ class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
         else: self.row(b,'Manual timesheet mode','Capture needs a supported desktop adapter and reliable idle and lock services. Check the installation guide; manual timers and reports remain available.')
         from .diagnostics import diagnose
         def show_diagnostics(_):
-            details=diagnose()
-            self.info('Setup details',json.dumps(details,indent=2)+'\n\nThis diagnostic does not include activity or window titles.')
+            from .diagnostics import database_health
+            details={**diagnose(),'local_database':database_health(self.store.path)}
+            self.info('Setup details',json.dumps(details,indent=2)+'\n\nAggregate health only; no app names, window titles, keys or data paths.')
         b.append(button('View setup details',show_diagnostics))
         b.append(button('Check for updates',lambda _:self.check_app_updates()))
         b.append(Gtk.LinkButton(uri='https://github.com/peternewing/timesheet-linux/blob/main/docs/INSTALL.md',label='Open installation and desktop setup guide'))

@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime,timedelta
 from unittest.mock import Mock
 from timesheet.store import Store
-from timesheet.simple_setup import BUCKETS,ensure_buckets,preset_ids,finish_setup
+from timesheet.simple_setup import BUCKETS,ensure_buckets,preset_ids,finish_setup,selected_tools,save_tools
 from timesheet.automation_store import Repository
 from timesheet.automation_worker import Engine
 from timesheet.decision_policy import settings,DEFAULTS
@@ -19,15 +19,15 @@ class SimplicityTests(unittest.TestCase):
         self.day-=timedelta(days=1);self.base=bounds(self.day)[0]+9*3600
     def tearDown(self):self.store.close();self.tmp.cleanup()
     def setup(self,**kw):
-        config=finish_setup(self.store,list(BUCKETS),connected=True,now=self.now,**kw)
+        config=finish_setup(self.store,list(BUCKETS),connected=True,local_types=False,now=self.now,**kw)
         config['since']=bounds(self.day)[0];self.repo.configure(config);self.ids=config['category_tasks'];return config
     def activity(self,app='Editor',state='active',start=None,end=None):
         with self.store.db:return self.store.db.execute('INSERT INTO activity(start,end,app,title,state,closed) VALUES(?,?,?,?,?,1)',(start or self.base,end or self.base+600,app,'PRIVATE TITLE /secret/file',state)).lastrowid
     def result(self,task=None):
         tid=task or self.ids[0];others=[x for x in self.ids if x!=tid]
-        return dict(task=tid,probability=.99,none_probability=.004,alternatives=[(tid,.99)]+[(x,.002) for x in sorted(others)],personal=.01,enough_evidence=.99,work_kind='development',work_kind_probability=.95,model='jev-simple-test',usage={'input_tokens':100,'output_tokens':10})
+        return dict(task=tid,probability=.99,none_probability=.004,alternatives=[(tid,.99)]+[(x,.006/len(others)) for x in sorted(others)],personal=.01,enough_evidence=.99,work_kind='development',work_kind_probability=.95,model='jev-simple-test',usage={'input_tokens':100,'output_tokens':10})
     def test_presets_need_no_names_rates_or_user_text(self):
-        ids=ensure_buckets(self.store,list(BUCKETS));self.assertEqual(len(ids),4)
+        ids=ensure_buckets(self.store,list(BUCKETS));self.assertEqual(len(ids),len(BUCKETS))
         self.assertTrue(all(r['effective_rate'] is None for r in self.store.tasks()))
         self.assertEqual(set(preset_ids(self.store)),set(BUCKETS))
     def test_setup_does_not_adopt_or_change_same_named_user_project(self):
@@ -36,7 +36,7 @@ class SimplicityTests(unittest.TestCase):
         self.assertNotIn(original,ids);self.assertEqual(self.store.tasks()[0]['effective_rate'],12345)
     def test_repeated_setup_reuses_owned_categories_without_duplicates(self):
         first=ensure_buckets(self.store,list(BUCKETS));second=ensure_buckets(self.store,['create'])
-        self.assertEqual(second,[first[0]]);self.assertEqual(len(self.store.tasks()),4)
+        self.assertEqual(second,[first[0]]);self.assertEqual(len(self.store.tasks()),len(BUCKETS))
     def test_invalid_choice_or_boolean_cannot_enable_automation(self):
         for keys in ([],['unknown'],['create','create']):
             with self.assertRaises(ValueError):finish_setup(self.store,keys,connected=True)
@@ -46,12 +46,35 @@ class SimplicityTests(unittest.TestCase):
         finish_setup(self.store,['create'],connected=False,titles=False,remember=False)
         self.assertEqual(self.repo.config()['mode'],'off');self.assertEqual(self.store.get('capture_titles'),'0')
         self.assertEqual(self.store.get('simple_remember'),'0')
+    def test_reconnecting_preserves_exclusions_and_custom_usage_limits(self):
+        original=self.setup()
+        self.repo.configure({**original,'exclude_apps':['Private browser'],'daily_requests':3,'daily_tokens':2000})
+        finish_setup(self.store,['create'],connected=True,tools=['rules','projects'],now=self.base+3600)
+        config=self.repo.config()
+        self.assertEqual((config['exclude_apps'],config['daily_requests'],config['daily_tokens']),(['Private browser'],3,2000))
+        self.activity('Private browser');request=Mock()
+        self.assertEqual(Engine(self.store,request=request,key=lambda:'synthetic').step(self.now),'idle');request.assert_not_called()
+        self.assertEqual(selected_tools(self.store),['projects','rules'])
+    def test_tools_are_local_shortcuts_not_consent_or_project_inference(self):
+        before=self.repo.config();save_tools(self.store,['projects','rules','reports'])
+        self.assertEqual(self.repo.config(),before);self.assertEqual(self.store.tasks(),[])
+        self.setup();save_tools(self.store,['projects'])
+        self.store.quick_project('PRIVATE CLIENT','PRIVATE PROJECT','PRIVATE TASK')
+        aid=self.activity();context,_=self.repo.context(self.store.rows('SELECT * FROM activity WHERE id=?',(aid,))[0])
+        self.assertNotIn('PRIVATE',json.dumps(context['network']))
+        finish_setup(self.store,['create'],connected=False)
+        self.assertEqual(selected_tools(self.store),['projects']);self.assertEqual(self.repo.config()['mode'],'off')
+    def test_invalid_tools_do_not_partially_enable_setup(self):
+        for tools in ('rules',['unknown'],[{}]):
+            with self.subTest(tools=tools),self.assertRaises(ValueError):
+                finish_setup(self.store,['create'],connected=True,tools=tools)
+        self.assertEqual(self.store.tasks(),[]);self.assertEqual(self.repo.config()['mode'],'off')
     def test_generic_payload_excludes_unrelated_project_names_and_raw_titles(self):
         self.store.quick_project('PRIVATE CLIENT','SECRET PROJECT','Secret task',5000)
         self.setup();aid=self.activity();activity=self.store.rows('SELECT * FROM activity WHERE id=?',(aid,))[0]
         context,reason=self.repo.context(activity);payload=json.dumps(context['network'])
         for sensitive in ('PRIVATE CLIENT','SECRET PROJECT','Secret task','PRIVATE TITLE','/secret/file'):self.assertNotIn(sensitive,payload)
-        self.assertTrue(context['has_context']);self.assertEqual(len(context['network']['tasks']),4)
+        self.assertTrue(context['has_context']);self.assertEqual(len(context['network']['tasks']),len(BUCKETS))
     def test_archived_or_edited_category_stops_generic_inference(self):
         self.setup();aid=self.activity()
         with self.store.db:self.store.db.execute('UPDATE tasks SET archived=1 WHERE id=?',(self.ids[0],))
@@ -68,7 +91,7 @@ class SimplicityTests(unittest.TestCase):
         self.assertIsNone(request.call_args.kwargs['focus'])
         self.store.undo();self.assertEqual(self.store.entries(self.base,self.base+600),[])
     def test_ambiguous_browser_still_needs_a_choice(self):
-        self.setup();self.activity('Browser');value=self.result();value.update(task=None,probability=.6,none_probability=.6,alternatives=[(i,.1) for i in sorted(self.ids)])
+        self.setup();self.activity('Browser');value=self.result();value.update(task=None,probability=.6,none_probability=.6,alternatives=[(i,.4/len(self.ids)) for i in sorted(self.ids)])
         self.assertEqual(Engine(self.store,request=lambda *a,**kw:value,key=lambda:'synthetic').step(self.now),'exception')
         self.assertEqual(len(simple_store.review_items(self.store,self.day)),1)
     def test_pending_work_does_not_ask_a_duplicate_manual_question(self):
@@ -127,7 +150,7 @@ class SimplicityTests(unittest.TestCase):
         with self.store.db:self.store.db.execute('UPDATE rules SET created=? WHERE id=?',(self.base-1,rid))
         request=Mock();self.assertEqual(Engine(self.store,request=request,key=lambda:'synthetic').step(self.now),'idle');request.assert_not_called()
     def test_app_function_policy_does_not_claim_work_intent(self):
-        self.setup();self.activity();value=self.result();value.update(personal=.9,enough_evidence=.88,probability=.95,none_probability=.044,alternatives=[(self.ids[0],.95)]+[(i,.002) for i in sorted(self.ids[1:])])
+        self.setup();self.activity();value=self.result();value.update(personal=.9,enough_evidence=.88,probability=.95,none_probability=.044,alternatives=[(self.ids[0],.95)]+[(i,.006/(len(self.ids)-1)) for i in sorted(self.ids[1:])])
         self.assertEqual(Engine(self.store,request=lambda *a,**kw:value,key=lambda:'synthetic').step(self.now),'applied')
         record=snapshot(self.store,self.day);self.assertEqual(record['entries'][0]['source'],'AI category')
         from timesheet.decision_policy import route
@@ -161,7 +184,7 @@ class SimplicityTests(unittest.TestCase):
         self.setup();old=self.ids[0]
         with self.store.db:self.store.db.execute('UPDATE tasks SET name=? WHERE id=?',('My edited task',old))
         finish_setup(self.store,list(BUCKETS),connected=False)
-        self.assertEqual(len(preset_ids(self.store)),4)
+        self.assertEqual(len(preset_ids(self.store)),len(BUCKETS))
         self.assertEqual(self.store.db.execute('SELECT name FROM tasks WHERE id=?',(old,)).fetchone()[0],'My edited task')
         self.assertNotIn(old,preset_ids(self.store).values())
 

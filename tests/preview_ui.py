@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory(prefix='timesheet-preview-') as directory:
             s.db.execute("UPDATE runtime SET collector_seen=?,capture_status='active',app='Visual Studio Code' WHERE id=1",(fake_now,))
         def request(apps,tasks,key,**kwargs):
             task=ids[0] if apps==['Visual Studio Code'] else ids[2] if apps==['Slack'] else None
-            alts=sorted([(i,.99 if i==task else .002 if task else .1) for i in ids],key=lambda x:(-x[1],x[0]))
+            alts=sorted([(i,.99 if i==task else .006/(len(ids)-1) if task else .4/len(ids)) for i in ids],key=lambda x:(-x[1],x[0]))
             return dict(task=task,probability=.99 if task else .6,none_probability=.004 if task else .6,alternatives=alts,personal=.2,enough_evidence=.99 if task else .1,work_kind='other',model='jev-synthetic-preview',usage={'input_tokens':100,'output_tokens':10})
         worker=Engine(s,request=request,key=lambda:'synthetic')
         for _ in range(3):worker.step(fake_now)

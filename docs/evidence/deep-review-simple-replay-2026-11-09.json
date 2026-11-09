@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "routing_version": 1,
+  "dataset_fingerprint": "28efcf9866185e1f97c57c90021fe74c02d32d2b72619ba6ece9307c3655121c",
+  "models": [
+    "jev-1.14.0"
+  ],
+  "limitations": [
+    "Labelled samples are not representative daily accuracy unless the sampling process establishes that.",
+    "Exception-only reviews cannot estimate automatic precision."
+  ],
+  "slices": {
+    "all": {
+      "cases": 8,
+      "seconds": 4800,
+      "automated": 5,
+      "wrong_seconds": 0,
+      "automated_precision": 1.0
+    }
+  },
+  "evidence": "offline replay: does not measure live Jev accuracy",
+  "metrics": {
+    "cases": 8,
+    "automated": 5,
+    "correct_automated": 5,
+    "wrong_minutes": 0,
+    "recorded_minutes": 80.0,
+    "exception_cases": 3,
+    "automated_minutes": 50.0,
+    "correct_choices": 8,
+    "input_tokens": 6761,
+    "automation_coverage": 0.625,
+    "time_coverage": 0.625,
+    "choice_accuracy": 1.0,
+    "automated_precision": 1.0
+  },
+  "results": [
+    {
+      "case_id": "1",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "2",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "3",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "4",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "5",
+      "slice": "all",
+      "seconds": 600,
+      "action": "apply",
+      "correct": true,
+      "reason": "Supported broad app-activity type. This estimates app function, not productivity or work intent. Non-billable draft.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "6",
+      "slice": "all",
+      "seconds": 600,
+      "action": "exception",
+      "correct": true,
+      "reason": "Jev could not identify a task.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "7",
+      "slice": "all",
+      "seconds": 600,
+      "action": "exception",
+      "correct": true,
+      "reason": "Jev could not identify a task.",
+      "model": "jev-1.14.0"
+    },
+    {
+      "case_id": "8",
+      "slice": "all",
+      "seconds": 600,
+      "action": "exception",
+      "correct": true,
+      "reason": "Jev could not identify a task.",
+      "model": "jev-1.14.0"
+    }
+  ]
+}

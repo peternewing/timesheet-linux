@@ -21,6 +21,13 @@ review, test/live evidence and remaining limits. No blanket 9/10 claim is made.
 
 ## Product objective
 
+Latest user direction, 9 November 2026: the product is automatic computer screen-time
+tracking for personal life and work, similar in usefulness to a phone's Screen Time.
+Personal use is legitimate and must not be treated as a failed work classification.
+Keep activity type, explicit Personal/Work context, privacy exclusions and financial
+records separate. Local screen-time insight must work without AI; TypeSafe adds
+permitted typed organisation. See [the sustained iteration log](PERSONAL_WORK_ITERATION.md).
+
 Jev/TypeSafe quietly organises recorded work with minimal user interaction.
 The intended workflow is **record automatically → organise automatically → ask
 only about uncertain work → present a finished daily record**. Today is the
@@ -218,3 +225,86 @@ usage safeguards; Assign handles each app/day directly. Optional sidebar tools
 and day actions restore convenient access without complicating setup. See
 [the implementation and fresh second review](ONE_CLICK_REVIEW_0.6.1.md) for exact
 scope, midnight/concurrency findings, evidence and remaining real-world limits.
+
+### Jev usefulness and optional tool setup (9 November 2026)
+
+The fourth setup step now offers optional purpose-based tool shortcuts, reused in
+Settings and each day's More actions. Selecting project/rule/report tools changes
+navigation only, preserving generic AI context and explicit sending consent.
+Reconnecting also retains existing app exclusions and custom request/token limits.
+See [the product decision, second review and evidence](JEV_USEFUL_TOOLS.md): 245
+offline tests and 75 default-flow GTK checks at normal and 200% scale passed.
+Development changes only; real-day accuracy and external acceptance remain unverified.
+
+### Deep review and improvement implementation (9 November 2026)
+
+The [28-category review](DEEP_REVIEW_2026-11-09.md) rates the current working tree
+and provides three concrete improvement actions per category. Its [plan](IMPROVEMENT_PLAN_2026-11-09.md)
+and machine-readable register distinguish 48 implemented action entries, 18 retained
+safeguards rechecked and 18 open acceptance gates. Shared fixes can satisfy more
+than one action; these are not 48 independent product features. Ratings are current
+engineering/evidence judgments, not measured AI accuracy or retroactive changes to
+the original baseline.
+
+Fixed cross-day unknown usage, scoped/indexed correction retrieval, explicit Forget
+invalidation, transactional/serialised schema initialisation, malformed priority
+state, missing-worker feedback, export/live-timer accounting, guarded Undo and
+malformed update metadata. Added factual AI/rule explanations, new routing-version
+records, starter guidance, local day digest, standalone contract/memory/status/setup
+modules, offline response comparisons and a repeatable synthetic benchmark.
+
+263 core tests, 81 default-flow GTK checks at normal and 200% scale, 53 retained
+advanced GUI checks, 23 automation UI checks, worker-process and private synthetic
+Secret portal/GNOME/KDE/X11 checks passed locally. See the review's validation
+ledger and source fingerprint. Public CI is configured but not claimed run for
+this uncommitted working tree. No real recorded activity or real key was used.
+Hardware, novice/Orca, representative real-day accuracy and final package/release
+acceptance remain open. Preserve the four-step/three-destination simple default.
+
+### Personal/work screen-time iteration (9 November 2026)
+
+See [the reassessment](PERSONAL_WORK_REASSESSMENT_2026-11-09.md),
+[actual work log](PERSONAL_WORK_ITERATION.md) and
+[28-category register](evidence/personal-work-category-register-2026-11-09.json).
+The development source adds observed interval-union screen time, weekly/hourly
+insight, eight owned generic types, local installed-app classification,
+Personal/Work/Unsorted markers and history-preserving local schedules. Finite
+period corrections, guarded Undo, content-free review counters, read-only health,
+private CSV/PDF summaries and unlabelled evaluation templates remain separate
+from client intent and financial approval. The default stays four setup steps and
+Today/Past days/Settings. Existing categories, records and sending scopes are
+preserved; desktop metadata and space labels stay local.
+
+A separately explicit approval allowed exactly 20 public synthetic TypeSafe
+requests. All 20 completed on jev-1.14.0 with 21,054 reported input tokens, 20
+matching synthetic choices, 16 automatic routes and four exceptions. No recorded
+user activity or private projects were sent. This is not representative real-day
+accuracy. That approval is exhausted; further paid requests require new consent.
+
+The first expanded validation reached 324 core tests, 93 simple GTK checks at
+normal/200% scale, 53 retained advanced checks, 26 automation checks and the
+packaged simple flow. SQLite quota recovery, private capture/portal protocols,
+actual isolated GNOME, private X11 and worker process checks passed. The final
+ledger must record later reruns and sustained results; long-run source hashes must
+not be replaced with a later tree's hashes. All 18 earlier external acceptance
+gates remain open. Ratings are judgments, not target achievement or certification.
+
+Final local evidence: 328 core tests; 93 simple checks at normal scale and in the
+200% bundled runtime; 15 async/filter/export/cleanup checks; completed two-hour
+earlier core checkpoint and 30-minute final native UI. See the
+[validation ledger](evidence/personal-work-validation-2026-11-09.json) for each
+source scope. The sustained UI test found and verified a rendered-modal callback
+retention fix. Passive reading/video remains dependent on desktop idle; no
+playback/display-power evidence is collected. The final report preserves all 18
+external gates and explicitly avoids phone-equivalence or target-score claims.
+
+### 0.7.0-rc1 delivery — 9 November 2026
+
+The user explicitly authorised finishing the app, uploading the code to GitHub
+and updating this computer. See [delivery notes](DELIVERY_0.7.0.md). Preserve the
+historical source-specific validation, run fresh release-candidate checks, use a
+private pre-upgrade backup and separate installation folder, retain the older
+checkout for rollback, and verify the launcher/collector after switching. Keep
+all previous data/usage policies unchanged except compatible installation ownership.
+Existing off policies stay off; no extra paid synthetic calls are covered by the
+old exhausted 20-request approval. Real-day, hardware and human gates remain open.

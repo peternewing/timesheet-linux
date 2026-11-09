@@ -8,6 +8,7 @@ from pathlib import Path
 from . import __version__
 
 POLICY_VERSION=1
+ROUTING_VERSION=1
 DEFAULTS=dict(mode='off',consent_version=0,since=0,daily_requests=50,daily_tokens=250000,
               allow_guidance=True,allow_examples=False,allow_project_clues=False,allow_focus=True,exclude_apps=[],backend='native',owner='',category_tasks=[])
 

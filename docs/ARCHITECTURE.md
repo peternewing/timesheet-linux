@@ -90,3 +90,71 @@ apps can still return none. Original project/focus/personal gates remain intact.
 All simple-flow category allocations are non-billable drafts. Local rules targeting
 any active project still take precedence; filtering offered generic tasks must not
 filter out that precedence check.
+
+## November review module boundaries
+
+The accepted [roadmap](AUTOMATION_ROADMAP.md) and current
+[review/acceptance plan](IMPROVEMENT_PLAN_2026-11-09.md) govern these development changes.
+
+- `decision_contract.py` validates provider/cache results for both the worker and evaluator.
+- `decision_memory.py` stores and retrieves the eight most recent permitted app/context
+  examples using an indexed Unicode case-folded key. A correction is guidance, not training.
+- `automation_status.py` derives local heartbeat, queue/usage facts and explanations;
+  it never accesses a key or performs network requests.
+- `setup_ui.py` owns the existing four-step setup, separated from daily rendering/review.
+- `benchmark.py` creates a disposable synthetic database and records bounded discovery
+  timings/RSS. `evaluate --compare` compares saved responses under the current routing
+  policy on identical labelled inputs; it cannot promote a model.
+
+Routing has an explicit version separate from data-consent version. New completed jobs
+record it; old jobs retain unknown version zero. Change the routing version when changing
+execution semantics and preserve the code/fixtures needed to replay historical policies.
+The additive example key, routing-version field and minimal local rule-assignment table
+preserve existing records. Rule snapshots copy no raw titles or application identities.
+Repository initialisation serialises migration and must not commit an existing caller
+transaction. Unknown usage remains unresolved across calendar days until acknowledged.
+
+## Personal and work screen time
+
+`screen_time` unions captured intervals before calculating observed screen time,
+app rankings, sessions, hourly windows and comparable weeks. Private observations
+mask app names. Conflicting apps or capture gaps are not invented usage; manual
+entries never inflate screen totals. Read helpers share one SQLite snapshot with
+the caller. Hourly attribution visits disjoint intervals directly rather than
+rescanning each day for every hour. Local days can have 23 or 25 elapsed hours.
+
+`screen_spaces` keeps independent local Personal/Work/Unsorted intervals. Explicit
+switches and finite past-period corrections have revision-guarded Undo. Optional
+schedules preserve their history and a local TZif clock-rule snapshot, so later
+system-zone changes cannot relabel earlier schedule periods. Manual markers
+override schedules. Old schedule rows without saved rules retain their legacy
+local-clock semantics rather than invent historical timezone evidence.
+
+`local_types` reads exact Gio desktop identities and declared Freedesktop
+categories. Broad, conflicting and unknown-collision identities abstain. Catalogue
+refresh publishes a complete snapshot under a non-blocking refresh lock. The
+collector uses bounded local allocation independently of the optional AI worker;
+both recheck source/privacy/presets, explicit choices, rules and occupied time.
+Provenance and Undo commit with non-billable app-type drafts. Undo suppresses the
+original source to avoid immediately recreating that same local inference.
+
+`screen_ui` provides native optional insight/context controls inside the existing
+three-destination experience. `screen_export` produces a title-free local CSV;
+`day_record` uses the canonical interval union for its screen-time PDF.
+`review_metrics` stores only content-free simple-review counters and active-window
+time. It is a workflow proxy, not AI accuracy or cognitive-effort measurement.
+`evaluation_template` opens an explicitly selected database read-only and produces
+unlabelled private cases. `evaluate` preflights all labels before key access.
+
+Request contract version, routing policy, provider model and user consent are
+separate. New jobs and cache identities include the local request version; stale
+contract answers cannot apply. Historical versions remain unknown, and saved
+entries are not rewritten. See the [iteration/reassessment](PERSONAL_WORK_REASSESSMENT_2026-11-09.md)
+for the evidence and remaining gates.
+
+`screen_reader` opens a separate read-only, query-only connection for insight
+calculation. It does not query window titles, create a Store, migrate a database,
+unlock a key or touch the network. The GTK thread retains controls while a single
+reader runs; filter/label revisions supersede older results, Close cancels SQL
+work, and interval copies are discarded before returning UI aggregates. Native
+responsiveness/cancellation/race scenarios are tested separately from statistics.

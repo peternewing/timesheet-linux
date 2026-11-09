@@ -1,0 +1,1027 @@
+{
+  "date": "2026-11-09",
+  "status": "Completed local implementation/reassessment; all original external acceptance gates remain open",
+  "started_utc": "2026-11-09 18:44:16 UTC",
+  "completed_utc": "2026-11-09T20:51:44.664061+00:00",
+  "scope": "Active development checkout; personal and work computer screen time; not installed/published",
+  "scoring": "Engineering/product evidence judgment, not measured AI accuracy; 9\u201310 still needs broader real/human acceptance. No numerical increase is fabricated to meet a target.",
+  "previous_mean": 7.714285714285714,
+  "mean": 8.178571428571429,
+  "public_live": {
+    "authorised_maximum": 20,
+    "attempted": 20,
+    "completed": 20,
+    "model": "jev-1.14.0",
+    "reported_input_tokens": 21054,
+    "matching_choices": 20,
+    "automatic": 16,
+    "exceptions": 4,
+    "wrong_synthetic_minutes": 0,
+    "representative_real_day_accuracy": false
+  },
+  "categories": [
+    {
+      "id": "C01",
+      "category": "Background Jev automation",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW01.1",
+          "description": "Run local installed-app classification alongside saved choices and rules, even with Jev off.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW01.2",
+          "description": "Keep capture independent while a separate worker organises permitted completed observations.",
+          "status": "Retained safeguard rechecked"
+        },
+        {
+          "id": "PW01.3",
+          "description": "Exercise collector, worker and screen summaries together in sustained disposable runs.",
+          "status": "New validation/evidence"
+        }
+      ],
+      "second_pass": "Reject corrupt retry timing before key access and require a deliberate Resume.",
+      "remaining_limit": "Native/AppImage/Flatpak 48-hour login, closed-window and recovery acceptance remains open.",
+      "evidence_files": [
+        "timesheet/local_types.py",
+        "timesheet/automation_worker.py",
+        "tests/soak_screen_time.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C01.3",
+          "description": "Run a 48-hour native/AppImage/Flatpak recovery trial including closed windows and login.",
+          "status": "Acceptance required",
+          "acceptance": "Record gaps, worker restarts and recovery latency per package/desktop."
+        }
+      ]
+    },
+    {
+      "id": "C02",
+      "category": "Context supplied to Jev",
+      "previous_rating": 7,
+      "rating": 7.5,
+      "first_pass": [
+        {
+          "id": "PW02.1",
+          "description": "Offer eight explicit app-function definitions, including browsing, games, media and utilities.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW02.2",
+          "description": "Keep Personal/Work context local and separate from outgoing project/task evidence.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW02.3",
+          "description": "Exclude private, changed or missing source observations from remembered context.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Treat one fragmented app/day correction as one relevant example rather than many votes.",
+      "remaining_limit": "Shared-browser client intent still needs permitted distinguishing evidence and a labelled real-work evaluation.",
+      "evidence_files": [
+        "timesheet/simple_setup.py",
+        "timesheet/decision_memory.py",
+        "tests/test_screen_safety.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C02.3",
+          "description": "Evaluate shared-browser/client-switch cases with explicitly consented, minimised context.",
+          "status": "Acceptance required",
+          "acceptance": "Compare time-weighted errors and coverage against app-only decisions."
+        }
+      ]
+    },
+    {
+      "id": "C03",
+      "category": "Decision quality evidence",
+      "previous_rating": 6,
+      "rating": 7,
+      "first_pass": [
+        {
+          "id": "PW03.1",
+          "description": "Collect exactly the 20 separately approved public synthetic TypeSafe answers.",
+          "status": "New validation/evidence"
+        },
+        {
+          "id": "PW03.2",
+          "description": "Record actual model, token use, per-slice choices, exceptions and time-weighted sample coverage.",
+          "status": "New validation/evidence"
+        },
+        {
+          "id": "PW03.3",
+          "description": "Add a read-only private template builder for later independent manual labelling.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Reject unlabelled templates before key lookup or any paid evaluation request.",
+      "remaining_limit": "Public synthetic cases are not representative real-day accuracy; independently labelled easy and uncertain real cases remain required.",
+      "evidence_files": [
+        "docs/evidence/personal-work-live-synthetic-2026-11-09.json",
+        "timesheet/evaluation_template.py",
+        "tests/test_evaluation_safety.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C03.3",
+          "description": "Collect several independently labelled real days, sampling easy automatic cases as well as exceptions.",
+          "status": "Acceptance required",
+          "acceptance": "Keep private evidence outside the repository; report sample selection and wrong minutes."
+        }
+      ]
+    },
+    {
+      "id": "C04",
+      "category": "Automatic task assignment",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW04.1",
+          "description": "Create reversible non-billable drafts from conservative local app metadata.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW04.2",
+          "description": "Respect saved daily choices, skip choices, rules, protected entries and active timers before local allocation.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW04.3",
+          "description": "Guard local allocation against privacy, task or source changes under a write transaction.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Test local allocation winning while an AI response is in flight: one saved interval and accounted usage.",
+      "remaining_limit": "Client/project wrong-minute measurement remains open; generic activity labels do not establish client intent.",
+      "evidence_files": [
+        "timesheet/local_types.py",
+        "timesheet/daily_choices.py",
+        "tests/test_local_types.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C04.3",
+          "description": "Measure cross-client wrong minutes before broadening task automation.",
+          "status": "Acceptance required",
+          "acceptance": "No financial approval or broader threshold based only on fixture success."
+        }
+      ]
+    },
+    {
+      "id": "C05",
+      "category": "Uncertainty handling",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW05.1",
+          "description": "Abstain on broad or contradictory installed categories instead of guessing intent.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW05.2",
+          "description": "Preserve conservative TypeSafe routing: both browser examples stayed exceptions despite correct top choices.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW05.3",
+          "description": "Represent missing or conflicting foreground evidence as gaps, independently of category uncertainty.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Include unknown desktop identities in collision checks; remove generic Viewer-to-learning inference.",
+      "remaining_limit": "Abstention thresholds still need representative calibration across real applications and client projects.",
+      "evidence_files": [
+        "timesheet/local_types.py",
+        "timesheet/screen_time.py",
+        "docs/evidence/personal-work-live-synthetic-2026-11-09.json"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C05.3",
+          "description": "Calibrate abstention and errors separately for specialist apps, browsers and client projects.",
+          "status": "Acceptance required",
+          "acceptance": "Publish sample sizes and time-weighted error/coverage curves before changing gates."
+        }
+      ]
+    },
+    {
+      "id": "C06",
+      "category": "Learning from corrections",
+      "previous_rating": 7.5,
+      "rating": 8,
+      "first_pass": [
+        {
+          "id": "PW06.1",
+          "description": "Retrieve only live active-source examples in the exact permitted app/context scope.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW06.2",
+          "description": "Deduplicate fragmented same-day memories before selecting eight recent examples.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW06.3",
+          "description": "Expose a click-only Forget corrections for one app action without deleting activity or entries.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Check Unicode-scoped Forget clears dependent cache/jobs while retaining unrelated examples and saved time.",
+      "remaining_limit": "Correction habits and Forget/Undo comprehension need consenting-user observation.",
+      "evidence_files": [
+        "timesheet/decision_memory.py",
+        "timesheet/automation_ui.py",
+        "tests/test_evaluation_safety.py"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C07",
+      "category": "Batch intelligence",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW07.1",
+          "description": "Process clear local app types before spending a provider request.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW07.2",
+          "description": "Version cache identities and durable jobs by the local request contract.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW07.3",
+          "description": "Record a 200,000-observation, 20-batch bounded discovery benchmark.",
+          "status": "New validation/evidence"
+        }
+      ],
+      "second_pass": "Retain validated provider/cache provenance so reuse does not look like a new request.",
+      "remaining_limit": "A bounded benchmark does not establish full-day throughput on every package or machine.",
+      "evidence_files": [
+        "timesheet/automation_worker.py",
+        "timesheet/automation_store.py",
+        "docs/evidence/personal-work-discovery-benchmark-2026-11-09.json"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C08",
+      "category": "Proactive assistance",
+      "previous_rating": 7.5,
+      "rating": 8,
+      "first_pass": [
+        {
+          "id": "PW08.1",
+          "description": "Provide optional automatic Personal/Work schedule labels using three ready-made choices.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW08.2",
+          "description": "Refresh weekly insights when labels change or a 30-second interval passes.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW08.3",
+          "description": "Add read-only aggregate database health for capture age, integrity and unknown usage.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Treat future collector heartbeats as unavailable evidence instead of healthy capture.",
+      "remaining_limit": "Schedule expectations are user intent labels, not inferred behaviour; real digest usefulness remains unmeasured.",
+      "evidence_files": [
+        "timesheet/screen_spaces.py",
+        "timesheet/screen_ui.py",
+        "timesheet/diagnostics.py"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C09",
+      "category": "Daily workflow",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW09.1",
+          "description": "Add seven-day totals, top apps, daily bars and hourly observed use to the existing day flow.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW09.2",
+          "description": "Provide Everything, Personal, Work and Unsorted filters without project setup.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW09.3",
+          "description": "Open a selected day directly from its weekly bar and save its local summary.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Use compact app rankings and preserve expansion, scroll and focus across insight refreshes.",
+      "remaining_limit": "Novice setup-to-saved-day timing and completion observation remain open.",
+      "evidence_files": [
+        "timesheet/screen_ui.py",
+        "tests/verify_simple_ui.py",
+        "docs/screenshots/screen-time-development.png"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C09.3",
+          "description": "Observe setup-to-saved-day completion and count clicks/repeated questions.",
+          "status": "Acceptance required",
+          "acceptance": "Record task completion, errors and median review minutes with consenting users."
+        }
+      ]
+    },
+    {
+      "id": "C10",
+      "category": "Rules/explanations",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW10.1",
+          "description": "Keep explicit saved rules ahead of local metadata and Jev decisions.",
+          "status": "Retained safeguard rechecked"
+        },
+        {
+          "id": "PW10.2",
+          "description": "Save declared category provenance for each local app-type draft.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW10.3",
+          "description": "Explain local metadata, rules and AI estimates as separate sources.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Clarify that a local label used no AI answer without claiming the app identity could never have been sent earlier.",
+      "remaining_limit": "Novice understanding of rule scope and future versus historical effects remains unverified.",
+      "evidence_files": [
+        "timesheet/local_types.py",
+        "timesheet/automation_status.py",
+        "tests/test_local_types.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C10.3",
+          "description": "Test whether novices understand rule scope and future versus historical effects.",
+          "status": "Acceptance required",
+          "acceptance": "Observe a rule creation, deliberate conflict and correction without coaching."
+        }
+      ]
+    },
+    {
+      "id": "C11",
+      "category": "First-run onboarding",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW11.1",
+          "description": "Keep four click-only setup steps and the three everyday destinations.",
+          "status": "Retained safeguard rechecked"
+        },
+        {
+          "id": "PW11.2",
+          "description": "Make screen-time insights usable without a key, AI, projects or typed setup fields.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW11.3",
+          "description": "Stage optional local app automation until Start and retain existing users\u2019 prior opt-out on reopening setup.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Make category/policy/tool/local preferences one atomic setup transaction with rollback coverage.",
+      "remaining_limit": "Saved-key, pasted-key, locked-keyring and local-only novice first runs remain open.",
+      "evidence_files": [
+        "timesheet/setup_ui.py",
+        "timesheet/simple_setup.py",
+        "tests/test_personal_work.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C11.3",
+          "description": "Test saved-key, pasted-key, locked-keyring and local-only first runs with novices.",
+          "status": "Acceptance required",
+          "acceptance": "Measure completion and comprehension of the Start consent boundary."
+        }
+      ]
+    },
+    {
+      "id": "C12",
+      "category": "Project/task setup",
+      "previous_rating": 7.5,
+      "rating": 8,
+      "first_pass": [
+        {
+          "id": "PW12.1",
+          "description": "Extend intact four-category presets to eight while preserving old IDs and selected consent scope.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW12.2",
+          "description": "Create a separate owned preset set rather than adopt a user task with a colliding name.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW12.3",
+          "description": "Keep generic category setup distinct from optional client projects and their financial settings.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Protect ready-made preset descriptions from accidental edits in the project-guidance dialog.",
+      "remaining_limit": "Competing real client/project definitions still require empirical validation.",
+      "evidence_files": [
+        "timesheet/simple_setup.py",
+        "timesheet/automation_ui.py",
+        "tests/test_personal_work.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C12.3",
+          "description": "Validate competing real project definitions and revise descriptions based on observed confusion.",
+          "status": "Acceptance required",
+          "acceptance": "Use paired shared-app examples; require fewer wrong client minutes, not just more coverage."
+        }
+      ]
+    },
+    {
+      "id": "C13",
+      "category": "Review burden",
+      "previous_rating": 7.5,
+      "rating": 8,
+      "first_pass": [
+        {
+          "id": "PW13.1",
+          "description": "Use declared app functions locally to avoid questions for clear installed application types.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW13.2",
+          "description": "Keep the existing single explicit app/day choice and reuse it for later same-day periods.",
+          "status": "Retained safeguard rechecked"
+        },
+        {
+          "id": "PW13.3",
+          "description": "Measure active simple-review window time and answered/skipped/stale counts locally.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Exclude inactive windows, suspend-sized gaps and backwards-clock gaps; describe this as a workflow proxy.",
+      "remaining_limit": "At least five consenting-user days are needed to establish actual effort or repeated-correction reduction.",
+      "evidence_files": [
+        "timesheet/local_types.py",
+        "timesheet/review_metrics.py",
+        "tests/test_screen_safety.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C13.3",
+          "description": "Measure repeated corrections and review time over at least five consenting-user days.",
+          "status": "Acceptance required",
+          "acceptance": "Separate unresolved, excluded and wrongly allocated minutes; do not optimise only coverage."
+        }
+      ]
+    },
+    {
+      "id": "C14",
+      "category": "Explanations/trust",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW14.1",
+          "description": "Show factual app-type provenance rather than generated explanations.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW14.2",
+          "description": "Distinguish provider decisions from reused validated cache decisions.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW14.3",
+          "description": "Retain request-contract and routing versions separately from model and consent versions.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Render historical version zero as unknown and reject old-contract responses without rewriting saved entries.",
+      "remaining_limit": "Explanation comprehension and historical policy replay still need broader acceptance.",
+      "evidence_files": [
+        "timesheet/automation_status.py",
+        "timesheet/automation_store.py",
+        "tests/test_evaluation_safety.py"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C15",
+      "category": "Correction/undo",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW15.1",
+          "description": "Add undoable local Personal/Work switches that create no time entries.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW15.2",
+          "description": "Allow finite past-hour context corrections without changing current or future space.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW15.3",
+          "description": "Suppress a locally inferred source after entry Undo so it is not immediately recreated.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Exercise 100 random finite corrections, stale revision rejection and exact prior-state Undo restoration.",
+      "remaining_limit": "Human comprehension of correction, Forget and the different Undo scopes remains open.",
+      "evidence_files": [
+        "timesheet/screen_spaces.py",
+        "timesheet/local_types.py",
+        "tests/test_screen_safety.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C15.3",
+          "description": "Test correction, Forget and Undo comprehension with real users.",
+          "status": "Acceptance required",
+          "acceptance": "Users must distinguish reverting time from forgetting examples without extra manual setup."
+        }
+      ]
+    },
+    {
+      "id": "C16",
+      "category": "Accessibility",
+      "previous_rating": 6.5,
+      "rating": 7,
+      "first_pass": [
+        {
+          "id": "PW16.1",
+          "description": "Use native GTK controls for weekly filters, dates, schedule choices and hourly corrections.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW16.2",
+          "description": "Give filters native single-choice toggle state and explicitly label hourly actions/progress bars.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW16.3",
+          "description": "Exercise the expanded simple flow at normal and 200% scale.",
+          "status": "New validation/evidence"
+        }
+      ],
+      "second_pass": "Preserve button focus/expanded sections during refresh and hide inactive loading announcements.",
+      "remaining_limit": "No human Orca acceptance, complete keyboard-only study or accessibility certification is claimed.",
+      "evidence_files": [
+        "timesheet/screen_ui.py",
+        "tests/verify_simple_ui.py",
+        "tests/verify_automation_ui.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C16.3",
+          "description": "Run human Orca, keyboard-only and large-text acceptance for setup/review/undo/export.",
+          "status": "Acceptance required",
+          "acceptance": "Record focus order, announced labels, errors and successful task completion."
+        }
+      ]
+    },
+    {
+      "id": "C17",
+      "category": "Activity recording",
+      "previous_rating": 7.5,
+      "rating": 8,
+      "first_pass": [
+        {
+          "id": "PW17.1",
+          "description": "Count observed active/private intervals rather than work-entry totals.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW17.2",
+          "description": "Fix privacy exclusions masking idle or locked state as active screen use.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW17.3",
+          "description": "Tag new capture with its semantics version while preserving original historical observations.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Warn about older excluded observations that may contain idle/lock time; do not silently rewrite them.",
+      "remaining_limit": "Passive reading/playback depends on the desktop idle signal; no playback/display-power evidence is collected. Multi-day physical suspend/resume, login, lock and disk-exhaustion acceptance remains open.",
+      "evidence_files": [
+        "timesheet/collector.py",
+        "timesheet/screen_time.py",
+        "tests/test_personal_work.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C17.3",
+          "description": "Run multi-day suspend/resume, lock/login and disk-exhaustion tests on disposable hardware data.",
+          "status": "Acceptance required",
+          "acceptance": "Compare captured intervals with a reference log; never fill missing time by inference."
+        }
+      ]
+    },
+    {
+      "id": "C18",
+      "category": "Time/billing integrity",
+      "previous_rating": 8.5,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW18.1",
+          "description": "Union overlapping observations before screen-time totals and daily exports.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW18.2",
+          "description": "Keep manual entries, schedules and context changes from creating recorded screen time.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW18.3",
+          "description": "Keep local generic allocation non-billable and preserve explicit/approved/billed intervals.",
+          "status": "Retained safeguard rechecked"
+        }
+      ],
+      "second_pass": "Recheck duplicate/private/conflicting overlap, DST day lengths and correction concurrency.",
+      "remaining_limit": "Score stays at its prior ceiling: synthetic tests cannot establish universal financial or power-loss acceptance.",
+      "evidence_files": [
+        "timesheet/screen_time.py",
+        "timesheet/day_record.py",
+        "tests/test_screen_time.py"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C19",
+      "category": "Privacy controls",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW19.1",
+          "description": "Keep Personal/Work labels, schedules and installed metadata out of outgoing AI context.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW19.2",
+          "description": "Export local screen totals without raw titles, entry descriptions, clients or rates.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW19.3",
+          "description": "Build optional evaluation templates read-only, excluding current privacy choices and same-day training apps.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Guard CSV formula prefixes hidden by Unicode formatting/control characters and write private files.",
+      "remaining_limit": "App names themselves can be sensitive; private templates require deliberate independent labelling, preview and new consent before live use.",
+      "evidence_files": [
+        "timesheet/screen_export.py",
+        "timesheet/evaluation_template.py",
+        "tests/test_personal_work.py"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C20",
+      "category": "API-key security",
+      "previous_rating": 8,
+      "rating": 8,
+      "first_pass": [
+        {
+          "id": "PW20.1",
+          "description": "Keep screen-time summaries, schedules, exports, diagnostics and local app typing independent of keys.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW20.2",
+          "description": "Check usage blockers before attempting key unlock and reserve again transactionally.",
+          "status": "Retained safeguard rechecked"
+        },
+        {
+          "id": "PW20.3",
+          "description": "Recheck private mock Secret-portal missing/store/read/remove behaviour.",
+          "status": "New validation/evidence"
+        }
+      ],
+      "second_pass": "Verify unlabelled paid evaluation and blocked usage fail before key lookup.",
+      "remaining_limit": "Score is retained: wider real keyring/portal/hardware acceptance was not supplied by the 20-request public test.",
+      "evidence_files": [
+        "timesheet/automation_worker.py",
+        "tests/test_evaluation_safety.py",
+        "packaging/verify_secret_portal.py"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C21",
+      "category": "Cost management",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW21.1",
+          "description": "Use exact local metadata as a zero-request path for supported generic labels.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW21.2",
+          "description": "Keep strict reservations and cross-day unknown-usage acknowledgement ahead of provider sending.",
+          "status": "Retained safeguard rechecked"
+        },
+        {
+          "id": "PW21.3",
+          "description": "Record exactly 20 authorised attempts and 21,054 reported input tokens without retries.",
+          "status": "New validation/evidence"
+        }
+      ],
+      "second_pass": "Label cache reuse accurately and refuse unlabelled examples before any paid preflight.",
+      "remaining_limit": "No currency-cost claim or representative percentage saving is inferred from these fixtures.",
+      "evidence_files": [
+        "timesheet/local_types.py",
+        "timesheet/automation_store.py",
+        "docs/evidence/personal-work-live-synthetic-2026-11-09.json"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C22",
+      "category": "Offline/API failures",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW22.1",
+          "description": "Provide complete observed screen-time insight and local context without network.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW22.2",
+          "description": "Continue local app-type drafts while the TypeSafe mode is off.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW22.3",
+          "description": "Show bounded provider waiting separately from absent or paused worker states.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Repair malformed retry timing into a deliberate paused state, without key access or an implicit retry.",
+      "remaining_limit": "Controlled actual provider outage, authentication and model-retirement acceptance remain open.",
+      "evidence_files": [
+        "timesheet/automation_worker.py",
+        "timesheet/automation_status.py",
+        "tests/test_evaluation_safety.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C22.3",
+          "description": "Run controlled real-provider outage/auth/model-retirement recovery tests with synthetic prompts.",
+          "status": "Acceptance required",
+          "acceptance": "Record requests/usage/recovery; do not send recorded work or retry unknown charges silently."
+        }
+      ]
+    },
+    {
+      "id": "C23",
+      "category": "Performance",
+      "previous_rating": 7.5,
+      "rating": 8,
+      "first_pass": [
+        {
+          "id": "PW23.1",
+          "description": "Move insight calculation to a title-free, query-only SQLite reader so GTK stays responsive on large histories.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW23.2",
+          "description": "Benchmark summaries against 200,000 retained synthetic observations.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW23.3",
+          "description": "Replace repeated hourly scans with direct attribution of disjoint intervals.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Fix rendered modal callback retention found by the sustained UI run; verify immediate timer removal, twenty rapid reopenings and a fresh longer run.",
+      "remaining_limit": "Sustained synthetic CPU/RSS evidence is narrower than the required week-long real-desktop IO/storage profile.",
+      "evidence_files": [
+        "timesheet/local_types.py",
+        "timesheet/screen_time.py",
+        "tests/compare_screen_performance.py",
+        "timesheet/screen_reader.py",
+        "tests/verify_screen_reader_ui.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C23.3",
+          "description": "Run a week-long CPU/RSS/IO/storage profile across realistic retention sizes.",
+          "status": "Acceptance required",
+          "acceptance": "Record machine/package/desktop and latency distributions; set budgets from observations."
+        }
+      ]
+    },
+    {
+      "id": "C24",
+      "category": "Testing/evaluation",
+      "previous_rating": 8.5,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW24.1",
+          "description": "Add screen-time, local metadata, personal/work, evaluation-safety and adversarial regressions.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW24.2",
+          "description": "Check native simple/advanced/automation workflows plus the packaged runtime.",
+          "status": "New validation/evidence"
+        },
+        {
+          "id": "PW24.3",
+          "description": "Add bounded screen-time benchmark and synthetic concurrent-run commands to CI.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Require labelled preflight and retain source hashes for each sustained process; CI configuration is not reported as a remote CI run.",
+      "remaining_limit": "Score remains at the prior ceiling until representative real-day and human acceptance evidence exists.",
+      "evidence_files": [
+        "tests/test_screen_time.py",
+        "tests/test_local_types.py",
+        ".github/workflows/tests.yml"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C25",
+      "category": "Linux compatibility",
+      "previous_rating": 7,
+      "rating": 7.5,
+      "first_pass": [
+        {
+          "id": "PW25.1",
+          "description": "Use locally registered desktop metadata through Gio with conservative exact identities.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW25.2",
+          "description": "Recheck real private X11 properties, Unicode titles, idle and destroyed-window behaviour.",
+          "status": "New validation/evidence"
+        },
+        {
+          "id": "PW25.3",
+          "description": "Recheck the actual isolated GNOME extension and simulated KDE owner/heartbeat protocol.",
+          "status": "New validation/evidence"
+        }
+      ],
+      "second_pass": "Support both GioUnix and older Gio desktop-info bindings; reject partial catalogue collision evidence.",
+      "remaining_limit": "Physical Plasma/Sway/Hyprland and package/compositor acceptance is still incomplete.",
+      "evidence_files": [
+        "timesheet/local_types.py",
+        "tests/test_local_types.py",
+        "tests/verify_gnome.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C25.3",
+          "description": "Complete a physical GNOME/KDE/Sway/Hyprland and native/AppImage/Flatpak matrix.",
+          "status": "Acceptance required",
+          "acceptance": "Record versions, GPU, permissions, background behaviour and exact failures."
+        }
+      ]
+    },
+    {
+      "id": "C26",
+      "category": "Installation/updates",
+      "previous_rating": 7.5,
+      "rating": 8,
+      "first_pass": [
+        {
+          "id": "PW26.1",
+          "description": "Fix AppDir dependency copying for single-file versus package modules and optional older-Xlib six.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW26.2",
+          "description": "Deep-import bundled X11, TLS/libsecret, screen-time, local labels and PDF dependencies.",
+          "status": "New validation/evidence"
+        },
+        {
+          "id": "PW26.3",
+          "description": "Run the bundled Python/GTK candidate through the simple 200% scenario.",
+          "status": "New validation/evidence"
+        }
+      ],
+      "second_pass": "Keep candidate evidence explicitly host-built/unpublished; no provenance, old-distro or final release claim.",
+      "remaining_limit": "Final-source native/AppImage/Flatpak install, upgrade, restore, rollback and trusted publication gates remain open.",
+      "evidence_files": [
+        "packaging/appimage/build.py",
+        "packaging/check_runtime.py",
+        "tests/verify_simple_ui.py"
+      ],
+      "prior_acceptance_gates": [
+        {
+          "id": "C26.2",
+          "description": "Validate fresh install, compatible upgrade, backup restore and rollback for final packages.",
+          "status": "Acceptance required",
+          "acceptance": "Use disposable databases and preserve consent, records and key ownership."
+        },
+        {
+          "id": "C26.3",
+          "description": "Build trusted final-source packages, verify provenance/hashes and publish only those artifacts.",
+          "status": "Acceptance required",
+          "acceptance": "CI/source SHA/public asset digests/local installation must match before claiming delivery."
+        }
+      ]
+    },
+    {
+      "id": "C27",
+      "category": "Architecture",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW27.1",
+          "description": "Separate interval statistics, local context, exports, read-only background snapshots and native screen-time UI.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW27.2",
+          "description": "Separate local metadata inference and content-free review metrics from the AI decision service.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW27.3",
+          "description": "Keep evaluation templates read-only and labels distinct from provider/routing policy.",
+          "status": "Retained safeguard rechecked"
+        }
+      ],
+      "second_pass": "Explicitly release closed modal controls and use weak keyboard-controller ownership; preserve caller transactions and versioned request semantics.",
+      "remaining_limit": "The legacy Store/UI remain substantial; broader restructuring should follow validated product boundaries.",
+      "evidence_files": [
+        "timesheet/screen_time.py",
+        "timesheet/screen_spaces.py",
+        "timesheet/local_types.py"
+      ],
+      "prior_acceptance_gates": []
+    },
+    {
+      "id": "C28",
+      "category": "Auditability",
+      "previous_rating": 8,
+      "rating": 8.5,
+      "first_pass": [
+        {
+          "id": "PW28.1",
+          "description": "Retain local app-category provenance and provider/cache decision source.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW28.2",
+          "description": "Record request-contract versions without backfilling invented historical evidence.",
+          "status": "New or refined implementation"
+        },
+        {
+          "id": "PW28.3",
+          "description": "Publish this 28-category/84-entry register with validation references and unchanged external gates.",
+          "status": "New or refined implementation"
+        }
+      ],
+      "second_pass": "Retain exact source fingerprints for long-running processes and distinguish their revisions from later UI/doc edits.",
+      "remaining_limit": "The audit trail is local and editable by the account owner, not a tamper-proof certificate.",
+      "evidence_files": [
+        "timesheet/automation_store.py",
+        "timesheet/automation_status.py",
+        "tests/soak_screen_time.py"
+      ],
+      "prior_acceptance_gates": []
+    }
+  ],
+  "first_pass_status_counts": {
+    "New or refined implementation": 64,
+    "Retained safeguard rechecked": 8,
+    "New validation/evidence": 12
+  },
+  "elapsed_wall_minutes": 127.47773435,
+  "validation_evidence_file": "docs/evidence/personal-work-validation-2026-11-09.json",
+  "runtime_fingerprint": "3e0d83a459feaf444303daca46c4345b8bad9542cfa7faf75c7be217b198cf10"
+}

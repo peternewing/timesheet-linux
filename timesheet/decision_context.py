@@ -71,10 +71,8 @@ def build(store,activity,repo,config,*,start=None,end=None,ignore_daily_choice=F
         row=store.db.execute('SELECT task_id,draft_default FROM ai_focus WHERE start<=? AND end>=? ORDER BY start DESC LIMIT 1',(activity['start'] if start is None else start,activity['end'] if end is None else end)).fetchone()
         if row and row['task_id'] in ids:focus=row['task_id'];focus_default=bool(row['draft_default'])
     if config['allow_examples']:
-        rows=[r for r in store.rows('SELECT application,task_id,activity_id,scope FROM ai_examples ORDER BY id DESC LIMIT 1000')
-              if r['task_id'] in ids and r['application'].casefold()==activity['app'].casefold()
-              and r['scope']==canonical({'clues':clues,'focus':focus})][:8]
-        examples=[dict(application=r['application'],task=r['task_id']) for r in rows]
+        from .decision_memory import relevant
+        examples=relevant(store,activity['app'],ids,clues,focus)
     network=dict(applications=[activity['app']],tasks=choices,examples=examples,clues=clues,focus=focus,focus_default=focus_default,application_categories=generic)
     # Title/state/interval are only hashed locally for stale-data detection. The
     # fingerprint is not sent. Consent and task/example changes invalidate jobs.

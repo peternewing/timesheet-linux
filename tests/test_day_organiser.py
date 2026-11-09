@@ -29,7 +29,7 @@ class DayOrganiserTests(unittest.TestCase):
         tasks=sorted(ids);other=[i for i in tasks if i!=self.task]
         def answer(apps,tasks,key,**kw):
             unclear=apps==['Browser'];task=None if unclear else self.task
-            probabilities=[(i,.1 if unclear else .01 if i!=task else .96) for i in sorted(ids)]
+            probabilities=[(i,.4/len(ids) if unclear else .03/(len(ids)-1) if i!=task else .96) for i in sorted(ids)]
             probabilities.sort(key=lambda x:(-x[1],x[0]))
             return dict(task=task,probability=.6 if unclear else .96,none_probability=.6 if unclear else .01,
                 alternatives=probabilities,personal=.1,enough_evidence=.3 if unclear else .99,work_kind='other',model='jev-test-1',usage={'input_tokens':100,'output_tokens':10})

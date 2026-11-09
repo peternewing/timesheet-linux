@@ -77,19 +77,37 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         check(key.call_count==1 and connection.call_count==1,'One click verifies the saved personal key')
         check(app.automation_repo().config()['mode']=='off','Connecting alone leaves activity sending off')
         check(not any(isinstance(w,Gtk.Entry) for w in descendants(form)),'Real mouse clicks complete saved-key setup without typing')
+        optional=next(w for w in descendants(form) if isinstance(w,Gtk.Expander) and w.get_label()=='Choose useful tools (optional)')
+        check(not optional.get_expanded(),'Useful tools are optional within the existing fourth step')
+        optional.set_expanded(True);yield
+        choice=next(w for w in descendants(optional) if isinstance(w,Gtk.CheckButton) and w.get_label()=='Automate repeated assignments')
+        choice.set_active(True);yield
+        check(app.store.get('simple_tools','[]')=='[]','Tool choices stay staged before Start')
+        screenshot(form,'setup-tools')
+        optional.set_expanded(False);yield
         screenshot(form,'setup-ready');click(form,'Start recording with Jev');yield
         check(app.store.get('simple_setup_complete')=='1','Explicit Start completes setup')
         check(app.automation_repo().config()['mode']=='automatic','Explicit Start enables automatic organisation with the selected policy')
         check(app.store.get('capture_titles')=='0','The selected app-only privacy choice is preserved')
-        check(len(app.store.tasks())==4,'Categories are created automatically without clients or rates to enter')
+        check(len(app.store.tasks())==8,'Categories are created automatically without clients or rates to enter')
         check(connection.call_count==1,'Completing setup does not add a hidden inference request')
+        check(app.store.get('simple_tools')=='["rules"]','Start saves selected local tool shortcuts')
+        check(find(app.body_today,'Restart Jev').get_visible(),'Today exposes an absent worker instead of claiming background progress')
+        click(app.body_today,'Restart Jev');yield
+        app.store.set('ai_worker_seen',int(time.time()));app.show_page('Today');yield
+        check(not any(isinstance(w,Gtk.Button) and w.get_label()=='Restart Jev' for w in descendants(app.body_today)),'A fresh worker heartbeat clears the recovery prompt')
+        more=next(w for w in descendants(app.body_today) if isinstance(w,Gtk.Expander) and w.get_label()=='More actions')
+        more.set_expanded(True);yield
+        click(app.body_today,'Automate repeated assignments');yield
+        check(app.page=='Rules','The chosen setup tool opens working rules directly from the day')
+        app.show_page('Today');yield
         # Use yesterday so this remains valid just after midnight.
         day=datetime.now().date()-timedelta(days=1);base=bounds(day)[0]+12*3600
         repo=app.automation_repo();repo.configure({**repo.config(),'since':bounds(day)[0]})
         ids=repo.config()['category_tasks']
         with app.store.db:
             for offset,length,name in [(0,600,'Editor'),(3600,600,'Editor'),(7200,300,'EDITOR')]:app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,?,'active',1)",(base+offset,base+offset+length,name))
-        result=dict(task=None,probability=.6,none_probability=.6,alternatives=[(i,.1) for i in sorted(ids)],personal=.1,enough_evidence=.4,work_kind='other',model='jev-simple-ui',usage={'input_tokens':100,'output_tokens':10})
+        result=dict(task=None,probability=.6,none_probability=.6,alternatives=[(i,.4/len(ids)) for i in sorted(ids)],personal=.1,enough_evidence=.4,work_kind='other',model='jev-simple-ui',usage={'input_tokens':100,'output_tokens':10})
         check(Engine(app.store,request=lambda *a,**kw:result,key=lambda:'synthetic').step()=='exception','An unclear decision becomes one human choice')
         app.day=day;app.show_page('Calendar');yield;yield;yield
         check(find(app.body_calendar,'Help Jev with 1 choice').get_sensitive(),'Past days presents the same simple daily record')
@@ -114,7 +132,9 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         check(app.store.get('ai_policy')==before_policy,'Organise my day preserves standing privacy and usage settings')
         check(not any(isinstance(w,Gtk.Button) and (w.get_label() or '').startswith('Review ') and w.get_visible() for w in descendants(organiser_window)),'Uncertain review waits for the Jev pass instead of asking about unprocessed activity')
         for _ in range(4):Engine(app.store,request=lambda *a,**kw:result,key=lambda:'synthetic').step()
-        for _ in range(8):yield
+        for _ in range(30):
+            if any(isinstance(w,Gtk.Button) and w.get_label()=='Review 1 uncertain activity' and w.get_visible() for w in descendants(organiser_window)):break
+            yield
         check(find(organiser_window,'Review 1 uncertain activity').get_visible(),'Whole-day pass consolidates uncertain periods into one activity choice')
         click(organiser_window,'Back to my day');yield
         screenshot(app.win,'past-day');mouse(find(app.simple_details,'Assign'));yield
@@ -135,11 +155,15 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         correction=app.dialogs[-1];click(correction,'Research & learning');yield
         check(app.store.entries(base,base+600)[0]['task']=='Research & learning','Changing a category is another single choice')
         with app.store.db:aid=app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,'Writer','active',1)",(base+10000,base+10300)).lastrowid
-        confident=dict(task=ids[3],probability=.99,none_probability=.004,alternatives=[(ids[3],.99)]+[(i,.002) for i in sorted(ids[:3])],personal=.1,enough_evidence=.99,work_kind='other',model='jev-simple-ui',usage={'input_tokens':100,'output_tokens':10})
+        confident=dict(task=ids[3],probability=.99,none_probability=.004,alternatives=[(ids[3],.99)]+[(i,.006/(len(ids)-1)) for i in sorted(ids) if i!=ids[3]],personal=.1,enough_evidence=.99,work_kind='other',model='jev-simple-ui',usage={'input_tokens':100,'output_tokens':10})
         check(Engine(app.store,request=lambda *a,**kw:confident,key=lambda:'synthetic').step()=='applied','A separate app has an automatically organised period to inspect')
         app.show_page('Calendar');yield
         app.simple_metric_buttons['ai'].emit('clicked');yield
         check(any(isinstance(w,Gtk.Label) and w.get_text()=='Planning & admin' for w in descendants(app.simple_details)) and not any(isinstance(w,Gtk.Label) and w.get_text()=='Research & learning' for w in descendants(app.simple_details)),'Automatic card shows only automatically organised periods')
+        why=next(w for w in descendants(app.simple_details) if isinstance(w,Gtk.Expander) and w.get_label()=='Why this category?')
+        why.set_expanded(True);yield
+        check(any(isinstance(w,Gtk.Label) and 'jev-simple-ui' in w.get_text() and 'Policy: 1' in w.get_text() for w in descendants(why)),'Automatic entries explain the saved model and draft policy inline')
+        screenshot(app.win,'decision-explanation')
         app.simple_metric_buttons['human'].emit('clicked');yield
         check(any(isinstance(w,Gtk.Label) and w.get_text()=='Research & learning' for w in descendants(app.simple_details)) and not any(isinstance(w,Gtk.Label) and w.get_text()=='Planning & admin' for w in descendants(app.simple_details)),'Chosen-by-you card shows only user choices and manual entries')
         with app.store.db:
@@ -163,6 +187,19 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         app.store.stop_timer(clock+8)
         app.show_page('Settings');yield;yield;yield
         check(not any(isinstance(w,Gtk.Entry) for w in descendants(app.body_settings)),'Everyday settings has no typing fields')
+        status=next(w for w in descendants(app.body_settings) if isinstance(w,Gtk.Expander) and w.get_label()=='Jev activity and limits')
+        status.set_expanded(True);yield
+        check(any(isinstance(w,Gtk.Label) and 'background requests' in w.get_text() for w in descendants(status)),'Simple settings exposes factual request limits and unresolved usage')
+        status.set_expanded(False);yield
+        before=app.automation_repo().config()
+        useful=next(w for w in descendants(app.body_settings) if isinstance(w,Gtk.Expander) and w.get_label()=='Choose useful tools (optional)')
+        useful.set_expanded(True);yield
+        choice=next(w for w in descendants(useful) if isinstance(w,Gtk.CheckButton) and w.get_label()=='Prepare client reports')
+        choice.set_active(True);yield
+        check(app.automation_repo().config()==before,'Choosing business shortcuts leaves AI consent and outgoing scope unchanged')
+        click(useful,'Open reports');yield
+        check(app.page=='Reports','Purpose-based tools open the retained report workflow')
+        app.show_page('Settings');yield
         toggle=next(w for w in descendants(app.body_settings) if isinstance(w,Gtk.CheckButton) and w.get_label()=='Show advanced tools in sidebar')
         toggle.set_active(True);yield
         check(all(b.get_visible() for b in app.nav.values()),'Optional sidebar switch immediately exposes retained tools')
@@ -181,7 +218,54 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         check([n for n,b in app.nav.items() if b.get_visible()]==['Today','Calendar','Settings'],'Turning optional tools off restores the three-page sidebar')
         advanced=next(w for w in descendants(app.body_settings) if isinstance(w,Gtk.Expander) and w.get_label()=='Advanced tools')
         check(not advanced.get_expanded(),'Legacy project, rule and invoice tools are collapsed by default')
+        before=app.store.get('ai_policy');app.screen_insights(day);yield
+        insights=app.dialogs[-1]
+        check(not any(isinstance(w,Gtk.Entry) for w in descendants(insights)),'Personal/work screen-time insights require no typed names or project setup')
+        click(insights,'Personal / work spaces');yield
+        spaces=app.dialogs[-1];click(spaces,'Use Personal space');yield
+        from timesheet.screen_spaces import current
+        check(current(app.store)['space']=='personal' and app.store.get('ai_policy')==before,'A personal space switch stays local without changing AI or billing policy')
+        click(insights,'Personal');yield
+        check(any(isinstance(w,Gtk.Label) and 'recorded screen time' in w.get_text() for w in descendants(insights)),'The Personal filter shows observed screen time without a work claim')
+        screenshot(insights,'screen-time-insights');click(insights,'Close');yield
+        app.screen_insights(day);yield
+        insights=app.dialogs[-1]
+        hourly=next(w for w in descendants(insights) if isinstance(w,Gtk.Expander) and w.get_label().startswith('By hour'))
+        hourly.set_expanded(True);yield
+        from timesheet.screen_time import summary as screen_summary
+        from timesheet import screen_spaces
+        hour=screen_summary(app.store,day)['hourly'][0];before_context=screen_spaces.effective_now(app.store)['space']
+        click(insights,hour['label']);yield
+        period=app.dialogs[-1]
+        check(period.get_title()=='Label recorded period' and not any(isinstance(w,Gtk.Entry) for w in descendants(period)),'An hourly bar opens a click-only local context correction')
+        click(period,'Work');yield
+        check(all(r['space']=='work' for r in screen_spaces.periods(app.store,hour['start'],hour['end'])),'Hourly correction labels precisely the selected past period')
+        check(screen_spaces.effective_now(app.store)['space']==before_context and app.store.get('ai_policy')==before,'Past context correction preserves current space and outgoing consent')
+        click(insights,'Refresh insights');yield;yield
+        check(any(isinstance(w,Gtk.Expander) and w.get_label().startswith('By hour') and w.get_expanded() for w in descendants(insights)),'Refreshing insights preserves the expanded hourly section')
+        click(insights,'Personal / work spaces');yield
+        spaces=app.dialogs[-1];click(spaces,'Undo last space change');yield
+        check(all(r['space']=='unspecified' for r in screen_spaces.periods(app.store,hour['start'],hour['end'])),'Space Undo restores the previous past labels without touching capture')
+        click(insights,'Personal / work spaces');yield
+        spaces=app.dialogs[-1]
+        expander=next(w for w in descendants(spaces) if isinstance(w,Gtk.Expander) and w.get_label()=='Automatic personal/work labels (optional)');expander.set_expanded(True);yield
+        click(spaces,'Weekdays 9–5');yield
+        check(screen_spaces.effective_now(app.store)['source']=='schedule' and app.store.get('ai_policy')==before,'One schedule choice enables local automatic labels without changing AI permission')
+        check(bool(app.store.rows('SELECT zone FROM screen_space_schedules WHERE end IS NULL')[0]['zone']),'The schedule retains local clock rules for travel and daylight-saving boundaries')
+        click(insights,'Personal / work spaces');yield
+        spaces=app.dialogs[-1];click(spaces,'Use Work space');yield
+        check(screen_spaces.effective_now(app.store)['source']=='manual','An explicit Work switch overrides the schedule')
+        click(insights,'Personal / work spaces');yield
+        spaces=app.dialogs[-1];click(spaces,'Undo last space change');yield
+        check(screen_spaces.effective_now(app.store)['source']=='schedule','Undoing a manual override resumes its previous schedule')
+        click(insights,'Close');yield
+        app.show_page('Settings');yield
         screenshot(app.win,'settings')
+        preview=app.store.undo_preview();click(app.body_settings,'Undo last change');yield
+        undo=app.dialogs[-1]
+        check(any(isinstance(w,Gtk.Label) and w.get_text()==preview['action'] for w in descendants(undo)),'Undo previews the actual latest action before changing time')
+        click(undo,'Undo this change');yield
+        check(undo not in app.dialogs,'Confirmed Undo applies the previewed change and closes the dialog')
         click(app.body_settings,'Turn Jev off');yield
         check(repo.config()['mode']=='off','AI can be turned off with one clear action')
         check(app.store.db.execute('PRAGMA integrity_check').fetchone()[0]=='ok','Database remains valid after setup, review, correction and pause')
@@ -191,5 +275,5 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         try:next(iterator);return True
         except StopIteration:app.quit();return False
     app.connect('activate',lambda _:GLib.timeout_add(180,advance))
-    with patch.object(desktop,'start_collector'),patch.object(desktop,'start_automation'),patch.object(desktop,'read_health',return_value={'status':'active','at':time.time(),'error':''}),patch('timesheet.jev.get_key',key),patch('timesheet.jev.check_connection',connection):app.run([])
+    with patch('timesheet.local_types.registry.lookup',return_value=None),patch.object(desktop,'start_collector'),patch.object(desktop,'start_automation'),patch.object(desktop,'read_health',return_value={'status':'active','at':time.time(),'error':''}),patch('timesheet.jev.get_key',key),patch('timesheet.jev.check_connection',connection):app.run([])
     if failures or not completed:raise SystemExit(1)

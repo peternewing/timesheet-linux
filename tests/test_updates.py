@@ -18,3 +18,8 @@ class UpdateTests(unittest.TestCase):
         self.assertGreater(version('0.5.0'),version('0.5.0-rc99'))
         for bad in ['0.5','0.5.0; do something','x'*90]:
             with self.assertRaises(ValueError):version(bad)
+    def test_malformed_asset_name_does_not_hide_a_valid_release(self):
+        names=['TimeSheetLinux-x86_64.AppImage','TimeSheetLinux-x86_64.flatpak','SHA256SUMS']
+        item=dict(tag_name='v0.6.1-rc2',html_url=PREFIX+'v0.6.1-rc2',assets=[{'name':{}}]+[{'name':n} for n in names])
+        opener=Mock();opener.open.return_value=io.BytesIO(json.dumps([item]).encode())
+        self.assertTrue(check('0.5.0',opener)['newer'])
