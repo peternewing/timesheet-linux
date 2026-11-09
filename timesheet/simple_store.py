@@ -30,6 +30,18 @@ def review_items(store,day,limit=100):
     return sorted((g for g in groups.values() if g.get('eligible')),key=lambda r:(-r['seconds'],r['app_key']))[:limit]
 
 
+def activity_item(store,day,app,now=None):
+    """Direct Assign includes pending AI work, not just the exception inbox."""
+    from .daily_choices import candidates,automatic_drafts
+    Repository(store);now=int(time.time() if now is None else now)
+    blocks=candidates(store,day,app,now);estimates=automatic_drafts(store,day,app)
+    if not blocks and not estimates:return None
+    periods=blocks+estimates
+    return dict(kind='daily',day=day.isoformat(),app=app,app_key=app.casefold(),blocks=blocks,
+                auto_entries=estimates,start=min(r['start'] for r in periods),end=max(r['end'] for r in periods),
+                seconds=sum(r['end']-r['start'] for r in periods))
+
+
 def assign_manual(store,blocks,task_id):
     """Use the existing atomic fragment revalidation and undo path."""
     if task_id not in preset_ids(store).values():raise ValueError('Choose a current activity category.')

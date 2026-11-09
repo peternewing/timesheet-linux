@@ -1,6 +1,6 @@
 # Install Time Sheet Linux
 
-Install **0.6.1-rc1** using one of the two methods below. No root access is needed for the app installer itself. This version is a prerelease and verify checksums and provenance; back up important data before upgrading. It uses the same database schema and report snapshots as 0.2.0.
+Install **0.6.1-rc2** using one of the two methods below. No root access is needed for the app installer itself. This version is a prerelease and verify checksums and provenance; back up important data before upgrading. It uses the same database schema and report snapshots as 0.2.0.
 
 - [Option 1: AppImage](#option-1-appimage)
 - [Option 2: Terminal installation from source](#option-2-terminal-installation-from-source)
@@ -19,13 +19,13 @@ The published AppImage is for **x86-64** (`x86_64`). The AppImage needs glibc 2.
 
 The source install needs Python 3.10+, PyGObject, GTK 4 and libadwaita 1.5+. The AppImage bundles its UI libraries.
 
-## Install 0.6.1-rc1
+## Install 0.6.1-rc2
 
-Choose one of the two methods. No GitHub account is required. The [release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.6.1-rc1) has the release notes.
+Choose one of the two methods. No GitHub account is required. The [release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.6.1-rc2) has the release notes.
 
 ### Option 1: AppImage
 
-Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.6.1-rc1/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.6.1-rc1/SHA256SUMS) into a permanent folder. Open a terminal in that folder and run:
+Download the [AppImage](https://github.com/peternewing/timesheet-linux/releases/download/v0.6.1-rc2/TimeSheetLinux-x86_64.AppImage) and [SHA256SUMS](https://github.com/peternewing/timesheet-linux/releases/download/v0.6.1-rc2/SHA256SUMS) into a permanent folder. Open a terminal in that folder and run:
 
 ```sh
 sha256sum --ignore-missing -c SHA256SUMS
@@ -75,7 +75,7 @@ sudo zypper install git python3-gobject python3-gobject-Gdk python3-cairo typeli
 On openSUSE, package names can be Python-version-specific. The bindings must match `/usr/bin/python3`; use `zypper search` if needed. PDF export requires ReportLab and DejaVu Sans. If PDF export says fonts are missing even though they are installed, see [PDF font troubleshooting](#troubleshooting). Then install the fixed release tag:
 
 ```sh
-git clone --branch v0.6.1-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.6
+git clone --branch v0.6.1-rc2 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.6
 cd timesheet-linux-0.6
 /usr/bin/python3 -m timesheet.diagnostics
 ./install.sh
@@ -135,7 +135,7 @@ Settings offers a checked backup and restore and keeps a pre-restore recovery co
 
 ### Source
 
-The `v0.6.1-rc1` checkout is pinned to a tag: back up your data, then download or clone a newer release into a separate folder and run its installer. Keep the older checkout and a backup for rollback. GNOME helper updates may require sign-out/in.
+The `v0.6.1-rc2` checkout is pinned to a tag: back up your data, then download or clone a newer release into a separate folder and run its installer. Keep the older checkout and a backup for rollback. GNOME helper updates may require sign-out/in.
 
 To remove source integration while retaining the database and backups, run `./uninstall.sh` from the installed checkout. Remove personal data separately only if you intend to erase it.
 

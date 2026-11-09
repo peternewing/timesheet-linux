@@ -35,3 +35,7 @@ print('PASS: bundled simple day-record PDF generation')
 from timesheet import daily_choices
 assert callable(daily_choices.apply_saved)
 print('PASS: bundled local daily-choice continuation')
+
+from timesheet import day_organiser
+assert callable(day_organiser.request) and callable(day_organiser.ready_to_work)
+print('PASS: bundled one-click day organiser')

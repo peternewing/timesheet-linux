@@ -191,7 +191,7 @@ class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
             display_name='Past days' if name=='Calendar' and self.simple_mode() else name
             b=Gtk.Button(); inner=Gtk.Box(spacing=10); inner.append(Gtk.Image.new_from_icon_name(icon)); inner.append(label(display_name,selectable=False)); b.set_child(inner)
             b.add_css_class('flat'); b.update_property([Gtk.AccessibleProperty.LABEL],[display_name]); b.set_tooltip_text(f'{display_name} (Ctrl+{len(self.nav)+1})'); b.connect('clicked',lambda _,n=name:self.show_page(n)); sidebar.append(b); self.nav[name]=b
-            if self.simple_mode():b.set_visible(name in ('Today','Calendar','Settings'))
+            if self.simple_mode():b.set_visible(name in ('Today','Calendar','Settings') or self.store.get('simple_show_advanced','0')=='1')
         spacer=Gtk.Box(); spacer.set_vexpand(True); sidebar.append(spacer); sidebar.append(label('Private • on this computer','dim-label'))
         self.stack=Gtk.Stack(hexpand=True,vexpand=True); split.append(self.stack)
         for name in PAGES:
@@ -312,6 +312,7 @@ class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
     def client_choices(self): return [(r['id'],r['name']) for r in self.store.rows('SELECT * FROM clients WHERE archived=0 ORDER BY name')]
     def project_choices(self): return [(r['id'],f"{r['client']} / {r['name']}") for r in self.store.rows('SELECT p.*,c.name client FROM projects p JOIN clients c ON c.id=p.client_id WHERE p.archived=0 AND c.archived=0 ORDER BY c.name,p.name')]
     def show_page(self,name):
+        if name!='Calendar':self.simple_activity_override=False
         self.page=name; self.stack.set_visible_child_name(name)
         self.live_signature=None
         for n,b in self.nav.items():
@@ -331,7 +332,9 @@ class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
             self.capture_button.set_label('Resume' if self.store.get('capture_enabled','0')!='1' else 'Pause')
             if self.simple_mode():
                 self.status.set_text({'active':'Recording','paused':'Paused','setup_required':'Needs setup','stopped':'Stopped','error':'Needs attention','degraded':'Needs attention'}.get(status,'Starting…'))
-                self.simple_tick(rt,health,now=now);return True
+                self.simple_tick(rt,health,now=now)
+                if self.page not in ('Today','Calendar'):self.update_live_counts(rt,now)
+                return True
             if self.page=='Today':
                 ai=self.store.db.execute('SELECT MAX(updated) FROM ai_jobs').fetchone()
                 focus=self.store.db.execute('SELECT task_id,end FROM ai_focus WHERE start<=? AND end>? ORDER BY start DESC LIMIT 1',(int(time.time()),int(time.time()))).fetchone()
@@ -879,8 +882,11 @@ class TimeSheet(SimpleUI,AutomationUI,Adw.Application):
         window.present()
 
     def refresh_calendar(self):
-        if self.simple_mode():return self.simple_past_days()
+        if self.simple_mode() and not getattr(self,'simple_activity_override',False):return self.simple_past_days()
         b=self.body_calendar; self.clear(b); self.selected_blocks=[]
+        if self.simple_mode():
+            def summary(_):self.simple_activity_override=False;self.show_page('Calendar')
+            b.append(button('Back to day summary',summary))
         self.heading(b,'Calendar','Your activity and task history, day by day')
         top=Gtk.Box(spacing=20); b.append(top)
         cal=Gtk.Calendar(); cal.set_valign(Gtk.Align.START); cal.select_day(GLib.DateTime.new_local(self.day.year,self.day.month,self.day.day,12,0,0)); top.append(cal)

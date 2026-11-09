@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.1-rc2 — one-click organisation and accessible tools
+
+- Organise my day prioritises a bounded, authorised day in the independent Jev worker,
+  with live progress, cached equivalent decisions and grouped uncertain choices.
+- Assign beside each top activity chooses once for its eligible app/day periods,
+  including pending AI work and editable AI drafts, with existing undo protections.
+- Settings can show retained advanced tools in the sidebar. Timer, manual time and
+  detailed project assignment are reachable from the simple day without changing setup.
+- Explain Jev's decisions and advanced tools in optional expandable help.
+- Clicking card numbers/captions activates their button without selecting text.
+
 ## 0.6.1-rc1 — choose once per day
 
 - Group matching app activity across the selected day into one category choice and reuse it locally for later settled periods.

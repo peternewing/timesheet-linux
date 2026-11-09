@@ -39,9 +39,13 @@ class Engine:
             if self.store.get('ai_pause_kind')=='budget' and self.store.get('ai_pause_day')!=day:
                 self.store.set('ai_pause_reason','')
             else:return 'paused'
-        self.repo.discover(now)
-        job=self.repo.claim(now)
-        if not job:return 'idle'
+        from .day_organiser import active,finish_if_ready
+        batch=active(self.store,now)
+        self.repo.discover(now,batch=batch)
+        job=self.repo.claim(now,batch=batch)
+        if not job:
+            if batch:finish_if_ready(self.store,batch)
+            return 'idle'
         if not self.repo.fresh(job):
             self.repo.transition(job['id'],'stale','Evidence or permission changed before sending.');return 'stale'
         network=json.loads(job['network']);model=self.store.get('ai_pinned_model','jev-latest')
@@ -136,14 +140,20 @@ def run(*,once=False):
         pid=DATA_DIR/'automation.pid';pid.write_text(str(os.getpid()));pid.chmod(0o600)
         try:
             while not stopped[0]:
+                state='paused'
                 try:
                     state=engine.step()
                     if state in ('off','other installation'):break
                 except Exception:
                     engine.pause('Automation stopped after a local error. Your recorder is independent. Review and Resume when ready.')
                 if once:break
+                from .day_organiser import active,ready_to_work
+                # A requested day drains promptly under the same single-worker lock.
+                # Pauses/backoff/retry retain normal pacing and all usage gates.
+                if state in ('applied','exception','stale','idle') and ready_to_work(store):continue
+                waiting_pass=active(store)
                 for _ in range(50):
-                    if stopped[0]:break
+                    if stopped[0] or (not waiting_pass and active(store)):break
                     time.sleep(.1)
         finally:
             store.close();pid.unlink(missing_ok=True)

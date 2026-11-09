@@ -193,23 +193,29 @@ class SimpleUI:
         metrics=Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE,homogeneous=True,min_children_per_line=1,max_children_per_line=3,column_spacing=10,row_spacing=10)
         self.simple_metrics={};self.simple_metric_buttons={}
         for key,title in [('active','Recorded app use'),('ai','Organised automatically'),('human','Chosen by you')]:
-            card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=5);value=label(compact(record[key]),'metric');card.append(value);card.append(label(title,'dim-label'))
+            card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=5);card.set_can_target(False)
+            value=label(compact(record[key]),'metric',selectable=False);card.append(value);card.append(label(title,'dim-label',selectable=False))
             control=Gtk.Button();control.set_child(card);control.add_css_class('card');control.add_css_class('metric-selector')
             control.update_property([Gtk.AccessibleProperty.LABEL],[title]);control.connect('clicked',lambda _,key=key:self.simple_select_metric(key));metrics.append(control)
             self.simple_metrics[key]=value;self.simple_metric_buttons[key]=control
         body.append(metrics)
         self.simple_details=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);body.append(self.simple_details)
         self.simple_details_signature=None;self.simple_render_details(record)
-        actions=Gtk.Box(spacing=8,homogeneous=True);body.insert_child_after(actions,metrics.get_prev_sibling())
-        if items:actions.append(button(f'Help Jev with {len(items)}'+('+' if len(items)==100 else '')+(' choice' if len(items)==1 else ' choices'),lambda _:self.simple_review(day),True))
+        actions=Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE,homogeneous=True,min_children_per_line=1,max_children_per_line=3,column_spacing=8,row_spacing=8);body.insert_child_after(actions,metrics.get_prev_sibling())
+        actions.append(button('Organise my day',lambda _:self.simple_organise(day),True))
+        if items:actions.append(button(f'Help Jev with {len(items)}'+('+' if len(items)==100 else '')+(' choice' if len(items)==1 else ' choices'),lambda _:self.simple_review(day)))
         elif record['unclassified']:body.append(label('Some activity is waiting for Jev or was left uncategorised.','dim-label'))
         else:body.append(label('No choices waiting.','dim-label'))
-        actions.append(button('Save day record',lambda _:self.simple_export(day),not items))
+        actions.append(button('Save day record',lambda _:self.simple_export(day)))
         self.simple_unclassified=label('Uncategorised: '+compact(record['unclassified']),'dim-label');body.append(self.simple_unclassified)
         rt=self.store.runtime()
         if rt['state']=='running':self.row(body,'Your task timer is running','Stop it when this task is finished.',[('Stop timer',lambda _:self.run_action(self.store.stop_timer))])
         body.append(label('Your day at a glance','title-3'))
         start,end=bounds(day);timeline=Timeline(start,end,record['activity']);body.append(timeline);self.simple_timeline=timeline
+        more=Gtk.Expander(label='More actions');tools=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8);more.set_child(tools);body.append(more)
+        tools.append(button('Start task timer',lambda _:self.timer_dialog()))
+        tools.append(button('Add missing time',lambda _:self.simple_add_time(day)))
+        tools.append(button('Review activity & assign projects',lambda _:self.simple_detailed_day(day)))
         self.simple_expand(body,'Timeline colours','Blue: recorded app activity. Grey: away or locked. Red: missing capture. Personal and excluded activity stay separate. App activity is evidence of use, not proof that an output was completed.')
         self.simple_expand(body,'What this record means','This is a local record of app activity, AI estimates and your choices. Away time and missing capture are separate. Manual time may extend beyond app activity. Export does not approve billing or certify productivity.')
 
@@ -220,16 +226,16 @@ class SimpleUI:
         self.simple_render_details(snapshot(self.store,day,now=int(time.time()),include_running=True),force=True)
 
     def simple_render_details(self,record,force=False):
-        from .app import Gtk,label,append_in_batches,set_changed_text
+        from .app import Gtk,label,button,append_in_batches,set_changed_text
         key=getattr(self,'simple_metric_view','active')
-        for name,button in self.simple_metric_buttons.items():
-            if name==key:button.add_css_class('selected')
-            else:button.remove_css_class('selected')
+        for name,control in self.simple_metric_buttons.items():
+            if name==key:control.add_css_class('selected')
+            else:control.remove_css_class('selected')
         entries=[e for e in record['entries'] if (e['source'] in ('AI category','Rule category'))==(key=='ai')] if key!='active' else []
-        signature=(key,(tuple(name for name,_ in record['top_apps'][:5]),tuple((r['start'],r['app'],r['state']) for r in record['activity'])) if key=='active' else tuple((e['id'],e['revision']) for e in entries),bool(record.get('running')))
+        signature=(key,(tuple(name for name,_ in record['top_apps']),tuple((r['start'],r['app'],r['state']) for r in record['activity'])) if key=='active' else tuple((e['id'],e['revision']) for e in entries),bool(record.get('running')))
         if not force and signature==self.simple_details_signature:
             if key=='active':
-                for name,seconds in record['top_apps'][:5]:
+                for name,seconds in record['top_apps']:
                     value,bar=self.simple_top_rows[name];set_changed_text(value,compact(seconds));bar.set_fraction(seconds/max(1,record['active']))
                 for r in record['activity']:
                     if r['state']=='active' and (r['start'],r['app']) in self.simple_period_rows:set_changed_text(self.simple_period_rows[(r['start'],r['app'])],datetime.fromtimestamp(r['start']).strftime('%H:%M:%S')+'–'+datetime.fromtimestamp(r['end']).strftime('%H:%M:%S')+' · '+r['app'])
@@ -240,9 +246,16 @@ class SimpleUI:
         if key=='active':
             box.append(label('Top activities','title-3'))
             if not record['top_apps']:box.append(label('Recorded apps will appear here, longest first.','dim-label'))
-            for name,seconds in record['top_apps'][:5]:
-                row=Gtk.Box(spacing=12);row.append(label(name));value=label(compact(seconds),'dim-label');value.set_hexpand(True);value.set_halign(Gtk.Align.END);row.append(value);box.append(row)
-                bar=Gtk.ProgressBar(fraction=seconds/max(1,record['active']));box.append(bar);self.simple_top_rows[name]=(value,bar)
+            extra=None
+            if len(record['top_apps'])>5:
+                more=Gtk.Expander(label='More activities');extra=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8);more.set_child(extra)
+            for index,(name,seconds) in enumerate(record['top_apps']):
+                target=box if index<5 else extra
+                row=Gtk.Box(spacing=12);row.append(label(name));value=label(compact(seconds),'dim-label');value.set_hexpand(True);value.set_halign(Gtk.Align.END);row.append(value)
+                assign=button('Assign',lambda _,name=name:self.simple_assign_activity(record['day'],name))
+                assign.update_property([Gtk.AccessibleProperty.LABEL],['Assign '+name+' for this day']);row.append(assign);target.append(row)
+                bar=Gtk.ProgressBar(fraction=seconds/max(1,record['active']));target.append(bar);self.simple_top_rows[name]=(value,bar)
+            if extra is not None:box.append(more)
             periods=Gtk.Expander(label='Recorded activity periods');periods.set_expanded(getattr(self,'simple_periods_open',False));periods.connect('notify::expanded',lambda w,*_:setattr(self,'simple_periods_open',w.get_expanded()));rows=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8);periods.set_child(rows);box.append(periods)
             def period_row(target,row):
                 line=label(datetime.fromtimestamp(row['start']).strftime('%H:%M:%S')+'–'+datetime.fromtimestamp(row['end']).strftime('%H:%M:%S')+' · '+row['app'],'dim-label');target.append(line);self.simple_period_rows[(row['start'],row['app'])]=line
@@ -259,6 +272,10 @@ class SimpleUI:
 
     def simple_tick(self,rt,health,now=None):
         from .app import set_changed_text
+        if getattr(self,'simple_activity_override',False):
+            if not self.dialog_count and time.monotonic()-self.last_refresh>15:
+                self.refresh_calendar_details();self.last_refresh=time.monotonic()
+            return
         if self.page not in ('Today','Calendar') or self.store.get('simple_setup_complete','0')!='1':return
         now=int(time.time() if now is None else now)
         if now==getattr(self,'simple_last_tick',None):return
@@ -293,10 +310,55 @@ class SimpleUI:
         calendar.connect('day-selected',changed)
         self.simple_day_body(body,self.day)
 
-    def simple_review(self,day):
+    def simple_assign_activity(self,day,app):
+        from datetime import date
+        if isinstance(day,str):day=date.fromisoformat(day)
+        item=simple_store.activity_item(self.store,day,app)
+        if item:self.simple_review(day,items=[item])
+        else:
+            self.simple_select_metric('human')
+            self.toast('No unassigned settled periods. Saved categories can be changed below; recent activity will settle shortly.')
+
+    def simple_organise(self,day):
+        from .app import GLib,button,label
+        from . import day_organiser
+        config=self.automation_repo().config()
+        if config['mode']=='off' or config['owner']!=owner_token():self.simple_setup_wizard();return
+        if self.store.get('ai_pause_reason',''):self.simple_ai_status();return
+        try:batch=day_organiser.request(self.store,day)
+        except ValueError as exc:self.toast(str(exc));return
+        desktop.start_automation()
+        window,body,_=self.simple_window('Organise my day',height=420)
+        self.heading(body,'Jev is organising your day',day.strftime('%A, %d %B'))
+        status=label('Finding recorded activities…');body.append(status)
+        choices=button('Review uncertain activities',lambda _:(window.close(),self.simple_review(day)),True);choices.set_visible(False);body.append(choices)
+        fix=button('Fix Jev',lambda _:(window.close(),self.simple_ai_status()));fix.set_visible(False);body.append(fix)
+        body.append(button('Back to my day',lambda _:(window.close(),self.show_page(self.page))))
+        self.simple_expand(body,'What Jev does','Jev compares your categories, app names and permitted clues. Clear matches become reversible, non-billable drafts. Equivalent activity reuses the decision. Only uncertain apps need your choice. Existing assignments, privacy choices and usage limits are preserved. Recent activity waits until it is settled. Nothing proves completed output from app time alone.')
+        def poll():
+            if window not in self.dialogs:return False
+            progress=day_organiser.progress(self.store,batch);current=day_organiser.active(self.store)
+            running=bool(current and current['id']==batch['id']);reason=self.store.get('ai_pause_reason','')
+            status.set_text(('Jev needs attention. ' if reason else 'Organising… ' if running else 'Pass finished. ')+f"{progress['organised']} periods organised · {progress['waiting']} waiting")
+            waiting=simple_store.review_items(self.store,day);choices.set_visible(bool(waiting));choices.set_label(f'Review {len(waiting)} uncertain '+('activity' if len(waiting)==1 else 'activities'))
+            fix.set_visible(bool(reason))
+            if not running and progress['waiting']:status.set_text('This pass stopped. Remaining activity will continue in the background within your settings.')
+            if not running and not progress['waiting'] and not waiting:status.set_text('All eligible activity is organised. Recent, excluded or deliberately uncategorised activity stays separate.')
+            return True
+        poll();GLib.timeout_add_seconds(1,poll);window.present()
+
+    def simple_add_time(self,day):
+        if day==datetime.now().date():self.entry_dialog()
+        else:self.entry_dialog(start=bounds(day)[0]+9*3600,end=bounds(day)[0]+9*3600+1800)
+
+    def simple_detailed_day(self,day):
+        self.day=day;self.simple_activity_override=True
+        self.show_page('Calendar')
+
+    def simple_review(self,day,items=None):
         from .app import Gtk,GLib,button,label
         window,body,header=self.simple_window('One quick choice')
-        items=simple_store.review_items(self.store,day);queue=list(items);done=[0]
+        items=simple_store.review_items(self.store,day) if items is None else items;queue=list(items);done=[0]
         def clear():
             window.set_focus(None)
             while body.get_first_child():body.remove(body.get_first_child())
@@ -382,17 +444,25 @@ class SimpleUI:
     def simple_settings(self):
         from .app import Gtk,button,label,__version__
         body=self.body_settings;self.clear(body);self.heading(body,'Settings','Keep the everyday flow simple.')
+        show=Gtk.CheckButton(label='Show advanced tools in sidebar');show.set_active(self.store.get('simple_show_advanced','0')=='1')
+        show.connect('toggled',lambda w:self.simple_sidebar(w.get_active()));body.append(show)
         body.append(button('Change my setup',lambda _:self.simple_setup_wizard(),True))
         body.append(button('Undo last change',lambda _:self.run_action(self.store.undo,lambda action:self.toast(action+' undone'))))
         repo=self.automation_repo();config=repo.config()
         if config['mode']!='off':body.append(button('Turn Jev off',lambda _:self.run_action(lambda:repo.configure({**config,'mode':'off'}))))
         body.append(button('Check for updates',lambda _:self.check_app_updates()))
         self.simple_expand(body,'Privacy and data','Your app activity is recorded locally. Optional Jev sends only the context chosen in setup using your personal TypeSafe key. Pause stops capture; Turn Jev off stops future background requests. Already-sent requests cannot be recalled. Away, locked, excluded and capture gaps stay separate. Use Advanced tools for exclusions, retention and backup/restore.')
+        self.simple_expand(body,'What does Jev do?','Jev chooses categories from app names and the clues you allow, checks whether the evidence is sufficient, and leaves ambiguous apps for you. It reuses equivalent decisions and can learn from your corrections. Organise my day runs this for the selected day. It does not approve bills or prove completed work.')
         advanced=Gtk.Expander(label='Advanced tools');tools=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);advanced.set_child(tools);body.append(advanced)
         for name,target in [('Projects and tasks','Projects'),('Assignment rules','Rules'),('Invoices and client reports','Reports'),('All time entries','History')]:tools.append(button(name,lambda _,target=target:self.show_page(target)))
+        tools.append(label('Projects group client work. Rules assign matching activity locally. History edits and approves entries. Reports export approved work and protect billed records. These tools use the same saved records as your day summary.','dim-label'))
         tools.append(button('Recording, privacy and backups',lambda _:self.simple_advanced_settings()))
         tools.append(button('Detailed Jev controls',lambda _:self.automation_dialog()))
         body.append(label('Time Sheet Linux '+__version__,'dim-label'))
+
+    def simple_sidebar(self,show):
+        self.store.set('simple_show_advanced','1' if show else '0')
+        for name,control in self.nav.items():control.set_visible(show or name in ('Today','Calendar','Settings'))
 
     def simple_advanced_settings(self):
         # Preserve the existing backup/capture controls behind one explicit door.

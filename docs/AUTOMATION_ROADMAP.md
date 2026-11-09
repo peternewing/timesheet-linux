@@ -201,3 +201,20 @@ now groups by app/day with a local daily choice, retains protected explicit work
 and shows inline filtered details and ranked apps. See DAILY_REVIEW_0.6.1.md for
 the implementation, fresh race/privacy/undo review, tests and delivery gates.
 Do not regress to per-observation questions or add configuration to this flow.
+
+
+### Card text click correction (9 November 2026)
+
+Card content labels are non-selectable and do not intercept pointer targeting.
+Real mouse regression checks click both the number and caption of every card,
+confirming the corresponding inline details activate. Keyboard button focus is
+preserved; text outside buttons keeps its existing selection behaviour.
+
+### Whole-day Jev and accessible tools (9 November 2026)
+
+The user's selected workflow is Organise my day → apply clear matches → review
+only uncertain apps. A bounded priority pass uses existing consent, cache and
+usage safeguards; Assign handles each app/day directly. Optional sidebar tools
+and day actions restore convenient access without complicating setup. See
+[the implementation and fresh second review](ONE_CLICK_REVIEW_0.6.1.md) for exact
+scope, midnight/concurrency findings, evidence and remaining real-world limits.

@@ -93,13 +93,30 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         check(Engine(app.store,request=lambda *a,**kw:result,key=lambda:'synthetic').step()=='exception','An unclear decision becomes one human choice')
         app.day=day;app.show_page('Calendar');yield;yield;yield
         check(find(app.body_calendar,'Help Jev with 1 choice').get_sensitive(),'Past days presents the same simple daily record')
+        for metric_key,other in [('active','human'),('ai','active'),('human','ai')]:
+            for child_index in ('value','caption'):
+                mouse(app.simple_metric_buttons[other]);yield
+                content=app.simple_metric_buttons[metric_key].get_child()
+                target=content.get_first_child() if child_index=='value' else content.get_last_child()
+                check(not target.get_selectable(),'Card '+metric_key+' '+child_index+' cannot select text')
+                mouse(target);yield
+                check(app.simple_metric_view==metric_key,'Clicking directly on '+metric_key+' '+child_index+' activates the card')
         mouse(app.simple_metric_buttons['ai']);yield
         check(any(isinstance(w,Gtk.Label) and w.get_text()=='No automatically organised periods yet.' for w in descendants(app.simple_details)),'Automatic card reveals its relevant empty state below')
         mouse(app.simple_metric_buttons['human']);yield
         check(any(isinstance(w,Gtk.Label) and w.get_text()=='No category choices or manual time saved yet.' for w in descendants(app.simple_details)),'Chosen-by-you card reveals its relevant empty state below')
         mouse(app.simple_metric_buttons['active']);yield
         check(list(app.simple_top_rows)==['Editor'] and app.simple_top_rows['Editor'][0].get_text()=='00:25:00','Recorded card shows top activities ranked by combined daily seconds')
-        screenshot(app.win,'past-day');click(app.body_calendar,'Help Jev with 1 choice');yield
+        before_policy=app.store.get('ai_policy')
+        click(app.body_calendar,'Organise my day');yield
+        organiser_window=app.dialogs[-1]
+        check(organiser_window.get_title()=='Organise my day','One-click Jev action opens live progress without a form')
+        check(app.store.get('ai_policy')==before_policy,'Organise my day preserves standing privacy and usage settings')
+        for _ in range(4):Engine(app.store,request=lambda *a,**kw:result,key=lambda:'synthetic').step()
+        for _ in range(8):yield
+        check(find(organiser_window,'Review 1 uncertain activity').get_visible(),'Whole-day pass consolidates uncertain periods into one activity choice')
+        click(organiser_window,'Back to my day');yield
+        screenshot(app.win,'past-day');mouse(find(app.simple_details,'Assign'));yield
         review=app.dialogs[-1];check(not any(isinstance(w,Gtk.Entry) for w in descendants(review)),'Review requires choosing a category, not completing a form')
         screenshot(review,'one-choice');click(review,'Creating & building');yield
         entry=app.store.entries(base,base+600)[0]
@@ -124,6 +141,13 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         check(any(isinstance(w,Gtk.Label) and w.get_text()=='Planning & admin' for w in descendants(app.simple_details)) and not any(isinstance(w,Gtk.Label) and w.get_text()=='Research & learning' for w in descendants(app.simple_details)),'Automatic card shows only automatically organised periods')
         app.simple_metric_buttons['human'].emit('clicked');yield
         check(any(isinstance(w,Gtk.Label) and w.get_text()=='Research & learning' for w in descendants(app.simple_details)) and not any(isinstance(w,Gtk.Label) and w.get_text()=='Planning & admin' for w in descendants(app.simple_details)),'Chosen-by-you card shows only user choices and manual entries')
+        with app.store.db:
+            for n in range(6):app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,?,'active',1)",(base+11000+n*60,base+11030+n*60,'Other app '+str(n)))
+        app.simple_select_metric('active');yield
+        more=next(w for w in descendants(app.simple_details) if isinstance(w,Gtk.Expander) and w.get_label()=='More activities')
+        check(len(app.simple_top_rows)==8 and not more.get_expanded(),'Top five stay simple; every remaining activity is available in More activities')
+        more.set_expanded(True);yield
+        check(len([w for w in descendants(app.simple_details) if isinstance(w,Gtk.Button) and w.get_label()=='Assign'])==8,'Every ranked activity, including those below the top five, has Assign')
         app.show_page('Today');yield;yield
         clock=int(time.time());app.store.start_timer(ids[0],clock-10)
         with app.store.db:live=app.store.db.execute("INSERT INTO activity(start,end,app,state,closed) VALUES(?,?,'Live editor','active',0)",(clock-20,clock-1)).lastrowid
@@ -138,6 +162,22 @@ with tempfile.TemporaryDirectory(prefix='timesheet-simple-ui-') as tmp:
         app.store.stop_timer(clock+8)
         app.show_page('Settings');yield;yield;yield
         check(not any(isinstance(w,Gtk.Entry) for w in descendants(app.body_settings)),'Everyday settings has no typing fields')
+        toggle=next(w for w in descendants(app.body_settings) if isinstance(w,Gtk.CheckButton) and w.get_label()=='Show advanced tools in sidebar')
+        toggle.set_active(True);yield
+        check(all(b.get_visible() for b in app.nav.values()),'Optional sidebar switch immediately exposes retained tools')
+        check(app.store.get('simple_show_advanced')=='1' and app.simple_mode(),'Sidebar preference persists without changing simple setup or layout')
+        for page in ('Projects','Rules','Reports','History'):
+            app.nav[page].emit('clicked');yield
+            check(app.page==page and getattr(app,'body_'+page.lower()).get_first_child() is not None,page+' works from the simple-layout sidebar')
+        app.simple_detailed_day(day);yield
+        check(app.simple_activity_override and find(app.body_calendar,'Back to day summary').get_visible(),'Detailed assignment tools remain accessible from the simple daily flow')
+        click(app.body_calendar,'Back to day summary');yield
+        check(not app.simple_activity_override and find(app.body_calendar,'Organise my day').get_visible(),'Detailed activity returns to the simple day in one click')
+        app.show_page('Settings');yield
+        toggle=next(w for w in descendants(app.body_settings) if isinstance(w,Gtk.CheckButton))
+        check(toggle.get_active(),'Advanced-sidebar preference survives navigation')
+        toggle.set_active(False);yield
+        check([n for n,b in app.nav.items() if b.get_visible()]==['Today','Calendar','Settings'],'Turning optional tools off restores the three-page sidebar')
         advanced=next(w for w in descendants(app.body_settings) if isinstance(w,Gtk.Expander) and w.get_label()=='Advanced tools')
         check(not advanced.get_expanded(),'Legacy project, rule and invoice tools are collapsed by default')
         screenshot(app.win,'settings')
