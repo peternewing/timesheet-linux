@@ -332,6 +332,8 @@ class Store:
                 self.db.execute('UPDATE entries SET '+','.join(k+'=?' for k in values)+' WHERE id=?',(*values.values(),r['id']))
             for r in after:
                 if r['id'] not in original_ids: self.db.execute('UPDATE entries SET revision=revision+1 WHERE id=?',(r['id'],))
+            from .daily_choices import undo as undo_daily_choice
+            undo_daily_choice(self,change['id'])
             self.db.execute('UPDATE entry_changes SET undone=1 WHERE id=?',(change['id'],))
             self.audit('undone',{'action':change['action']})
             return change['action']

@@ -25,6 +25,8 @@ class Engine:
     def step(self,now=None):
         now=int(time.time() if now is None else now);config=self.repo.config()
         self.store.set('ai_worker_seen',now)
+        from .daily_choices import apply_saved
+        apply_saved(self.store,now)
         if config['mode']=='off':return 'off'
         if config['backend']!=('flatpak' if os.environ.get('FLATPAK_ID') else 'native'):return 'other installation'
         if config['owner']!=owner_token():return 'other installation'

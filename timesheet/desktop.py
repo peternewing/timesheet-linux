@@ -198,8 +198,45 @@ def set_autostart(enabled,host_only=False):
         if SERVICE.exists(): run_systemd('disable','time-sheet-linux.service')
 
 
+def previous_source_owner(launcher=None):
+    """Identify the existing source launcher without running previous code."""
+    import ast,hashlib,shlex
+    try:
+        launcher=Path(launcher) if launcher else Path.home()/'.local/bin/time-sheet-linux'
+        lines=launcher.read_text().splitlines()
+        args=shlex.split(next(line for line in lines if line.startswith('exec ')))
+        executable=Path(args[1]).resolve()
+        if executable.name!='run-timesheet':return None
+        root=executable.parent;data=(root/'timesheet/__init__.py').read_text()
+        if len(data)>4096:return None
+        for node in ast.parse(data).body:
+            if isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='__version__' for t in node.targets) and isinstance(node.value,ast.Constant) and isinstance(node.value.value,str):
+                return hashlib.sha256((str(root)+'|'+node.value.value).encode()).hexdigest()
+    except (OSError,ValueError,SyntaxError,StopIteration,IndexError):pass
+    return None
+
+
+def adopt_compatible_policy(store,previous_owner):
+    """An authorised source upgrade changes ownership, never the data policy."""
+    if not previous_owner or FLATPAK or APPIMAGE:return False
+    from .automation_store import Repository
+    from .decision_policy import owner_token
+    from .decision_context import canonical
+    from .simple_setup import preset_ids
+    repo=Repository(store);config=repo.config()
+    if config['mode']=='off' or config['backend']!='native' or config['owner']!=previous_owner:return False
+    if config['category_tasks'] and not set(config['category_tasks'])<=set(preset_ids(store).values()):return False
+    config={**config,'owner':owner_token()}
+    with store.db:
+        store.db.execute('BEGIN IMMEDIATE');store.set('ai_policy',canonical(config));store.set('ai_discover_after','0')
+        store.db.execute("UPDATE ai_jobs SET state='stale',reason='Compatible app upgrade; local context will be revalidated.',updated=? WHERE state IN ('pending','running','exception','failed')",(int(time.time()),))
+        store.audit('compatible source upgrade',{})
+    return True
+
+
 def install(enable_capture=True,host_only=False):
     if FLATPAK: raise ValueError('Install or repair the host companion outside Flatpak; see the installation guide.')
+    previous_owner=previous_source_owner() if not host_only else None
     launcher=SHARE/'applications'/(APP_ID+'.desktop')
     if not host_only:
         applications=SHARE/'applications'; applications.mkdir(parents=True,exist_ok=True)
@@ -289,6 +326,10 @@ WantedBy=graphical-session.target
         with_store.set('setup_complete','1')
     finally: with_store.close()
     stop_collector()
+    if previous_owner:
+        policy_store=Store()
+        try:adopt_compatible_policy(policy_store,previous_owner)
+        finally:policy_store.close()
     start_collector()
     running=run_systemd('is-active','time-sheet-linux.service')
     return dict(launcher=None if host_only else str(launcher),service=bool(running and running.returncode==0),

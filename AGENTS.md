@@ -20,3 +20,7 @@ preserve existing records. Read docs/SIMPLICITY_REVIEW_0.6.md with the roadmap.
 Do not add new paragraphs or knobs to ordinary screens as a substitute for clear
 choices. Broad app-activity labels are distinct from project/work-intent decisions:
 they must not claim productivity, completed output or billing approval.
+
+Daily review update: read docs/DAILY_REVIEW_0.6.1.md. Keep one explicit choice per
+app/day, timestamp-derived shared-second counters, ranked top activity totals and
+clickable statistic cards with inline details. Preserve explicit assignments.

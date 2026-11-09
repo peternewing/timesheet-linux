@@ -31,3 +31,7 @@ print('PASS: bundled simple setup, daily record and category controls')
 record=dict(day='2026-11-08',generated=0,active=0,away=0,gaps=0,ai=0,human=0,unclassified=0,categories=[],entries=[],activity=[])
 assert day_record.pdf(record).startswith(b'%PDF')
 print('PASS: bundled simple day-record PDF generation')
+
+from timesheet import daily_choices
+assert callable(daily_choices.apply_saved)
+print('PASS: bundled local daily-choice continuation')

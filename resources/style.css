@@ -11,3 +11,6 @@ progressbar trough { min-height: 6px; border-radius: 6px; }
 progressbar progress { border-radius: 6px; }
 
 .sidebar > label.dim-label { font-size: 10px; }
+
+button.metric-selector { padding: 16px; }
+button.metric-selector.selected { border: 2px solid @accent_color; background: alpha(@accent_bg_color,.10); }

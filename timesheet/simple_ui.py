@@ -14,7 +14,8 @@ from . import simple_store
 
 def compact(seconds):
     seconds=max(0,int(seconds))
-    return f'{seconds//3600}h {seconds%3600//60:02d}m' if seconds>=3600 else f'{seconds//60}m' if seconds>=60 else f'{seconds}s'
+    return f'{seconds//3600:02d}:{seconds%3600//60:02d}:{seconds%60:02d}'
+
 
 class SimpleUI:
     def simple_mode(self):return self.store.get('interface_mode','simple')!='advanced'
@@ -172,7 +173,7 @@ class SimpleUI:
 
     def simple_day_body(self,body,day):
         from .app import Gtk,button,label,Timeline,append_in_batches
-        record=snapshot(self.store,day);config=self.automation_repo().config();health=desktop.read_health(self.store)
+        record=snapshot(self.store,day,now=int(time.time()),include_running=True);config=self.automation_repo().config();health=desktop.read_health(self.store)
         is_today=day==datetime.now().date();items=simple_store.review_items(self.store,day);self.simple_view_day=day
         if is_today:
             reason=self.store.get('ai_pause_reason','')
@@ -190,48 +191,91 @@ class SimpleUI:
                 self.row(body,'Recording locally','Connect Jev to organise your day automatically.',[('Connect Jev',lambda _:self.simple_setup_wizard())])
             else:body.append(label('Jev organises in the background. Unclear activity waits for your choice.','dim-label'))
         metrics=Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE,homogeneous=True,min_children_per_line=1,max_children_per_line=3,column_spacing=10,row_spacing=10)
-        self.simple_metrics={}
+        self.simple_metrics={};self.simple_metric_buttons={}
         for key,title in [('active','Recorded app use'),('ai','Organised automatically'),('human','Chosen by you')]:
-            card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=5);card.add_css_class('card');value=label(compact(record[key]),'metric');card.append(value);card.append(label(title,'dim-label'));metrics.append(card);self.simple_metrics[key]=value
+            card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=5);value=label(compact(record[key]),'metric');card.append(value);card.append(label(title,'dim-label'))
+            control=Gtk.Button();control.set_child(card);control.add_css_class('card');control.add_css_class('metric-selector')
+            control.update_property([Gtk.AccessibleProperty.LABEL],[title]);control.connect('clicked',lambda _,key=key:self.simple_select_metric(key));metrics.append(control)
+            self.simple_metrics[key]=value;self.simple_metric_buttons[key]=control
         body.append(metrics)
-        if items:body.append(button(f'Help Jev with {len(items)}'+('+' if len(items)==100 else '')+(' choice' if len(items)==1 else ' choices'),lambda _:self.simple_review(day),True))
+        self.simple_details=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);body.append(self.simple_details)
+        self.simple_details_signature=None;self.simple_render_details(record)
+        actions=Gtk.Box(spacing=8,homogeneous=True);body.insert_child_after(actions,metrics.get_prev_sibling())
+        if items:actions.append(button(f'Help Jev with {len(items)}'+('+' if len(items)==100 else '')+(' choice' if len(items)==1 else ' choices'),lambda _:self.simple_review(day),True))
         elif record['unclassified']:body.append(label('Some activity is waiting for Jev or was left uncategorised.','dim-label'))
         else:body.append(label('No choices waiting.','dim-label'))
-        body.append(button('Save day record',lambda _:self.simple_export(day),not items))
-        self.simple_unclassified=label('Uncategorised: '+duration(record['unclassified']),'dim-label');body.append(self.simple_unclassified)
+        actions.append(button('Save day record',lambda _:self.simple_export(day),not items))
+        self.simple_unclassified=label('Uncategorised: '+compact(record['unclassified']),'dim-label');body.append(self.simple_unclassified)
         rt=self.store.runtime()
         if rt['state']=='running':self.row(body,'Your task timer is running','Stop it when this task is finished.',[('Stop timer',lambda _:self.run_action(self.store.stop_timer))])
         body.append(label('Your day at a glance','title-3'))
         start,end=bounds(day);timeline=Timeline(start,end,record['activity']);body.append(timeline);self.simple_timeline=timeline
         self.simple_expand(body,'Timeline colours','Blue: recorded app activity. Grey: away or locked. Red: missing capture. Personal and excluded activity stay separate. App activity is evidence of use, not proof that an output was completed.')
-        if record['categories']:
-            for name,seconds in record['categories'][:8]:
-                row=Gtk.Box(spacing=12);row.append(label(name));value=label(compact(seconds),'dim-label');value.set_hexpand(True);value.set_halign(Gtk.Align.END);row.append(value);body.append(row)
-        else:body.append(label('Categories appear as Jev organises your activity.','dim-label'))
-        detail=Gtk.Expander(label='Check or change a period');rows=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);detail.set_child(rows);body.append(detail)
-        def entry_row(target,entry):
-            clock=lambda ts:datetime.fromtimestamp(ts).strftime('%H:%M')
-            self.row(target,entry['task'],f"{clock(entry['start'])}–{clock(entry['end'])} · {duration(entry['end']-entry['start'])} · {entry['source']}",[] if entry['status']=='billed' else [('Change category',lambda _:self.simple_change(entry))])
-        append_in_batches(rows,record['entries'],entry_row,25)
         self.simple_expand(body,'What this record means','This is a local record of app activity, AI estimates and your choices. Away time and missing capture are separate. Manual time may extend beyond app activity. Export does not approve billing or certify productivity.')
 
-    def simple_tick(self,rt,health):
+    def simple_select_metric(self,key):
+        if key not in ('active','ai','human'):return
+        self.simple_metric_view=key
+        day=getattr(self,'simple_view_day',datetime.now().date())
+        self.simple_render_details(snapshot(self.store,day,now=int(time.time()),include_running=True),force=True)
+
+    def simple_render_details(self,record,force=False):
+        from .app import Gtk,label,append_in_batches,set_changed_text
+        key=getattr(self,'simple_metric_view','active')
+        for name,button in self.simple_metric_buttons.items():
+            if name==key:button.add_css_class('selected')
+            else:button.remove_css_class('selected')
+        entries=[e for e in record['entries'] if (e['source'] in ('AI category','Rule category'))==(key=='ai')] if key!='active' else []
+        signature=(key,(tuple(name for name,_ in record['top_apps'][:5]),tuple((r['start'],r['app'],r['state']) for r in record['activity'])) if key=='active' else tuple((e['id'],e['revision']) for e in entries),bool(record.get('running')))
+        if not force and signature==self.simple_details_signature:
+            if key=='active':
+                for name,seconds in record['top_apps'][:5]:
+                    value,bar=self.simple_top_rows[name];set_changed_text(value,compact(seconds));bar.set_fraction(seconds/max(1,record['active']))
+                for r in record['activity']:
+                    if r['state']=='active' and (r['start'],r['app']) in self.simple_period_rows:set_changed_text(self.simple_period_rows[(r['start'],r['app'])],datetime.fromtimestamp(r['start']).strftime('%H:%M:%S')+'–'+datetime.fromtimestamp(r['end']).strftime('%H:%M:%S')+' · '+r['app'])
+            if getattr(self,'simple_running_value',None) and record.get('running'):set_changed_text(self.simple_running_value,compact(record['running']['seconds']))
+            return
+        self.simple_details_signature=signature;self.clear(self.simple_details);self.simple_top_rows={};self.simple_period_rows={};self.simple_running_value=None
+        box=self.simple_details
+        if key=='active':
+            box.append(label('Top activities','title-3'))
+            if not record['top_apps']:box.append(label('Recorded apps will appear here, longest first.','dim-label'))
+            for name,seconds in record['top_apps'][:5]:
+                row=Gtk.Box(spacing=12);row.append(label(name));value=label(compact(seconds),'dim-label');value.set_hexpand(True);value.set_halign(Gtk.Align.END);row.append(value);box.append(row)
+                bar=Gtk.ProgressBar(fraction=seconds/max(1,record['active']));box.append(bar);self.simple_top_rows[name]=(value,bar)
+            periods=Gtk.Expander(label='Recorded activity periods');periods.set_expanded(getattr(self,'simple_periods_open',False));periods.connect('notify::expanded',lambda w,*_:setattr(self,'simple_periods_open',w.get_expanded()));rows=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=8);periods.set_child(rows);box.append(periods)
+            def period_row(target,row):
+                line=label(datetime.fromtimestamp(row['start']).strftime('%H:%M:%S')+'–'+datetime.fromtimestamp(row['end']).strftime('%H:%M:%S')+' · '+row['app'],'dim-label');target.append(line);self.simple_period_rows[(row['start'],row['app'])]=line
+            append_in_batches(rows,[r for r in record['activity'] if r['state']=='active'],period_row,25)
+        else:
+            box.append(label('Organised automatically' if key=='ai' else 'Chosen by you','title-3'))
+            if not entries and not (key=='human' and record.get('running')):box.append(label('No automatically organised periods yet.' if key=='ai' else 'No category choices or manual time saved yet.','dim-label'))
+            def render(target,entry):
+                clock=lambda ts:datetime.fromtimestamp(ts).strftime('%H:%M:%S')
+                self.row(target,entry['task'],f"{clock(entry['start'])}–{clock(entry['end'])} · {compact(entry['end']-entry['start'])} · {entry['source']}",[] if entry['status']=='billed' else [('Change category',lambda _:self.simple_change(entry))])
+            append_in_batches(box,entries,render,25)
+            if key=='human' and record.get('running'):
+                box.append(label('Running timer · '+record['running']['task'],'heading'));self.simple_running_value=label(compact(record['running']['seconds']),'dim-label');box.append(self.simple_running_value)
+
+    def simple_tick(self,rt,health,now=None):
         from .app import set_changed_text
-        if self.page not in ('Today','Calendar') or self.dialog_count or self.store.get('simple_setup_complete','0')!='1':return
-        now=int(time.time())
-        if now-getattr(self,'simple_last_tick',0)<2:return
+        if self.page not in ('Today','Calendar') or self.store.get('simple_setup_complete','0')!='1':return
+        now=int(time.time() if now is None else now)
+        if now==getattr(self,'simple_last_tick',None):return
         self.simple_last_tick=now
         day=datetime.now().date() if self.page=='Today' else self.day
         ai=self.store.db.execute('SELECT MAX(updated) FROM ai_jobs').fetchone()[0]
         signature=(day,ai,self.store.get('ai_pause_reason'),health['status'])
-        if signature!=getattr(self,'simple_signature',None):
+        if not self.dialog_count and signature!=getattr(self,'simple_signature',None):
             self.simple_signature=signature
             if self.page=='Today':self.simple_today()
             else:self.simple_past_days()
             return
-        record=snapshot(self.store,day)
+        # All counters and rankings use this one timestamp and one DB snapshot.
+        record=snapshot(self.store,day,now=now,include_running=True)
         for key,value in getattr(self,'simple_metrics',{}).items():set_changed_text(value,compact(record[key]))
-        if getattr(self,'simple_unclassified',None):set_changed_text(self.simple_unclassified,'Uncategorised: '+duration(record['unclassified']))
+        if getattr(self,'simple_unclassified',None):set_changed_text(self.simple_unclassified,'Uncategorised: '+compact(record['unclassified']))
+        if not self.dialog_count:self.simple_render_details(record)
         if getattr(self,'simple_timeline',None):self.simple_timeline.records=record['activity'];self.simple_timeline.queue_draw()
 
     def simple_past_days(self):
@@ -261,28 +305,25 @@ class SimpleUI:
             if not queue:
                 self.heading(body,'You’re done','Your saved categories are ready.')
                 body.append(button('Back to my day',lambda _:(window.close(),self.show_page(self.page)),True));return
-            item=queue[0];self.heading(body,'What was this activity?')
-            body.append(label(item['app'],'title-3'));body.append(label(datetime.fromtimestamp(item['start']).strftime('%H:%M')+'–'+datetime.fromtimestamp(item['end']).strftime('%H:%M')+' · '+duration(item['end']-item['start']),'dim-label'))
-            body.append(label(f'{done[0]} answered · {len(queue)} left','dim-label'))
-            peers=self.automation_repo().matching_scope(item['job']) if item['kind']=='job' else []
-            together=Gtk.CheckButton(label=f'Use this choice for these {len(peers)} matching periods')
-            if len(peers)>1:
-                body.append(together);self.simple_expand(body,'See matching periods','\n'.join(datetime.fromtimestamp(p['start']).strftime('%H:%M')+'–'+datetime.fromtimestamp(p['end']).strftime('%H:%M')+' · '+duration(p['end']-p['start']) for p in peers))
+            item=queue[0];self.heading(body,'Choose once for this activity today')
+            body.append(label(item['app'],'title-3'));body.append(label(f"{len(item['blocks'])+len(item.get('auto_entries',[]))} recorded periods · {compact(item['seconds'])} · {day:%d %b}",'dim-label'))
+            body.append(label('This choice covers this app for the selected day, including later recorded use.','dim-label'))
+            self.simple_expand(body,'See included periods','\n'.join(datetime.fromtimestamp(p['start']).strftime('%H:%M:%S')+'–'+datetime.fromtimestamp(p['end']).strftime('%H:%M:%S') for p in sorted(item['blocks']+item.get('auto_entries',[]),key=lambda p:p['start'])))
+            body.append(label(f'{done[0]} answered · {len(queue)} activity types left','dim-label'))
             status=label('','dim-label')
             def answer(task):
                 try:
-                    if item['kind']=='job':
-                        chosen=[p['id'] for p in peers] if together.get_active() else [item['job']['id']]
-                        self.automation_repo().correct(item['job']['id'],task,remember=self.store.get('simple_remember','0')=='1',job_ids=chosen)
-                        queue[:]=[i for i in queue if i['kind']!='job' or i['job']['id'] not in chosen]
-                    else:simple_store.assign_manual(self.store,item['blocks'],task);queue.pop(0)
+                    from .daily_choices import choose
+                    choose(self.store,item,task,remember=self.store.get('simple_remember','0')=='1')
+                    queue.pop(0)
                 except ValueError:status.set_text('This activity changed. Close and reopen your choices to see the latest record.');return
                 done[0]+=1;GLib.idle_add(lambda:(render() if window in self.dialogs else None,False)[1])
             for tid,name in self.simple_choices():body.append(button(name,lambda _,tid=tid:answer(tid)))
-            def skip(_):simple_store.skip_item(self.store,item);queue.pop(0);GLib.idle_add(lambda:(render() if window in self.dialogs else None,False)[1])
+            def skip(_):
+                try:simple_store.skip_item(self.store,item)
+                except ValueError:status.set_text('This activity changed. Reopen the daily choice.');return
+                queue.pop(0);GLib.idle_add(lambda:(render() if window in self.dialogs else None,False)[1])
             body.append(button('Leave uncategorised',skip));body.append(status)
-            if item['kind']=='job':
-                body.append(button('Why is Jev asking?',lambda _:self.info('One quick choice','This app can fit more than one activity type. Choose what it was used for in this period.')))
         render();window.present()
 
     def simple_change(self,entry):
@@ -304,7 +345,7 @@ class SimpleUI:
         record=snapshot(self.store,day);window,body,header=self.simple_window('Save day record',height=560)
         self.heading(body,'Your day record',day.strftime('%A, %d %B'))
         body.append(label('App activity: '+duration(record['active'])))
-        body.append(label('Uncategorised: '+duration(record['unclassified'])))
+        body.append(label('Uncategorised: '+compact(record['unclassified'])))
         body.append(label('Away / locked: '+duration(record['away'])+' · Capture gaps: '+duration(record['gaps'])))
         body.append(label('Includes categories, exact periods and app activity. AI estimates and your choices are labelled separately. Private titles and financial details are omitted.','dim-label'))
         status=label('','dim-label');body.append(status)

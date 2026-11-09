@@ -17,13 +17,13 @@ Core recording stays local and works without AI. Jev uses your own TypeSafe key.
 
 No project names, rates, rules or typed setup fields are required. There are only
 three everyday destinations: **Today**, **Past days**, and **Settings**. Choose a
-category when Jev asks; **Save day record** produces a PDF of the recorded day.
+category once per app for the selected day; **Save day record** produces a PDF of the recorded day.
 
 The record separates captured app use, AI estimates, your choices, away time and
 capture gaps. It is evidence of app activity, not independent proof of completed
 outputs or productivity. Simple-flow categories are non-billable drafts.
 
-## Install 0.6.0-rc1
+## Install 0.6.1-rc1
 
 This is a prerelease. Back up existing data before upgrading and reopen any old
 app window afterwards. Existing time, projects and saved reports are preserved.
@@ -31,7 +31,7 @@ app window afterwards. Existing time, projects and saved reports are preserved.
 ### AppImage — x86-64, glibc 2.39 or newer
 
 Download the AppImage, SHA256SUMS and provenance bundle from the
-[release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.6.0-rc1).
+[release page](https://github.com/peternewing/timesheet-linux/releases/tag/v0.6.1-rc1).
 In the download folder:
 
 ```sh
@@ -58,7 +58,7 @@ chmod +x TimeSheetLinux-x86_64.AppImage
 ```sh
 sudo apt update
 sudo apt install git python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-secret-1 python3-reportlab fonts-dejavu-core
-git clone --branch v0.6.0-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.6
+git clone --branch v0.6.1-rc1 https://github.com/peternewing/timesheet-linux.git timesheet-linux-0.6
 cd timesheet-linux-0.6
 ./install.sh
 ```
@@ -67,10 +67,17 @@ Run the installer as your normal user. Keep the source folder in place.
 For Flatpak, other distributions, capture helpers and rollback, use the
 [installation guide](docs/INSTALL.md).
 
+## Daily view
+
+Click a time card to see its matching information below. Recorded app use shows
+top activities ranked by total active time. All counters display hours, minutes
+and seconds and refresh together. Daily choices also cover later recorded use
+of the same app that day; existing explicit assignments stay intact.
+
 ## Existing users
 
-Open the new app and use **Set up in 4 steps**. A new version requires explicit
-setup before background activity sending resumes. The saved personal key can be
+Open the new app and use **Set up in 4 steps**. Compatible native/source upgrades preserve an existing enabled data policy.
+An off policy stays off; incompatible installation switches require setup. The saved personal key can be
 reused with one click; it is never embedded in public packages.
 
 Projects, assignment rules, billing reports, detailed Jev controls, privacy,
