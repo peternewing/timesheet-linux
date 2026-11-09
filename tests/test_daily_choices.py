@@ -15,7 +15,7 @@ class DailyChoicesTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.store=Store(Path(self.tmp.name)/'db');self.repo=Repository(self.store)
         self.now=int(time.time());self.day=datetime.fromtimestamp(self.now).date()-timedelta(days=2);self.base=bounds(self.day)[0]+9*3600
-        self.config=finish_setup(self.store,list(BUCKETS),connected=True,now=self.now);self.config['since']=bounds(self.day)[0];self.repo.configure(self.config);self.ids=self.config['category_tasks']
+        self.config=finish_setup(self.store,list(BUCKETS),connected=True,local_types=False,now=self.now);self.config['since']=bounds(self.day)[0];self.repo.configure(self.config);self.ids=self.config['category_tasks']
     def tearDown(self):self.store.close();self.tmp.cleanup()
     def activity(self,offset=0,app='Firefox',seconds=600,state='active',closed=1):
         with self.store.db:return self.store.db.execute('INSERT INTO activity(start,end,app,title,state,closed) VALUES(?,?,?,?,?,?)',(self.base+offset,self.base+offset+seconds,app,'Private title '+str(offset),state,closed)).lastrowid

@@ -27,7 +27,7 @@ def candidates(store,day,app,now):
 def automatic_drafts(store,day,app):
     from .simple_setup import preset_ids
     valid=set(preset_ids(store).values());start,end=bounds(day);result=[]
-    for entry in store.rows("SELECT e.*,a.app AS source_app FROM entries e JOIN activity a ON a.id=e.activity_id WHERE e.deleted=0 AND e.origin='jev' AND e.status='draft' AND e.billable=0 AND e.start>=? AND e.end<=?",(start,end)):
+    for entry in store.rows("SELECT e.*,a.app AS source_app FROM entries e JOIN activity a ON a.id=e.activity_id WHERE e.deleted=0 AND e.origin IN ('jev','app_type') AND e.status='draft' AND e.billable=0 AND e.start>=? AND e.end<=?",(start,end)):
         if entry['task_id'] in valid and entry['source_app'].casefold()==app.casefold():
             item=dict(entry);item.pop('source_app');result.append(item)
     return result
@@ -54,7 +54,8 @@ def _write(store,day,app,task,blocks,*,remember=False):
             context,_=build(store,activity,None,settings(store.get('ai_policy','{}')),start=block['start'],end=block['end'],ignore_daily_choice=True)
             if context:
                 net=context['network'];scope=canonical({'clues':net.get('clues',[]),'focus':net.get('focus')})
-                store.db.execute('INSERT INTO ai_examples(activity_id,application,task_id,at,scope) VALUES(?,?,?,?,?) ON CONFLICT(activity_id) DO UPDATE SET task_id=excluded.task_id,at=excluded.at,scope=excluded.scope',(block['id'],app,task,int(time.time()),scope))
+                from .decision_memory import remember as remember_example
+                remember_example(store,block['id'],app,task,scope,int(time.time()))
     return ids
 
 
@@ -66,7 +67,7 @@ def choose(store,item,task,*,remember=False,now=None):
         store.db.execute('BEGIN IMMEDIATE');validate_blocks(store,item['blocks'])
         for expected in item.get('auto_entries',[]):
             current=store.db.execute('SELECT * FROM entries WHERE id=? AND deleted=0',(expected['id'],)).fetchone()
-            if not current or current['revision']!=expected['revision'] or current['origin']!='jev' or current['status']!='draft' or current['billable']:raise ValueError('These AI estimates changed. Reopen the daily choice.')
+            if not current or current['revision']!=expected['revision'] or current['origin'] not in ('jev','app_type') or current['status']!='draft' or current['billable']:raise ValueError('These automatic estimates changed. Reopen the daily choice.')
         previous=choice(store,day,app);before=dict(previous) if previous else None
         store.db.execute('INSERT INTO daily_choices VALUES(?,?,?,?,?) ON CONFLICT(day,app_key) DO UPDATE SET task_id=excluded.task_id,created=excluded.created',(day.isoformat(),app.casefold(),app,task,now))
         # The scope explicitly includes later recordings of this app today. A new

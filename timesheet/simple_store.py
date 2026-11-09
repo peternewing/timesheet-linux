@@ -67,7 +67,8 @@ def change_category(store,entry_id,task_id,revision,remember=False):
                 context,_=repo.context(activity,start=old['start'],end=old['end'])
                 if context:
                     network=context['network'];scope=canonical({'clues':network.get('clues',[]),'focus':network.get('focus')})
-                    store.db.execute('INSERT INTO ai_examples(activity_id,application,task_id,at,scope) VALUES(?,?,?,?,?) ON CONFLICT(activity_id) DO UPDATE SET task_id=excluded.task_id,at=excluded.at,scope=excluded.scope',(old['activity_id'],activity['app'],task_id,int(time.time()),scope))
+                    from .decision_memory import remember as remember_example
+                    remember_example(store,old['activity_id'],activity['app'],task_id,scope,int(time.time()))
         store._record_change('Change activity category',[old],[entry_id]);store.audit('activity category corrected',{'entry_id':entry_id,'task_id':task_id})
 
 

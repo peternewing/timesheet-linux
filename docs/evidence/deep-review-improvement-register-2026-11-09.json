@@ -1,0 +1,892 @@
+{
+  "date": "2026-11-09",
+  "scope": "timesheet-autopilot-0.5 working tree; engineering/evidence judgment, not independently measured AI accuracy",
+  "categories": [
+    {
+      "id": "C01",
+      "category": "Background Jev automation",
+      "rating": 8,
+      "evidence_files": [
+        "automation_worker.py",
+        "automation_status.py"
+      ],
+      "strength": "Durable worker is independent of capture, with leases and standing consent.",
+      "limitation": "Continuous real-desktop and closed-window behaviour is not established.",
+      "improvements": [
+        {
+          "id": "C01.1",
+          "description": "Detect a missing/stale worker and offer Restart Jev on Today.",
+          "status": "Implemented",
+          "acceptance": "Synthetic heartbeat, clock-jump and recovery tests; GTK recovery prompt."
+        },
+        {
+          "id": "C01.2",
+          "description": "Reject malformed, oversized or wrongly typed whole-day pass metadata.",
+          "status": "Implemented",
+          "acceptance": "Corrupt cursor, expiry, identity, range and JSON tests fail closed."
+        },
+        {
+          "id": "C01.3",
+          "description": "Run a 48-hour native/AppImage/Flatpak recovery trial including closed windows and login.",
+          "status": "Acceptance required",
+          "acceptance": "Record gaps, worker restarts and recovery latency per package/desktop."
+        }
+      ]
+    },
+    {
+      "id": "C02",
+      "category": "Context supplied to Jev",
+      "rating": 7,
+      "evidence_files": [
+        "decision_context.py",
+        "decision_memory.py"
+      ],
+      "strength": "Only permitted context is built; generic categories exclude private project names.",
+      "limitation": "App names cannot establish client identity or distinguish general browsing intent.",
+      "improvements": [
+        {
+          "id": "C02.1",
+          "description": "Retrieve correction examples by Unicode-normalised app and exact clue/focus scope before limiting.",
+          "status": "Implemented",
+          "acceptance": "An older relevant example survives more than 1,000 unrelated corrections."
+        },
+        {
+          "id": "C02.2",
+          "description": "Offer ready-made task-guidance starters without adding a required setup field.",
+          "status": "Implemented",
+          "acceptance": "Optional unsaved starters in the existing task-guidance dialog."
+        },
+        {
+          "id": "C02.3",
+          "description": "Evaluate shared-browser/client-switch cases with explicitly consented, minimised context.",
+          "status": "Acceptance required",
+          "acceptance": "Compare time-weighted errors and coverage against app-only decisions."
+        }
+      ]
+    },
+    {
+      "id": "C03",
+      "category": "Decision quality evidence",
+      "rating": 6,
+      "evidence_files": [
+        "evaluate.py",
+        "decision_contract.py"
+      ],
+      "strength": "Recorded synthetic replays and full response validation exist.",
+      "limitation": "Small synthetic samples do not establish representative daily precision.",
+      "improvements": [
+        {
+          "id": "C03.1",
+          "description": "Add stable case IDs, labelled-input fingerprints, slices and actual model metadata.",
+          "status": "Implemented",
+          "acceptance": "Replay output validates unique IDs and separates slice outcomes."
+        },
+        {
+          "id": "C03.2",
+          "description": "Compare saved candidate/reference responses on identical labelled inputs.",
+          "status": "Implemented",
+          "acceptance": "Changed inputs are refused; newly wrong automated cases and coverage deltas are reported."
+        },
+        {
+          "id": "C03.3",
+          "description": "Collect several independently labelled real days, sampling easy automatic cases as well as exceptions.",
+          "status": "Acceptance required",
+          "acceptance": "Keep private evidence outside the repository; report sample selection and wrong minutes."
+        }
+      ]
+    },
+    {
+      "id": "C04",
+      "category": "Automatic task assignment",
+      "rating": 8,
+      "evidence_files": [
+        "automation_store.py",
+        "daily_choices.py"
+      ],
+      "strength": "Assignments revalidate source evidence and preserve explicit choices; simple drafts are non-billable.",
+      "limitation": "Routing thresholds remain heuristic and task-level live acceptance is incomplete.",
+      "improvements": [
+        {
+          "id": "C04.1",
+          "description": "Retain and exercise stale-response, concurrent-edit and explicit-choice protection.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Core race/privacy tests and the independent worker-process check."
+        },
+        {
+          "id": "C04.2",
+          "description": "Retain rule precedence, no-gap allocation and draft-only AI execution.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Core assignment, rule, undo and daily-choice regressions."
+        },
+        {
+          "id": "C04.3",
+          "description": "Measure cross-client wrong minutes before broadening task automation.",
+          "status": "Acceptance required",
+          "acceptance": "No financial approval or broader threshold based only on fixture success."
+        }
+      ]
+    },
+    {
+      "id": "C05",
+      "category": "Uncertainty handling",
+      "rating": 8,
+      "evidence_files": [
+        "decision_contract.py",
+        "decision_policy.py",
+        "automation_status.py"
+      ],
+      "strength": "None/ambiguous answers stay for review; generic and project risks have different gates.",
+      "limitation": "No representative calibration study supports the numeric thresholds.",
+      "improvements": [
+        {
+          "id": "C05.1",
+          "description": "Use one reusable contract validator outside the worker lifecycle.",
+          "status": "Implemented",
+          "acceptance": "Worker, cache and evaluator import the same pure validation module."
+        },
+        {
+          "id": "C05.2",
+          "description": "Show the saved draft-policy reason and model beside automatic entries.",
+          "status": "Implemented",
+          "acceptance": "Inline Why this category? uses saved decision evidence, never a generated justification."
+        },
+        {
+          "id": "C05.3",
+          "description": "Calibrate abstention and errors separately for specialist apps, browsers and client projects.",
+          "status": "Acceptance required",
+          "acceptance": "Publish sample sizes and time-weighted error/coverage curves before changing gates."
+        }
+      ]
+    },
+    {
+      "id": "C06",
+      "category": "Learning from corrections",
+      "rating": 7.5,
+      "evidence_files": [
+        "decision_memory.py",
+        "decision_context.py"
+      ],
+      "strength": "Corrections are scoped local examples, not a claim of model retraining.",
+      "limitation": "A changed habit may still conflict with remembered history.",
+      "improvements": [
+        {
+          "id": "C06.1",
+          "description": "Index app/scope retrieval so unrelated history cannot hide relevant examples.",
+          "status": "Implemented",
+          "acceptance": "Unicode and >1,000 unrelated-row regression; bounded eight-example lookup."
+        },
+        {
+          "id": "C06.2",
+          "description": "Order updated corrections by correction time rather than original row ID.",
+          "status": "Implemented",
+          "acceptance": "Updating an older correction makes it the first relevant example."
+        },
+        {
+          "id": "C06.3",
+          "description": "Clear cached decisions and invalidate queued/in-flight jobs when examples are forgotten.",
+          "status": "Implemented",
+          "acceptance": "A response arriving after Forget cannot create an entry."
+        }
+      ]
+    },
+    {
+      "id": "C07",
+      "category": "Batch intelligence",
+      "rating": 8,
+      "evidence_files": [
+        "day_organiser.py",
+        "automation_worker.py",
+        "benchmark.py"
+      ],
+      "strength": "Equivalent payloads reuse durable results; one choice covers an app/day.",
+      "limitation": "Large synthetic discovery is not a full-day throughput or resource guarantee.",
+      "improvements": [
+        {
+          "id": "C07.1",
+          "description": "Recheck equivalent clear and ambiguous requests are reused without extra key access.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Whole-day/cache tests preserve request and consent limits."
+        },
+        {
+          "id": "C07.2",
+          "description": "Make priority-pass persistence robust to malformed and superseded metadata.",
+          "status": "Implemented",
+          "acceptance": "Invalid state cannot crash the loop or replace a newer pass."
+        },
+        {
+          "id": "C07.3",
+          "description": "Add a repeatable disposable large-history benchmark.",
+          "status": "Implemented",
+          "acceptance": "20,000 observations, 20 tasks, five bounded discovery batches recorded locally."
+        }
+      ]
+    },
+    {
+      "id": "C08",
+      "category": "Proactive assistance",
+      "rating": 7.5,
+      "evidence_files": [
+        "automation_status.py",
+        "simple_ui.py",
+        "day_record.py"
+      ],
+      "strength": "Today exposes missing workers; local counts distinguish queued, uncertain and failed work.",
+      "limitation": "No validated real-world alert or digest usefulness study exists.",
+      "improvements": [
+        {
+          "id": "C08.1",
+          "description": "Expose an actionable missing-worker warning instead of a false working claim.",
+          "status": "Implemented",
+          "acceptance": "Stale/future/corrupt heartbeats and UI recovery tested."
+        },
+        {
+          "id": "C08.2",
+          "description": "Expose factual background usage, limits and unresolved charges in simple Settings.",
+          "status": "Implemented",
+          "acceptance": "Collapsed local details require no key access or data transmission."
+        },
+        {
+          "id": "C08.3",
+          "description": "Provide a factual local day digest using observed totals and covered intervals.",
+          "status": "Implemented",
+          "acceptance": "Existing record-help expander now summarises recorded, covered, uncategorised and gap time."
+        }
+      ]
+    },
+    {
+      "id": "C09",
+      "category": "Daily workflow",
+      "rating": 8,
+      "evidence_files": [
+        "simple_ui.py",
+        "daily_choices.py"
+      ],
+      "strength": "Three destinations, one app/day choice, live cards and optional tools are coherent.",
+      "limitation": "Measured novice completion and review effort remain unavailable.",
+      "improvements": [
+        {
+          "id": "C09.1",
+          "description": "Retain one daily choice with future same-day reuse and protected existing entries.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Daily-choice and UI tests cover separated periods and direct Assign."
+        },
+        {
+          "id": "C09.2",
+          "description": "Keep optional day actions expanded through background refreshes.",
+          "status": "Implemented",
+          "acceptance": "Found during scaled UI review; More actions now retains its expansion state."
+        },
+        {
+          "id": "C09.3",
+          "description": "Observe setup-to-saved-day completion and count clicks/repeated questions.",
+          "status": "Acceptance required",
+          "acceptance": "Record task completion, errors and median review minutes with consenting users."
+        }
+      ]
+    },
+    {
+      "id": "C10",
+      "category": "Rules/explanations",
+      "rating": 8,
+      "evidence_files": [
+        "store.py",
+        "rules.py",
+        "automation_status.py"
+      ],
+      "strength": "Rules are local, previewable and conservative around conflicting priorities.",
+      "limitation": "Older entries still lack exact rule identity; novice understanding of rule scope is unverified.",
+      "improvements": [
+        {
+          "id": "C10.1",
+          "description": "Save rule identity, priority and title-condition flag when a rule allocates time.",
+          "status": "Implemented",
+          "acceptance": "Rule explanation survives later rule deletion without duplicating raw title content."
+        },
+        {
+          "id": "C10.2",
+          "description": "Retain duplicate/conflict/archive/title-availability warnings and previews.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Existing rule core/GTK regressions rechecked."
+        },
+        {
+          "id": "C10.3",
+          "description": "Test whether novices understand rule scope and future versus historical effects.",
+          "status": "Acceptance required",
+          "acceptance": "Observe a rule creation, deliberate conflict and correction without coaching."
+        }
+      ]
+    },
+    {
+      "id": "C11",
+      "category": "First-run onboarding",
+      "rating": 8,
+      "evidence_files": [
+        "setup_ui.py",
+        "simple_setup.py"
+      ],
+      "strength": "Four click-only steps keep projects, rates and rules optional.",
+      "limitation": "Account/key acquisition and desktop setup still need real-user validation.",
+      "improvements": [
+        {
+          "id": "C11.1",
+          "description": "Integrate optional purpose-based project/rule/report shortcuts in the existing fourth step.",
+          "status": "Implemented",
+          "acceptance": "Choices stay staged until Start and appear in day actions."
+        },
+        {
+          "id": "C11.2",
+          "description": "Preserve app exclusions and custom request/token limits when reconnecting.",
+          "status": "Implemented",
+          "acceptance": "Excluded eligible activity remains unsent; final disclosure shows saved limits."
+        },
+        {
+          "id": "C11.3",
+          "description": "Test saved-key, pasted-key, locked-keyring and local-only first runs with novices.",
+          "status": "Acceptance required",
+          "acceptance": "Measure completion and comprehension of the Start consent boundary."
+        }
+      ]
+    },
+    {
+      "id": "C12",
+      "category": "Project/task setup",
+      "rating": 7.5,
+      "evidence_files": [
+        "automation_ui.py",
+        "automation_store.py"
+      ],
+      "strength": "Task guidance and overlapping-definition warnings already exist.",
+      "limitation": "Generic starters alone cannot distinguish similar client projects.",
+      "improvements": [
+        {
+          "id": "C12.1",
+          "description": "Offer optional short activity-type starter descriptions.",
+          "status": "Implemented",
+          "acceptance": "Choosing a starter only fills the unsaved guidance field."
+        },
+        {
+          "id": "C12.2",
+          "description": "Retain overlap warnings and explicit bounded focus context.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Profile and focus-boundary regressions; no focus creates time on its own."
+        },
+        {
+          "id": "C12.3",
+          "description": "Validate competing real project definitions and revise descriptions based on observed confusion.",
+          "status": "Acceptance required",
+          "acceptance": "Use paired shared-app examples; require fewer wrong client minutes, not just more coverage."
+        }
+      ]
+    },
+    {
+      "id": "C13",
+      "category": "Review burden",
+      "rating": 7.5,
+      "evidence_files": [
+        "simple_store.py",
+        "daily_choices.py",
+        "automation_status.py"
+      ],
+      "strength": "App/day grouping avoids repeated per-observation decisions.",
+      "limitation": "Actual daily effort is not measured; remembered patterns may still repeat across days.",
+      "improvements": [
+        {
+          "id": "C13.1",
+          "description": "Keep one local answer for separated and later same-day periods.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Grouping, continuation, undo and stale-human-choice tests."
+        },
+        {
+          "id": "C13.2",
+          "description": "Make operational state/usage visible without opening the advanced automation form.",
+          "status": "Implemented",
+          "acceptance": "Collapsed simple Settings details and recovery action."
+        },
+        {
+          "id": "C13.3",
+          "description": "Measure repeated corrections and review time over at least five consenting-user days.",
+          "status": "Acceptance required",
+          "acceptance": "Separate unresolved, excluded and wrongly allocated minutes; do not optimise only coverage."
+        }
+      ]
+    },
+    {
+      "id": "C14",
+      "category": "Explanations/trust",
+      "rating": 8,
+      "evidence_files": [
+        "automation_status.py",
+        "automation_store.py"
+      ],
+      "strength": "Automatic entries now expose saved model, context counts and policy reasons.",
+      "limitation": "Explanation usefulness and historical policy reproducibility need more evidence.",
+      "improvements": [
+        {
+          "id": "C14.1",
+          "description": "Provide inline Why this category? for AI and local-rule entries.",
+          "status": "Implemented",
+          "acceptance": "Templates use saved evidence and clearly state missing historical detail."
+        },
+        {
+          "id": "C14.2",
+          "description": "Persist an explicit routing version for new decisions; mark old versions unknown.",
+          "status": "Implemented",
+          "acceptance": "Additive migration defaults to zero, not an invented historical version."
+        },
+        {
+          "id": "C14.3",
+          "description": "State that workflow counts and model scores do not prove accuracy, output or billing approval.",
+          "status": "Implemented",
+          "acceptance": "Simple/advanced usage wording and explanations preserve these distinctions."
+        }
+      ]
+    },
+    {
+      "id": "C15",
+      "category": "Correction/undo",
+      "rating": 8,
+      "evidence_files": [
+        "store.py",
+        "simple_ui.py",
+        "decision_memory.py"
+      ],
+      "strength": "Edits remain reversible drafts and billed work stays protected.",
+      "limitation": "Remembered examples are intentionally separate from entry undo.",
+      "improvements": [
+        {
+          "id": "C15.1",
+          "description": "Preview the actual last action and guard Undo against newer background changes.",
+          "status": "Implemented",
+          "acceptance": "Expected change ID is rechecked under the write lock."
+        },
+        {
+          "id": "C15.2",
+          "description": "Make repository schema checks preserve the caller transaction.",
+          "status": "Implemented",
+          "acceptance": "A deliberately rolled-back caller write remains rolled back after Repository construction."
+        },
+        {
+          "id": "C15.3",
+          "description": "Test correction, Forget and Undo comprehension with real users.",
+          "status": "Acceptance required",
+          "acceptance": "Users must distinguish reverting time from forgetting examples without extra manual setup."
+        }
+      ]
+    },
+    {
+      "id": "C16",
+      "category": "Accessibility",
+      "rating": 6.5,
+      "evidence_files": [
+        "simple_ui.py",
+        "setup_ui.py",
+        "tests/verify_simple_ui.py"
+      ],
+      "strength": "Native buttons/expanders, accessible card labels and scaling checks provide a base.",
+      "limitation": "No human Orca acceptance or broad assistive-technology evidence exists.",
+      "improvements": [
+        {
+          "id": "C16.1",
+          "description": "Retain actual mouse/keyboard checks and accessible Assign/card names.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Existing workflows exercise native controls and focus."
+        },
+        {
+          "id": "C16.2",
+          "description": "Check the changed default flow at normal and 200% scale.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Isolated GTK checks and actual rendered screenshots, not a screen-reader claim."
+        },
+        {
+          "id": "C16.3",
+          "description": "Run human Orca, keyboard-only and large-text acceptance for setup/review/undo/export.",
+          "status": "Acceptance required",
+          "acceptance": "Record focus order, announced labels, errors and successful task completion."
+        }
+      ]
+    },
+    {
+      "id": "C17",
+      "category": "Activity recording",
+      "rating": 7.5,
+      "evidence_files": [
+        "collector.py",
+        "capture.py",
+        "tests/verify_worker_process.py"
+      ],
+      "strength": "Capture is independent, records gaps and does not wait for Jev requests.",
+      "limitation": "Sustained physical desktop/suspend/disk-failure acceptance is incomplete.",
+      "improvements": [
+        {
+          "id": "C17.1",
+          "description": "Recheck concurrent recording writes during a delayed decision process.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Separate process test verifies durable draft and DB integrity."
+        },
+        {
+          "id": "C17.2",
+          "description": "Retain explicit away, locked, personal, excluded and unknown intervals.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Capture/privacy tests and factual day-record tests."
+        },
+        {
+          "id": "C17.3",
+          "description": "Run multi-day suspend/resume, lock/login and disk-exhaustion tests on disposable hardware data.",
+          "status": "Acceptance required",
+          "acceptance": "Compare captured intervals with a reference log; never fill missing time by inference."
+        }
+      ]
+    },
+    {
+      "id": "C18",
+      "category": "Time/billing integrity",
+      "rating": 8.5,
+      "evidence_files": [
+        "store.py",
+        "day_record.py",
+        "daily_choices.py"
+      ],
+      "strength": "Overlap/rate snapshots and draft/billed boundaries are extensively tested.",
+      "limitation": "Final-package and real-use acceptance of billing/recovery safeguards remains open.",
+      "improvements": [
+        {
+          "id": "C18.1",
+          "description": "Fix exports subtracting a timer that the export omitted.",
+          "status": "Implemented",
+          "acceptance": "The same synthetic day is checked with and without an included running timer."
+        },
+        {
+          "id": "C18.2",
+          "description": "Make migration checks and Undo concurrency-safe without committing partial changes.",
+          "status": "Implemented",
+          "acceptance": "Caller rollback and expected-change regressions."
+        },
+        {
+          "id": "C18.3",
+          "description": "Recheck non-billable generic AI, protected billing and stale-assignment gates.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Core store, daily-choice, PDF and advanced workflow regressions."
+        }
+      ]
+    },
+    {
+      "id": "C19",
+      "category": "Privacy controls",
+      "rating": 8,
+      "evidence_files": [
+        "decision_context.py",
+        "automation_store.py",
+        "simple_setup.py"
+      ],
+      "strength": "Consent, exclusions, generic-only context and local title reduction are explicit.",
+      "limitation": "Provider handling is external; backups retain data under their own lifecycle.",
+      "improvements": [
+        {
+          "id": "C19.1",
+          "description": "Make Forget stop dependent pending/in-flight work and remove cached decisions.",
+          "status": "Implemented",
+          "acceptance": "Late completion cannot apply a forgotten-context decision."
+        },
+        {
+          "id": "C19.2",
+          "description": "Retain existing exclusions and sending caps when simple setup is repeated.",
+          "status": "Implemented",
+          "acceptance": "Regression proves an eligible excluded app generates no provider request."
+        },
+        {
+          "id": "C19.3",
+          "description": "Recheck exports/status/explanations omit raw titles, paths, descriptions and secrets.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Synthetic privacy tests plus source review; permitted local project names remain intentional."
+        }
+      ]
+    },
+    {
+      "id": "C20",
+      "category": "API-key security",
+      "rating": 8,
+      "evidence_files": [
+        "jev.py",
+        "automation_worker.py",
+        "packaging/verify_secret_portal.py"
+      ],
+      "strength": "Keys use secure storage; errors are sanitised and unlock failures pause quietly.",
+      "limitation": "Real keyring/portal/lock diversity is not fully established.",
+      "improvements": [
+        {
+          "id": "C20.1",
+          "description": "Retain no repeated unlock attempts while the worker is paused.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Key-error regression verifies a single key access and no usage reservation."
+        },
+        {
+          "id": "C20.2",
+          "description": "Keep new status/explanations/replay/benchmark features independent of key access.",
+          "status": "Implemented",
+          "acceptance": "New tools run locally with synthetic data; no real key is read."
+        },
+        {
+          "id": "C20.3",
+          "description": "Exercise encrypted secret portal and missing-portal behaviour using a private fake service.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Private synthetic portal check; physical desktop unlock acceptance remains separate."
+        }
+      ]
+    },
+    {
+      "id": "C21",
+      "category": "Cost management",
+      "rating": 8,
+      "evidence_files": [
+        "automation_store.py",
+        "automation_status.py"
+      ],
+      "strength": "Strict request caps, reported tokens and cache reuse exist.",
+      "limitation": "The token cap can cross by one request and provider billing remains authoritative.",
+      "improvements": [
+        {
+          "id": "C21.1",
+          "description": "Keep unresolved usage blocking across midnight, Resume and policy reconfiguration.",
+          "status": "Implemented",
+          "acceptance": "A prior-day unknown charge prevents a new request until acknowledged."
+        },
+        {
+          "id": "C21.2",
+          "description": "Bound daily totals to the actual local calendar day.",
+          "status": "Implemented",
+          "acceptance": "Other-day ledger rows cannot distort today's usage totals."
+        },
+        {
+          "id": "C21.3",
+          "description": "Show request/token limits and unresolved usage across all days in simple Settings.",
+          "status": "Implemented",
+          "acceptance": "Factual counts only; no invented currency cost or token estimate."
+        }
+      ]
+    },
+    {
+      "id": "C22",
+      "category": "Offline/API failures",
+      "rating": 8,
+      "evidence_files": [
+        "automation_worker.py",
+        "day_organiser.py"
+      ],
+      "strength": "Queue/backoff/lease handling preserve capture and avoid blind charged retries.",
+      "limitation": "Prolonged live outage/recovery and provider retirement need acceptance.",
+      "improvements": [
+        {
+          "id": "C22.1",
+          "description": "Fail closed on corrupt persisted day-pass JSON/types.",
+          "status": "Implemented",
+          "acceptance": "Malformed expiry/cursor/identity and oversized/deep JSON tests."
+        },
+        {
+          "id": "C22.2",
+          "description": "Retain bounded retry and unknown-spend acknowledgement semantics.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Provider rejection, timeout, abandoned lease and budget tests."
+        },
+        {
+          "id": "C22.3",
+          "description": "Run controlled real-provider outage/auth/model-retirement recovery tests with synthetic prompts.",
+          "status": "Acceptance required",
+          "acceptance": "Record requests/usage/recovery; do not send recorded work or retry unknown charges silently."
+        }
+      ]
+    },
+    {
+      "id": "C23",
+      "category": "Performance",
+      "rating": 7.5,
+      "evidence_files": [
+        "decision_memory.py",
+        "benchmark.py",
+        "day_record.py"
+      ],
+      "strength": "Discovery and UI work are bounded; relevant-example lookup is indexed.",
+      "limitation": "One short synthetic run cannot establish week-long resource behaviour.",
+      "improvements": [
+        {
+          "id": "C23.1",
+          "description": "Index relevant correction lookup and order by correction time.",
+          "status": "Implemented",
+          "acceptance": "App/scope/at index plus large unrelated-history regression."
+        },
+        {
+          "id": "C23.2",
+          "description": "Provide repeatable bounded discovery timing and RSS evidence.",
+          "status": "Implemented",
+          "acceptance": "Disposable synthetic DB; no flaky pass/fail timing threshold."
+        },
+        {
+          "id": "C23.3",
+          "description": "Run a week-long CPU/RSS/IO/storage profile across realistic retention sizes.",
+          "status": "Acceptance required",
+          "acceptance": "Record machine/package/desktop and latency distributions; set budgets from observations."
+        }
+      ]
+    },
+    {
+      "id": "C24",
+      "category": "Testing/evaluation",
+      "rating": 8.5,
+      "evidence_files": [
+        "tests/test_deep_review.py",
+        "evaluate.py",
+        ".github/workflows/tests.yml"
+      ],
+      "strength": "Broad deterministic tests now include the newly found failures.",
+      "limitation": "Synthetic tests do not replace live or human acceptance.",
+      "improvements": [
+        {
+          "id": "C24.1",
+          "description": "Add adversarial regressions for midnight usage, memory, schema rollback, status, exports and Undo.",
+          "status": "Implemented",
+          "acceptance": "New cases reproduce the defects and verify their corrected behaviour."
+        },
+        {
+          "id": "C24.2",
+          "description": "Add immutable-input offline response comparison and per-slice replay evidence.",
+          "status": "Implemented",
+          "acceptance": "Case identity changes are refused; wrong automatic decisions are enumerated."
+        },
+        {
+          "id": "C24.3",
+          "description": "Run the synthetic discovery benchmark in CI without a machine-specific speed gate.",
+          "status": "Implemented",
+          "acceptance": "CI benchmark command added for both existing core OS jobs; final-commit CI execution remains a release gate."
+        }
+      ]
+    },
+    {
+      "id": "C25",
+      "category": "Linux compatibility",
+      "rating": 7,
+      "evidence_files": [
+        "capture.py",
+        "desktop.py",
+        "tests/verify_*"
+      ],
+      "strength": "Multiple adapter protocols and virtual X11 paths have checks.",
+      "limitation": "Actual desktop/package coverage and closed-window Flatpak behaviour remain incomplete.",
+      "improvements": [
+        {
+          "id": "C25.1",
+          "description": "Recheck virtual X11 capture on an isolated display.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Synthetic virtual display is protocol evidence, not hardware acceptance."
+        },
+        {
+          "id": "C25.2",
+          "description": "Recheck GNOME and KDE fake-service protocols and privacy boundaries.",
+          "status": "Existing safeguard rechecked",
+          "acceptance": "Private DBus test services; no real user activity is sent."
+        },
+        {
+          "id": "C25.3",
+          "description": "Complete a physical GNOME/KDE/Sway/Hyprland and native/AppImage/Flatpak matrix.",
+          "status": "Acceptance required",
+          "acceptance": "Record versions, GPU, permissions, background behaviour and exact failures."
+        }
+      ]
+    },
+    {
+      "id": "C26",
+      "category": "Installation/updates",
+      "rating": 7.5,
+      "evidence_files": [
+        "updates.py",
+        "packaging/verify_release.py",
+        ".github/workflows"
+      ],
+      "strength": "Updates remain read-only and packaging has source/provenance gates.",
+      "limitation": "This working tree is uncommitted and not a verified public release.",
+      "improvements": [
+        {
+          "id": "C26.1",
+          "description": "Ignore malformed individual asset names without hiding an otherwise valid release.",
+          "status": "Implemented",
+          "acceptance": "A structured invalid name plus valid assets still yields the verified release link."
+        },
+        {
+          "id": "C26.2",
+          "description": "Validate fresh install, compatible upgrade, backup restore and rollback for final packages.",
+          "status": "Acceptance required",
+          "acceptance": "Use disposable databases and preserve consent, records and key ownership."
+        },
+        {
+          "id": "C26.3",
+          "description": "Build trusted final-source packages, verify provenance/hashes and publish only those artifacts.",
+          "status": "Acceptance required",
+          "acceptance": "CI/source SHA/public asset digests/local installation must match before claiming delivery."
+        }
+      ]
+    },
+    {
+      "id": "C27",
+      "category": "Architecture",
+      "rating": 8,
+      "evidence_files": [
+        "decision_contract.py",
+        "decision_memory.py",
+        "automation_status.py",
+        "setup_ui.py"
+      ],
+      "strength": "Policy, memory, validation, status and setup now have clearer boundaries.",
+      "limitation": "The retained main GTK/store modules are still large.",
+      "improvements": [
+        {
+          "id": "C27.1",
+          "description": "Extract response validation so evaluation does not depend on worker lifecycle.",
+          "status": "Implemented",
+          "acceptance": "Worker and evaluator share the same standalone contract function."
+        },
+        {
+          "id": "C27.2",
+          "description": "Extract scoped memory and local operational explanations/status.",
+          "status": "Implemented",
+          "acceptance": "New modules have direct regression coverage and no key/network requirement."
+        },
+        {
+          "id": "C27.3",
+          "description": "Extract four-step setup from daily rendering/review.",
+          "status": "Implemented",
+          "acceptance": "SetupUI mixin retains the same public UI behaviour and four steps."
+        }
+      ]
+    },
+    {
+      "id": "C28",
+      "category": "Auditability",
+      "rating": 8,
+      "evidence_files": [
+        "automation_store.py",
+        "automation_status.py",
+        "docs/evidence"
+      ],
+      "strength": "Typed results, source fingerprints, ledger and edits are durable.",
+      "limitation": "Retention intentionally prevents reconstruction of deleted private source detail.",
+      "improvements": [
+        {
+          "id": "C28.1",
+          "description": "Persist routing version on new decisions and show historical unknowns honestly.",
+          "status": "Implemented",
+          "acceptance": "Version zero is unknown; source-deleted decisions do not gain fabricated explanations."
+        },
+        {
+          "id": "C28.2",
+          "description": "Retain local rule identities without copying raw title evidence.",
+          "status": "Implemented",
+          "acceptance": "Rule snapshots survive rule deletion while containing only ID/priority/condition type."
+        },
+        {
+          "id": "C28.3",
+          "description": "Publish an 84-item machine-readable register with ratings, evidence and acceptance gates.",
+          "status": "Implemented",
+          "acceptance": "This report, plan and JSON share the same 28 categories and three actions each."
+        }
+      ]
+    }
+  ]
+}

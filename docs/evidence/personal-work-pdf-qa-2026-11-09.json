@@ -1,0 +1,18 @@
+{
+  "evidence": "synthetic non-financial day-record PDF visual QA; not human accessibility or real-activity acceptance",
+  "pages": 2,
+  "rendered_and_visually_checked": true,
+  "pdf_sha256": "6f7ec2fbe12e61905bca8114cc3fe7863ab899ddcff4a8d0228de5e60e0fbfb4",
+  "pdf_source_sha256": "1f16532c55b90cd9ae2dac8c0948491f03359ab65423088b699cdc4d41a9d6e7",
+  "private_markers_absent": true,
+  "page_image_sha256": {
+    "page-2.png": "4cfb2d47508ae75c1d62cccf1a3231e4d37fbd05eef1d3f821cad6d9a004924c",
+    "page-1.png": "774728e02762d298104c2a9ea983b5462bcadeaf5a068f7ac01361c954dba4c5"
+  },
+  "observations": [
+    "No clipped tables or orphaned section headings in reviewed pages.",
+    "Observed screen/private/away/gap totals are distinct from saved category entries.",
+    "Personal/work context is labelled as local choices or schedule expectations.",
+    "Legacy excluded observations are disclosed without rewriting historical evidence."
+  ]
+}

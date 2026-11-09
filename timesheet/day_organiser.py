@@ -4,16 +4,29 @@ import json
 import os
 import time
 import uuid
+import re
 from .decision_context import canonical,digest
 from .decision_policy import owner_token
 from .day_record import bounds
 
 
+def stored(store):
+    raw=store.get('ai_day_pass','{}')
+    if not isinstance(raw,str) or len(raw)>4096:return None
+    try:batch=json.loads(raw)
+    except (ValueError,TypeError,RecursionError):return None
+    if not isinstance(batch,dict):return None
+    if (not isinstance(batch.get('id'),str) or not re.fullmatch('[a-f0-9]{32}',batch['id'])
+            or not isinstance(batch.get('policy'),str) or not re.fullmatch('[a-f0-9]{64}',batch['policy'])
+            or batch.get('state') not in ('running','done') or type(batch.get('scanned')) is not bool
+            or any(type(batch.get(k)) is not int or not 0<=batch[k]<=2**40 for k in ('start','end','expires','cursor'))
+            or batch['start']>=batch['end']):return None
+    return batch
+
+
 def active(store,now=None):
-    now=int(time.time() if now is None else now)
-    try:batch=json.loads(store.get('ai_day_pass','{}'))
-    except (ValueError,TypeError):return None
-    if not isinstance(batch,dict) or batch.get('state')!='running':return None
+    now=int(time.time() if now is None else now);batch=stored(store)
+    if not batch or batch['state']!='running':return None
     config=policy_config(store)
     if (config['mode']=='off' or config['owner']!=owner_token() or
             config['backend']!=('flatpak' if os.environ.get('FLATPAK_ID') else 'native') or
@@ -23,8 +36,7 @@ def active(store,now=None):
 
 def request(store,day,now=None):
     """Queue a day without changing mode, processing period, data choices or caps."""
-    from .automation_store import Repository
-    now=int(time.time() if now is None else now);config=Repository(store).config()
+    now=int(time.time() if now is None else now);config=policy_config(store)
     if config['mode']=='off' or config['owner']!=owner_token():raise ValueError('Connect Jev in setup first.')
     if config['backend']!=('flatpak' if os.environ.get('FLATPAK_ID') else 'native'):raise ValueError('Connect Jev for this installation first.')
     if store.get('ai_pause_reason',''):raise ValueError('Jev needs attention before organising this day.')
@@ -49,8 +61,8 @@ def save(store,batch):
     """Do not let a superseded worker overwrite a newer button click."""
     with store.db:
         store.db.execute('BEGIN IMMEDIATE')
-        current=json.loads(store.get('ai_day_pass','{}'))
-        if current.get('id')==batch['id']:store.set('ai_day_pass',canonical(batch))
+        current=stored(store)
+        if current and current['id']==batch['id']:store.set('ai_day_pass',canonical(batch))
 
 
 def progress(store,batch):

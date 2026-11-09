@@ -1,0 +1,355 @@
+{
+  "evidence": "sustained private native GTK with synthetic data; no actual capture/provider",
+  "requested_seconds": 1800,
+  "complete": true,
+  "source_hashes_at_start": {
+    "timesheet/decision_contract.py": "d9158a8d461d70e6af65984ac258778325685fc541df01ae9c0183410cc03c69",
+    "timesheet/daily_choices.py": "6f2180505561786267591fc695dd5f3e331db44fbfaa4603194d1e2003b636bd",
+    "timesheet/automation_status.py": "adb300f492f0ab349395cf48e54c3fa60f003b3edf7f3b8cc8bd507949dfd288",
+    "timesheet/decision_memory.py": "26675ec7491fd33132d25624c6a7eb6cd036746410ed2f1cfb78f04206cc1fbc",
+    "timesheet/benchmark.py": "ae6721af2c9918f9aebfb2ccd7a8ab2c570d8205fb4debd6c0d044c2aaca5a19",
+    "timesheet/store.py": "bb7a0a590837c0bb34cbf25086772f48dc9ab28ed7e72572c3327bcbedd62fd7",
+    "timesheet/automation_worker.py": "4e4ed97993f5e1a58ff13f8559fcd798f9980721043141e590c4f40ddac0cde7",
+    "timesheet/screen_reader.py": "888c9331b7959b2f162623d956eb9634f56bf9bb7dc6c55c4eae4ccdfa57b130",
+    "timesheet/screen_spaces.py": "b3c5b6a9bd3af6e879f96ddf95cdc3eb11d75f804cbf5a3cc59ca1a03ce9d8a9",
+    "timesheet/review_metrics.py": "9615f5c5234b2859620367d1b5db500dd824c158c5591b2a39b1162f1cd69cd2",
+    "timesheet/local_types.py": "ae1dab98e8f740599c1c40371d3c3726522f658c27c00853a95212a55ac81098",
+    "timesheet/screen_time.py": "3b77876dc3f9dc22cb46c01dbcb48038ef75e3f3c3f87d60006fade038340c38",
+    "timesheet/simple_store.py": "759f846530d46ce8f512fcb42cdaf30b1161d6fab10b52f5be10a6fb97ebcec2",
+    "timesheet/day_organiser.py": "799e6aa7b7f601c5eb0385d5e1efad0acb711fa7430f1a61aa5cbd81ffabede1",
+    "timesheet/decision_policy.py": "34d9b0085b8da45694f1fff3b772e270921e5532344c9f395105eb7a7b817f2d",
+    "timesheet/updates.py": "19f3cfaf91e3e0546cb6baf424763482af6c690106743e618aa18cf73db86faa",
+    "timesheet/simple_ui.py": "4cabcdf26a9ae8d1e92bfdab9c44b86efd027ebbfc390c1f88a0fb738701c93a",
+    "timesheet/automation_ui.py": "a097b5036d8faca0aaedd63d710693d9158d92db0c6e8cd8e105e31a0d65a82b",
+    "timesheet/desktop.py": "4ba878b784d4cb579306078982beb47652a8a11690fb09e0bf992c14a1e06fdb",
+    "timesheet/host.py": "05c8d111c8e613dae5f194f2f8dff344cbebe921da9bb5146bdb4ea454b043a4",
+    "timesheet/capture.py": "08395012ec5a95d8b790153d8bc9adac77390d0427acc8e0bd5e254e2b4bad80",
+    "timesheet/setup_ui.py": "9399b291108e9b4acc445308c25c071c158f80704e6bd8fdad649bd7935c38f8",
+    "timesheet/app.py": "fd169483c0775729accd80e95b6274d759702ed30c0a9acb877bbbccb87fee80",
+    "timesheet/screen_export.py": "7a9c948bd9265432bf6a5bebd562ee8a3658870da237eaa83cce34f32b0f4f3d",
+    "timesheet/pdf_export.py": "9fad70ace3a36b5ebf5528556a45f34ae9d318db0edc8ec8d093b97f00a379b6",
+    "timesheet/day_record.py": "1f16532c55b90cd9ae2dac8c0948491f03359ab65423088b699cdc4d41a9d6e7",
+    "timesheet/review.py": "115096c95935f42805452c5ff8eb4a15e71129e0fda8a94039b1d178f5b371df",
+    "timesheet/collector.py": "6f5a1d700fda5b0d9a851340b60c0465541af626a21ab80bf9eaa8f913c3daf3",
+    "timesheet/screen_ui.py": "a34ac63464f6db1aff2f2b00ea2a1501ab0e62068ee8a3fb85972e42aa77780f",
+    "timesheet/rules.py": "e32efc53b0046e16e368f8ead0f0de5d6d10a337f853099fd1a765157083abf3",
+    "timesheet/decision_context.py": "52eb975946af4bc6913cd13d4d8eb36f2b9cc36e58025e4d73f551cc1417b357",
+    "timesheet/evaluation_template.py": "4729e57296e91aeb061b3847f5ecac9fce0a0f2c531d3be6d8e3c378a3f94fd1",
+    "timesheet/__init__.py": "c952a9deace447074b1ff46d6b45163f994757cdd47d3a59fea7b4d9d660164e",
+    "timesheet/jev.py": "52e611d55967f2d538652d4ac1163634fe9272dacd9bac579c147caef22b591b",
+    "timesheet/diagnostics.py": "c4f67298bdef1b31799addfe21fff185911a7e92d432b12c7e75772765fbd784",
+    "timesheet/evaluate.py": "127005fa0abc91bf42f9e5f5c4be7ac1bfea13b1fe2a4f986376b86370d51a4d",
+    "timesheet/simple_setup.py": "027da5bf20a96ba09a0c344851669da54bf3f396287539706261bcd432a1163b",
+    "timesheet/automation_store.py": "c95a67946d65e1252ad940c30ee80ed819e4c9cd662710e7b84159416f71d131"
+  },
+  "harness_sha256": "6ea9c1e6f107592d2f1a9ce00f1f102dc9c0cacc302956e139bbe086e04111d3",
+  "reads": 245,
+  "read_failures": 0,
+  "cancelled_reads": 0,
+  "heartbeat_ticks": 7194,
+  "max_heartbeat_gap_seconds": 0.258317136000187,
+  "filter_changes": 19,
+  "reopens": 5,
+  "insertions": 169,
+  "failures": [],
+  "samples": [
+    {
+      "elapsed_seconds": 0.9053673709995564,
+      "peak_rss_kib": 211380,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 31.905357935999746,
+      "peak_rss_kib": 211380,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 61.90556709199973,
+      "peak_rss_kib": 211380,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 92.90553429200008,
+      "peak_rss_kib": 211380,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 123.90548146499987,
+      "peak_rss_kib": 211380,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 154.90570596199996,
+      "peak_rss_kib": 211380,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 185.90537129299992,
+      "peak_rss_kib": 211388,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 215.90553374999945,
+      "peak_rss_kib": 211388,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 246.90547078300006,
+      "peak_rss_kib": 211516,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 277.90535513899977,
+      "peak_rss_kib": 211644,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 307.9055197099997,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 338.9054857579995,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 369.9055679359999,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 400.9054143940002,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 431.90548821099947,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 462.9053175179997,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 492.9055381369999,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 522.9058961359997,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 553.9054624259998,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 584.905434452,
+      "peak_rss_kib": 218812,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 614.9057258349994,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 645.9053224219997,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 676.905312723,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 706.9055083349995,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 737.905477325,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 767.905752357,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 797.9057562779999,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 828.905708456,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 859.9053160539997,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 889.9055426650002,
+      "peak_rss_kib": 220080,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 919.9058776209995,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 950.9054255359997,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 981.9057782700002,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1012.9053895249999,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1042.9056730929997,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1073.905537916,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1104.9054896540001,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1135.905457711,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1166.9053931679991,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1197.9057369250004,
+      "peak_rss_kib": 221132,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1228.9053147470004,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1259.9053160389994,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1289.9054930359998,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1319.905808214,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1350.90540435,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1380.905737993,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1411.9053246620006,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1442.9053112399997,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1472.9055187220001,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1503.9058287629996,
+      "peak_rss_kib": 222452,
+      "closed_windows_still_referenced": 1
+    },
+    {
+      "elapsed_seconds": 1534.9054184750003,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1565.905429732,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1595.9057303499994,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1626.9055181959993,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1656.9055253610004,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1686.905835997999,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1717.9054463890006,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1747.9057521670002,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 1778.905337189999,
+      "peak_rss_kib": 223688,
+      "closed_windows_still_referenced": 0
+    }
+  ],
+  "elapsed_seconds": 1800.909247468,
+  "cpu_seconds": 16.015045067,
+  "peak_process_rss_kib": 223688
+}

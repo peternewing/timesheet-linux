@@ -1,0 +1,135 @@
+{
+  "evidence": "sustained private native GTK with synthetic data; no actual capture/provider",
+  "requested_seconds": 1800,
+  "complete": false,
+  "source_hashes_at_start": {
+    "timesheet/decision_contract.py": "d9158a8d461d70e6af65984ac258778325685fc541df01ae9c0183410cc03c69",
+    "timesheet/daily_choices.py": "6f2180505561786267591fc695dd5f3e331db44fbfaa4603194d1e2003b636bd",
+    "timesheet/automation_status.py": "adb300f492f0ab349395cf48e54c3fa60f003b3edf7f3b8cc8bd507949dfd288",
+    "timesheet/decision_memory.py": "26675ec7491fd33132d25624c6a7eb6cd036746410ed2f1cfb78f04206cc1fbc",
+    "timesheet/benchmark.py": "ae6721af2c9918f9aebfb2ccd7a8ab2c570d8205fb4debd6c0d044c2aaca5a19",
+    "timesheet/store.py": "bb7a0a590837c0bb34cbf25086772f48dc9ab28ed7e72572c3327bcbedd62fd7",
+    "timesheet/automation_worker.py": "4e4ed97993f5e1a58ff13f8559fcd798f9980721043141e590c4f40ddac0cde7",
+    "timesheet/screen_reader.py": "888c9331b7959b2f162623d956eb9634f56bf9bb7dc6c55c4eae4ccdfa57b130",
+    "timesheet/screen_spaces.py": "b3c5b6a9bd3af6e879f96ddf95cdc3eb11d75f804cbf5a3cc59ca1a03ce9d8a9",
+    "timesheet/review_metrics.py": "9615f5c5234b2859620367d1b5db500dd824c158c5591b2a39b1162f1cd69cd2",
+    "timesheet/local_types.py": "ae1dab98e8f740599c1c40371d3c3726522f658c27c00853a95212a55ac81098",
+    "timesheet/screen_time.py": "6042869555e864fd001c1c3c13bbf0c0cf13118ef270cf8df1e440332d600dea",
+    "timesheet/simple_store.py": "759f846530d46ce8f512fcb42cdaf30b1161d6fab10b52f5be10a6fb97ebcec2",
+    "timesheet/day_organiser.py": "799e6aa7b7f601c5eb0385d5e1efad0acb711fa7430f1a61aa5cbd81ffabede1",
+    "timesheet/decision_policy.py": "34d9b0085b8da45694f1fff3b772e270921e5532344c9f395105eb7a7b817f2d",
+    "timesheet/updates.py": "19f3cfaf91e3e0546cb6baf424763482af6c690106743e618aa18cf73db86faa",
+    "timesheet/simple_ui.py": "1894178bc763b13fc15d8461f2e9370c2d4b51cc842d0cf0edaf8a7906cf0b9b",
+    "timesheet/automation_ui.py": "f93831cf0762f0d04e0a889b98bba29c32374825212adbab7d825d8bed303323",
+    "timesheet/desktop.py": "4ba878b784d4cb579306078982beb47652a8a11690fb09e0bf992c14a1e06fdb",
+    "timesheet/host.py": "05c8d111c8e613dae5f194f2f8dff344cbebe921da9bb5146bdb4ea454b043a4",
+    "timesheet/capture.py": "08395012ec5a95d8b790153d8bc9adac77390d0427acc8e0bd5e254e2b4bad80",
+    "timesheet/setup_ui.py": "9399b291108e9b4acc445308c25c071c158f80704e6bd8fdad649bd7935c38f8",
+    "timesheet/app.py": "fd169483c0775729accd80e95b6274d759702ed30c0a9acb877bbbccb87fee80",
+    "timesheet/screen_export.py": "7a9c948bd9265432bf6a5bebd562ee8a3658870da237eaa83cce34f32b0f4f3d",
+    "timesheet/pdf_export.py": "9fad70ace3a36b5ebf5528556a45f34ae9d318db0edc8ec8d093b97f00a379b6",
+    "timesheet/day_record.py": "1f16532c55b90cd9ae2dac8c0948491f03359ab65423088b699cdc4d41a9d6e7",
+    "timesheet/review.py": "115096c95935f42805452c5ff8eb4a15e71129e0fda8a94039b1d178f5b371df",
+    "timesheet/collector.py": "6f5a1d700fda5b0d9a851340b60c0465541af626a21ab80bf9eaa8f913c3daf3",
+    "timesheet/screen_ui.py": "0c4ac842a21c41ffeb6ac973418ca1b7687378f098882d566fbb1f5f25df842f",
+    "timesheet/rules.py": "e32efc53b0046e16e368f8ead0f0de5d6d10a337f853099fd1a765157083abf3",
+    "timesheet/decision_context.py": "52eb975946af4bc6913cd13d4d8eb36f2b9cc36e58025e4d73f551cc1417b357",
+    "timesheet/evaluation_template.py": "4729e57296e91aeb061b3847f5ecac9fce0a0f2c531d3be6d8e3c378a3f94fd1",
+    "timesheet/__init__.py": "c952a9deace447074b1ff46d6b45163f994757cdd47d3a59fea7b4d9d660164e",
+    "timesheet/jev.py": "52e611d55967f2d538652d4ac1163634fe9272dacd9bac579c147caef22b591b",
+    "timesheet/diagnostics.py": "c4f67298bdef1b31799addfe21fff185911a7e92d432b12c7e75772765fbd784",
+    "timesheet/evaluate.py": "127005fa0abc91bf42f9e5f5c4be7ac1bfea13b1fe2a4f986376b86370d51a4d",
+    "timesheet/simple_setup.py": "027da5bf20a96ba09a0c344851669da54bf3f396287539706261bcd432a1163b",
+    "timesheet/automation_store.py": "c95a67946d65e1252ad940c30ee80ed819e4c9cd662710e7b84159416f71d131"
+  },
+  "harness_sha256": "4cf0428b0bd821e6f10ad40e62075c26c176b1a211a1e2d50168e628d74b291c",
+  "reads": 58,
+  "read_failures": 0,
+  "heartbeat_ticks": 1728,
+  "max_heartbeat_gap_seconds": 0.2595707480004421,
+  "filter_changes": 4,
+  "reopens": 1,
+  "insertions": 41,
+  "failures": [],
+  "samples": [
+    {
+      "elapsed_seconds": 1.6210453300000154,
+      "peak_rss_kib": 211136,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 31.621217650999824,
+      "peak_rss_kib": 211136,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 62.621206208999865,
+      "peak_rss_kib": 211136,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 93.62117013399984,
+      "peak_rss_kib": 211136,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 124.62114507099977,
+      "peak_rss_kib": 211136,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 155.62112252099996,
+      "peak_rss_kib": 211136,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 186.6210997520002,
+      "peak_rss_kib": 211136,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 217.62131473099998,
+      "peak_rss_kib": 211136,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 248.62103992499942,
+      "peak_rss_kib": 211232,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 279.62103923799987,
+      "peak_rss_kib": 211744,
+      "closed_windows_still_referenced": 0
+    },
+    {
+      "elapsed_seconds": 309.6211742380001,
+      "peak_rss_kib": 218528,
+      "closed_windows_still_referenced": 1
+    },
+    {
+      "elapsed_seconds": 340.6210594949998,
+      "peak_rss_kib": 218528,
+      "closed_windows_still_referenced": 1
+    },
+    {
+      "elapsed_seconds": 370.62113846899956,
+      "peak_rss_kib": 218528,
+      "closed_windows_still_referenced": 1
+    },
+    {
+      "elapsed_seconds": 401.62108597299994,
+      "peak_rss_kib": 218528,
+      "closed_windows_still_referenced": 1
+    },
+    {
+      "elapsed_seconds": 432.6210563710001,
+      "peak_rss_kib": 218528,
+      "closed_windows_still_referenced": 1
+    }
+  ],
+  "elapsed_seconds": 432.6287314829997,
+  "cpu_seconds": 3.143743198,
+  "peak_process_rss_kib": 218528,
+  "interrupted_for_fix": "Closed window remained referenced after GC. Run superseded by cleanup fix; elapsed time is not a completed 30-minute pass."
+}

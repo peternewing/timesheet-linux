@@ -25,6 +25,7 @@ CREATE INDEX IF NOT EXISTS entries_time ON entries(start,end);
 CREATE TABLE IF NOT EXISTS activity(id INTEGER PRIMARY KEY, start INTEGER NOT NULL, end INTEGER NOT NULL, app TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT 'active', CHECK(end > start));
 CREATE INDEX IF NOT EXISTS activity_time ON activity(start,end);
 CREATE TABLE IF NOT EXISTS rules(id INTEGER PRIMARY KEY, app TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', task_id INTEGER NOT NULL REFERENCES tasks(id), priority INTEGER NOT NULL DEFAULT 0, enabled INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS rule_assignments(entry_id INTEGER PRIMARY KEY REFERENCES entries(id),rule_id INTEGER NOT NULL,title_required INTEGER NOT NULL,priority INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at INTEGER NOT NULL, action TEXT NOT NULL, details TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS reports(id INTEGER PRIMARY KEY, created INTEGER NOT NULL, client_id INTEGER NOT NULL REFERENCES clients(id), start INTEGER NOT NULL, end INTEGER NOT NULL, snapshot TEXT NOT NULL);
@@ -236,7 +237,8 @@ class Store:
                     beginning=max(r['start'],start) if bounded else max(r['start'],rule['created'])
                     finish=min(r['end'],end) if bounded else r['end']
                     for a,b in self.uncovered(beginning,finish,now):
-                        self.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id) VALUES(?,?,?,'','automatic',?)",(rule['task_id'],a,b,r['id']))
+                        eid=self.db.execute("INSERT INTO entries(task_id,start,end,description,origin,activity_id) VALUES(?,?,?,'','automatic',?)",(rule['task_id'],a,b,r['id'])).lastrowid
+                        self.db.execute('INSERT INTO rule_assignments VALUES(?,?,?,?)',(eid,rule['id'],int(bool(rule['title'])),rule['priority']))
                         count+=1
                 if not bounded: self.db.execute('UPDATE activity SET auto_processed=1 WHERE id=?',(r['id'],))
             if count: self.audit('automatically assigned',{'entries':count})
@@ -286,7 +288,7 @@ class Store:
                 JOIN clients c ON p.client_id=c.id WHERE e.deleted=0 AND e.id=?''',(entry,)).fetchone()
         if not row or row['status']!='draft': raise ValueError('Only draft entries can be approved.')
         if row['end']>time.time(): raise ValueError('Future time cannot be approved.')
-        if row['origin'] in ('automatic','assigned','jev'):
+        if row['origin'] in ('automatic','assigned','jev','app_type'):
             activity=self.db.execute('SELECT * FROM activity WHERE id=?',(row['activity_id'],)).fetchone()
             if activity and (not activity['closed'] or activity['end']>time.time()-int(self.get('idle_seconds','300'))):
                 raise ValueError('Recent activity is still settling. Review it after the idle threshold, or enter it explicitly as manual work.')
@@ -311,11 +313,18 @@ class Store:
             self._record_change('Merge entries',rows,[r['id'] for r in rows])
             self.audit('entries merged',{'id':first['id'],'count':len(rows)})
 
-    def undo(self):
+    def undo_preview(self):
+        change=self.db.execute('SELECT id,action,after_state FROM entry_changes WHERE undone=0 ORDER BY id DESC LIMIT 1').fetchone()
+        if not change:raise ValueError('There is no change to undo.')
+        return dict(id=change['id'],action=change['action'],entries=len(json.loads(change['after_state'])))
+
+    def undo(self,*,expected_change=None):
         with self.db:
             self.db.execute('BEGIN IMMEDIATE')
             change=self.db.execute('SELECT * FROM entry_changes WHERE undone=0 ORDER BY id DESC LIMIT 1').fetchone()
             if not change: raise ValueError('There is no change to undo.')
+            if expected_change is not None and change['id']!=expected_change:
+                raise ValueError('A newer change arrived. Reopen Undo to review it before continuing.')
             before=json.loads(change['before_state']); after=json.loads(change['after_state'])
             revisions={}
             for expected in after:
@@ -331,7 +340,9 @@ class Store:
                 values.update(status='draft',rate=None,currency=None,revision=revisions[r['id']]+1)
                 self.db.execute('UPDATE entries SET '+','.join(k+'=?' for k in values)+' WHERE id=?',(*values.values(),r['id']))
             for r in after:
-                if r['id'] not in original_ids: self.db.execute('UPDATE entries SET revision=revision+1 WHERE id=?',(r['id'],))
+                if r['id'] not in original_ids:
+                    self.db.execute('UPDATE entries SET revision=revision+1 WHERE id=?',(r['id'],))
+                    if r['origin']=='app_type' and r['activity_id'] is not None:self.db.execute('INSERT OR IGNORE INTO local_type_suppressions VALUES(?)',(r['activity_id'],))
             from .daily_choices import undo as undo_daily_choice
             undo_daily_choice(self,change['id'])
             self.db.execute('UPDATE entry_changes SET undone=1 WHERE id=?',(change['id'],))
@@ -349,12 +360,28 @@ class Store:
         os.chmod(path,0o600)
         self.path = path
         self.db = sqlite3.connect(path, timeout=10)
+        self.db.create_function('timesheet_casefold',1,lambda value:value.casefold() if isinstance(value,str) else '',deterministic=True)
         self.db.row_factory = sqlite3.Row
         self.db.execute('PRAGMA foreign_keys=ON')
         self.db.execute('PRAGMA busy_timeout=10000')
         self.db.executescript(SCHEMA)
         self.db.commit()
         self._migrate()
+        if 'capture_version' not in {r[1] for r in self.db.execute('PRAGMA table_info(activity)')}:
+            with self.db:
+                self.db.execute('BEGIN IMMEDIATE')
+                if 'capture_version' not in {r[1] for r in self.db.execute('PRAGMA table_info(activity)')}:
+                    self.db.execute('ALTER TABLE activity ADD COLUMN capture_version INTEGER NOT NULL DEFAULT 0')
+        self.db.execute('CREATE INDEX IF NOT EXISTS entries_activity_time ON entries(activity_id,start,end) WHERE deleted=0')
+        from .screen_spaces import SCHEMA as SPACES_SCHEMA
+        from .review_metrics import SCHEMA as REVIEW_SCHEMA
+        from .local_types import SCHEMA as LOCAL_SCHEMA
+        self.db.executescript(SPACES_SCHEMA+REVIEW_SCHEMA+LOCAL_SCHEMA)
+        if 'zone' not in {r[1] for r in self.db.execute('PRAGMA table_info(screen_space_schedules)')}:
+            with self.db:
+                self.db.execute('BEGIN IMMEDIATE')
+                if 'zone' not in {r[1] for r in self.db.execute('PRAGMA table_info(screen_space_schedules)')}:
+                    self.db.execute("ALTER TABLE screen_space_schedules ADD COLUMN zone TEXT NOT NULL DEFAULT ''")
 
     def close(self): self.db.close()
     def rows(self, query, args=()): return self.db.execute(query, args).fetchall()

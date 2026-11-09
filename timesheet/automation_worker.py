@@ -9,7 +9,8 @@ import time
 from . import jev
 from .automation_store import Repository
 from .decision_context import canonical,digest
-from .decision_policy import route,owner_token
+from .decision_policy import owner_token
+from .decision_contract import valid_result
 from .store import Store,DATA_DIR
 
 
@@ -27,11 +28,23 @@ class Engine:
         self.store.set('ai_worker_seen',now)
         from .daily_choices import apply_saved
         apply_saved(self.store,now)
+        from .local_types import apply as apply_local_types
+        apply_local_types(self.store,now)
         if config['mode']=='off':return 'off'
         if config['backend']!=('flatpak' if os.environ.get('FLATPAK_ID') else 'native'):return 'other installation'
         if config['owner']!=owner_token():return 'other installation'
-        if now<int(self.store.get('ai_backoff_until','0') or 0):return 'backoff'
-        if now-int(self.store.get('ai_last_prune','0') or 0)>3600:
+        try:
+            backoff=int(self.store.get('ai_backoff_until','0') or 0)
+            if not 0<=backoff<=now+86400:raise ValueError('Invalid retry clock')
+        except (ValueError,TypeError):
+            self.store.set('ai_backoff_until',0)
+            self.pause('Local retry timing was invalid and has been reset. Review usage, then Resume automation.','attention',now)
+            return 'paused'
+        if now<backoff:return 'backoff'
+        try:last_prune=int(self.store.get('ai_last_prune','0') or 0)
+        except (ValueError,TypeError):last_prune=0
+        if not 0<=last_prune<=now+300:last_prune=0
+        if now-last_prune>3600:
             self.repo.prune(now);self.store.set('ai_last_prune',now)
         reason=self.store.get('ai_pause_reason','')
         if reason:
@@ -53,15 +66,20 @@ class Engine:
             payload=jev.prepare_decision(network['applications'],network['tasks'],examples=network['examples'],clues=network['clues'],focus=network.get('focus'),focus_default=network.get('focus_default',False),model=model,application_categories=network.get('application_categories',False))
         except jev.JevError:
             self.repo.transition(job['id'],'failed','The selected context or model is not supported. Review task guidance.');return 'failed'
-        cache_key=digest(payload)
-        cached=self.store.db.execute('SELECT result FROM ai_cache WHERE cache_key=? AND expires>?',(cache_key,now)).fetchone()
+        cache_key=digest([jev.REQUEST_VERSION,payload])
+        cached=self.store.db.execute('SELECT CASE WHEN length(result)<=64000 THEN result END result FROM ai_cache WHERE cache_key=? AND expires>?',(cache_key,now)).fetchone()
         result=None
-        if cached:
+        source='provider'
+        if cached and cached['result'] is not None:
             try:
                 result=json.loads(cached['result'])
                 if not valid_result(result,network['tasks'],model):result=None
-            except (ValueError,TypeError):result=None
+            except (ValueError,TypeError,RecursionError):result=None
         if result is None:
+            blocked=self.repo.request_blocker(now)
+            if blocked:
+                self.repo.transition(job['id'],'pending',blocked)
+                self.pause(blocked,'budget' if 'limit reached' in blocked else 'attention',now);return 'paused'
             try:key=self.key()
             except Exception:
                 self.repo.transition(job['id'],'pending','Secure key unavailable; unlock it and Resume automation.')
@@ -96,31 +114,10 @@ class Engine:
                     # pause instead of silently changing the decision model.
                     self.store.set('ai_pinned_model',result['model'])
                     payload['model']=result['model']
-                    self.store.db.execute('INSERT OR REPLACE INTO ai_cache VALUES(?,?,?)',(digest(payload),canonical(result),now+7*86400))
-        return self.repo.complete(job,result)
+                    self.store.db.execute('INSERT OR REPLACE INTO ai_cache VALUES(?,?,?)',(digest([jev.REQUEST_VERSION,payload]),canonical(result),now+7*86400))
+        else:source='cache'
+        return self.repo.complete(job,result,source=source)
 
-
-def valid_result(value,tasks,model):
-    from .decision_policy import probability
-    import math,re
-    if not isinstance(value,dict):return False
-    ids={i for i,_ in tasks}
-    task=value.get('task');alts=value.get('alternatives')
-    if task is not None and (type(task) is not int or task not in ids):return False
-    if not isinstance(alts,(list,tuple)) or len(alts)!=len(ids):return False
-    if any(not isinstance(x,(list,tuple)) or len(x)!=2 or type(x[0]) is not int or x[0] not in ids or not probability(x[1]) for x in alts):return False
-    if len({x[0] for x in alts})!=len(ids):return False
-    if not all(probability(value.get(k)) for k in ('probability','none_probability','personal','enough_evidence')):return False
-    if not math.isclose(sum(x[1] for x in alts)+value['none_probability'],1,abs_tol=.02):return False
-    dist=dict(alts);dist[None]=value['none_probability']
-    if value['probability']!=dist[task] or dist[task]+.000001<max(dist.values()):return False
-    if list(alts)!=sorted(alts,key=lambda x:(-x[1],x[0])):return False
-    actual=value.get('model')
-    if not isinstance(actual,str) or actual=='jev-latest' or not re.fullmatch(r'jev-[A-Za-z0-9._-]{1,120}',actual):return False
-    if model!='jev-latest' and actual!=model:return False
-    usage=value.get('usage')
-    return (isinstance(usage,dict) and all(type(usage.get(k)) is int and 0<=usage[k]<=1000000 for k in ('input_tokens','output_tokens'))
-            and value.get('work_kind') in jev.WORK_KINDS)
 
 
 def run(*,once=False):

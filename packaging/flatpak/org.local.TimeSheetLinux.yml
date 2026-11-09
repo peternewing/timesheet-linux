@@ -19,6 +19,17 @@ finish-args:
   - --env=SECRET_BACKEND=file
   - --env=PYTHONPATH=/app/lib/python3/site-packages:/app/share/time-sheet-linux
 modules:
+  - name: python-xlib
+    buildsystem: simple
+    build-commands:
+      - python3 -m pip install --no-index --no-deps --prefix=/app six*.whl python_xlib*.whl
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/fc/b8/ff33610932e0ee81ae7f1269c890f697d56ff74b9f5b2ee5d9b7fa2c5355/python_xlib-0.33-py2.py3-none-any.whl
+        sha256: c3534038d42e0df2f1392a1b30a15a4ff5fdc2b86cfa94f072bf11b10a164398
+      - type: file
+        url: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
+        sha256: 4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274
   - name: pillow
     buildsystem: simple
     build-commands:

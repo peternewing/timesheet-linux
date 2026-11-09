@@ -70,7 +70,7 @@ class Collector:
                 if self.open_id is not None:
                     self.store.db.execute('UPDATE activity SET closed=1 WHERE id=?',(self.open_id,))
                 self.open_id = self.store.db.execute(
-                    'INSERT INTO activity(start,end,app,title,state,closed,session) VALUES(?,?,?,?,?,0,?)',
+                    'INSERT INTO activity(start,end,app,title,state,closed,session,capture_version) VALUES(?,?,?,?,?,0,?,2)',
                     (start,end,*focus,self.session)).lastrowid
                 self.open_start = start
                 self.focus = focus
@@ -117,7 +117,9 @@ class Collector:
             threshold=int(self.store.get('idle_seconds','300'))*1000
             activity_state='locked' if locked else 'unknown' if idle<0 else 'away' if idle>=threshold else 'active'
             excluded={x.strip().casefold() for x in self.store.get('excluded_apps','').split(',') if x.strip()}
-            if app.casefold() in excluded: activity_state='excluded'
+            # Exclusion conceals active foreground use; it must not turn idle or
+            # locked time into apparent screen time merely because that app remains focused.
+            if activity_state=='active' and app.casefold() in excluded: activity_state='excluded'
             if not app and activity_state=='active': activity_state='unknown'
             if activity_state!='active': app=title=''
             elif self.store.get('capture_titles','0')!='1': title=''
@@ -150,6 +152,8 @@ class Collector:
             from .daily_choices import apply_saved
             apply_saved(self.store,now)
             self.store.apply_rules(now)
+            from .local_types import apply as apply_local_types
+            apply_local_types(self.store,now)
             self.last_rules=now
         return status
 
@@ -182,6 +186,8 @@ def notify_tracking_problem():
 def maintenance(store, now):
     with store.db:
         store.db.execute('DELETE FROM activity WHERE closed=1 AND end<?',(int(now)-int(store.get('retention_days','30'))*86400,))
+        store.db.execute('DELETE FROM local_type_suppressions WHERE NOT EXISTS(SELECT 1 FROM activity a WHERE a.id=local_type_suppressions.activity_id)')
+        store.db.execute('DELETE FROM screen_review_sessions WHERE started<?',(int(now)-int(store.get('retention_days','30'))*86400,))
     if store.db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ai_jobs'").fetchone():
         from .automation_store import Repository
         Repository(store).prune(now)

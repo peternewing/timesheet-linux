@@ -1,10 +1,15 @@
 # Time Sheet Linux
 
-**Set up once. Work as usual. Save a clear record of your day.**
+**See your computer screen time. For personal life and work.**
 
-Time Sheet records Linux app activity and lets Jev organise it into simple activity
-categories. Clear cases happen automatically; uncertain activity needs one choice.
-Core recording stays local and works without AI. Jev uses your own TypeSafe key.
+Time Sheet records Linux app activity and shows where your screen time goes.
+Clear installed app types can be organised locally; Jev can help with remaining
+permitted activity using your own TypeSafe key. Core recording and screen-time
+insights stay local and work without AI.
+
+The current source candidate is **0.7.0-rc1**. It includes the personal/work additions
+below; the older published 0.6.1-rc2 packages do not. See the [delivery notes](docs/DELIVERY_0.7.0.md)
+and [28-category reassessment](docs/PERSONAL_WORK_REASSESSMENT_2026-11-09.md).
 
 ![The simple Today screen, using synthetic example data](docs/screenshots/today.png)
 
@@ -15,6 +20,12 @@ Core recording stays local and works without AI. Jev uses your own TypeSafe key.
 3. Click **Use my saved key**, **Paste key and connect**, or **Continue without AI**.
 4. Click **Start**. You can then work as usual.
 
+The last step also offers **Choose useful tools (optional)**: track project time,
+automate repeated assignments with local rules, or prepare client reports.
+Selected shortcuts appear under **More actions** on each day. Change them later
+in Settings. These choices add no setup step and do not enable project-data sending.
+Repeating setup preserves app exclusions and custom request/token limits.
+
 No project names, rates, rules or typed setup fields are required. There are only
 three everyday destinations: **Today**, **Past days**, and **Settings**. Choose a
 category once per app for the selected day; **Save day record** produces a PDF of the recorded day.
@@ -22,6 +33,30 @@ category once per app for the selected day; **Save day record** produces a PDF o
 The record separates captured app use, AI estimates, your choices, away time and
 capture gaps. It is evidence of app activity, not independent proof of completed
 outputs or productivity. Simple-flow categories are non-billable drafts.
+
+## Personal and work screen time
+
+Open **This week** from your day’s screen-time details for daily/hourly totals,
+top apps and a private local CSV summary. Games, videos/listening, browsing and
+computer utilities join the four existing activity types. Missing recording is
+shown separately from zero observed use.
+
+**Personal / work spaces** offers three local labels and optional click-only
+weekday schedules. A manual switch overrides the schedule; an hourly correction
+changes just that past period. Undo restores the previous labels. These choices
+do not start timers, hide personal activity, change AI sending scope or approve
+billing. Private app names remain hidden while their observed totals can count.
+
+Local app typing is optional in setup/Settings. It uses exact installed desktop
+identities and conservative declared categories. Ambiguous apps stay unclassified.
+It creates reversible, non-billable drafts and respects your choices and rules.
+Existing users do not silently enable it on upgrade.
+
+Development capture limit: the desktop's idle signal determines away time. Passive
+reading/video may be marked away, and background audio is not measured. Screen-time
+figures describe detected foreground use, not a validated screen-on or attention
+total. The real-desktop acceptance plan includes these cases before any stronger
+phone-equivalence claim.
 
 ## Install 0.6.1-rc2
 
@@ -83,6 +118,12 @@ In **Settings**, enable **Show advanced tools in sidebar** for regular access to
 projects, rules, history and reports. These use the same records; setup stays simple.
 Expandable help explains what Jev and each set of tools actually do.
 
+Jev's useful job is sorting recorded activity and reducing repeated decisions.
+An app name alone often cannot identify a client or distinguish research from
+personal browsing. Use **Assign** for that day's choice, local rules for known
+repeated assignments, and project tools when you need deliberate task tracking.
+Creating projects does not add them to the simple flow's outgoing AI context.
+
 ## Existing users
 
 Open the new app and use **Set up in 4 steps**. Compatible native/source upgrades preserve an existing enabled data policy.
@@ -115,6 +156,8 @@ Hyprland remains experimental. Hardware and screen-reader acceptance remain open
 
 [Simplicity review](docs/SIMPLICITY_REVIEW_0.6.md) ·
 [Accepted roadmap](docs/AUTOMATION_ROADMAP.md) ·
+[28-category deep review](docs/DEEP_REVIEW_2026-11-09.md) ·
+[Improvement and acceptance plan](docs/IMPROVEMENT_PLAN_2026-11-09.md) ·
 [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md)
 
 Run `/usr/bin/python3 -m unittest discover -s tests -v`. Follow [AGENTS.md](AGENTS.md)

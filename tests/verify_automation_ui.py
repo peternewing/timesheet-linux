@@ -33,6 +33,14 @@ with tempfile.TemporaryDirectory(prefix='timesheet-automation-ui-') as tmp:
         paint=Gtk.WidgetPaintable.new(window);snap=Gtk.Snapshot.new();paint.snapshot(snap,window.get_width(),window.get_height())
         node=snap.to_node();assert node;window.get_renderer().render_texture(node,None).save_to_png(str(output/(name+'.png')))
     def steps():
+        app.task_guidance_dialog(task);yield
+        guidance_form=app.dialogs[-1]
+        starter=next(w for w in descendants(guidance_form) if isinstance(w,Gtk.Expander) and w.get_label()=='Use a starter description (optional)')
+        starter.set_expanded(True);yield
+        find(starter,Gtk.Button,'Creating & building').emit('clicked');yield
+        check(repo.store.db.execute('SELECT guidance FROM ai_task_profiles WHERE task_id=?',(task,)).fetchone()[0]=='Falcon implementation for Example Studio','Choosing a guidance starter stays unsaved and local')
+        find(guidance_form,Gtk.Button,'Save').emit('clicked');yield
+        check('Creating, writing' in repo.store.db.execute('SELECT guidance FROM ai_task_profiles WHERE task_id=?',(task,)).fetchone()[0] and not request.called,'Saving starter guidance does not make an inference request')
         app.show_page('Today');yield
         check(find(app.body_today,Gtk.Button,'Set up Jev automation').get_sensitive(),'Today offers one automation setup action')
         find(app.body_today,Gtk.Button,'Set up Jev automation').emit('clicked');yield
@@ -102,6 +110,16 @@ with tempfile.TemporaryDirectory(prefix='timesheet-automation-ui-') as tmp:
         app.focus_dialog(task);yield
         focus_form=app.dialogs[-1];find(focus_form,Gtk.Button,'Clear current focus').emit('clicked');yield
         check(repo.current_focus() is None and focus_form not in app.dialogs,'Clear focus stops the instruction and closes its form')
+        from timesheet.decision_memory import remember
+        from timesheet.decision_context import canonical
+        with app.store.db:remember(app.store,app.store.rows('SELECT id FROM activity LIMIT 1')[0]['id'],'Editor',task,canonical({'clues':[],'focus':None}),now)
+        app.forget_app_corrections();yield
+        forget_form=app.dialogs[-1];forget=find(forget_form,Gtk.Button,'Forget this app’s examples')
+        check(not forget.get_sensitive() and not any(isinstance(w,Gtk.Entry) for w in descendants(forget_form)),'Scoped Forget is click-only and requires an explicit app choice')
+        choice=next(w for w in descendants(forget_form) if isinstance(w,Gtk.DropDown));choice.set_selected(1);yield
+        check(forget.get_sensitive(),'Choosing a remembered app enables its scoped Forget action')
+        find(forget_form,Gtk.Button,'Close').emit('clicked');yield
+        check(bool(app.store.rows('SELECT id FROM ai_examples')) and len(app.store.entries(0,now))==2,'Closing scoped Forget preserves examples and saved time')
         check(app.store.db.execute('PRAGMA integrity_check').fetchone()[0]=='ok','Database integrity remains valid after automation review')
         print('PASS:',len(checks),'automation UI checks',flush=True)
     iterator=steps()

@@ -33,7 +33,7 @@ def check(current,opener=None):
             if item.get('html_url')!=PREFIX+item['tag_name']:continue
             assets=item.get('assets')
             if not isinstance(assets,list):continue
-            names={a.get('name') for a in assets if isinstance(a,dict)}
+            names={a['name'] for a in assets if isinstance(a,dict) and isinstance(a.get('name'),str) and len(a['name'])<=128}
             if not {'TimeSheetLinux-x86_64.AppImage','TimeSheetLinux-x86_64.flatpak','SHA256SUMS'}<=names:continue
             releases.append((key,item['tag_name'],item['html_url'],'provenance.sigstore.json' in names))
         if not releases:raise ValueError('No complete published release was found.')
