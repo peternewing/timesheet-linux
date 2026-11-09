@@ -223,12 +223,16 @@ def adopt_compatible_policy(store,previous_owner):
     from .decision_policy import owner_token
     from .decision_context import canonical
     from .simple_setup import preset_ids
-    repo=Repository(store);config=repo.config()
-    if config['mode']=='off' or config['backend']!='native' or config['owner']!=previous_owner:return False
-    if config['category_tasks'] and not set(config['category_tasks'])<=set(preset_ids(store).values()):return False
-    config={**config,'owner':owner_token()}
+    repo=Repository(store)
     with store.db:
-        store.db.execute('BEGIN IMMEDIATE');store.set('ai_policy',canonical(config));store.set('ai_discover_after','0')
+        store.db.execute('BEGIN IMMEDIATE')
+        # Read the latest policy only after holding the write lock. A revocation
+        # made just before upgrade must win over a previously read configuration.
+        config=repo.config()
+        if config['mode']=='off' or config['backend']!='native' or config['owner']!=previous_owner:return False
+        if config['category_tasks'] and not set(config['category_tasks'])<=set(preset_ids(store).values()):return False
+        config={**config,'owner':owner_token()}
+        store.set('ai_policy',canonical(config));store.set('ai_discover_after','0')
         store.db.execute("UPDATE ai_jobs SET state='stale',reason='Compatible app upgrade; local context will be revalidated.',updated=? WHERE state IN ('pending','running','exception','failed')",(int(time.time()),))
         store.audit('compatible source upgrade',{})
     return True

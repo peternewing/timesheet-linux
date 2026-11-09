@@ -47,13 +47,15 @@ to outgoing Jev requests. No live API calls or real user data were used in testi
 An authorised compatible native/source upgrade transfers only installation ownership
 of an already-enabled policy after stopping the old worker. Data choices, caps,
 processing period and paused state stay unchanged. Off stays off; another installation's
-policy is not adopted. Previous version metadata is parsed, never executed. Other
+policy is not adopted. The policy is reread after acquiring the write lock; a revocation made at the
+upgrade boundary is preserved. A regression test reproduced this race before the
+fix and passes afterwards. Previous version metadata is parsed, never executed. Other
 package/source switches still require explicit setup when compatibility cannot be
 established. Existing records and key storage are preserved.
 
 ## Validation
 
-- 226 unit/regression tests, including full-day grouping, Unicode case folding,
+- 227 unit/regression tests, including full-day grouping, Unicode case folding,
   future same-day reuse, next-day separation, skip, stale atomic groups, AI races,
   protected manual entries, estimate replacement/undo, bounded continuation, source
   retention, compatible upgrades, ranked totals and timer boundary/delayed ticks.

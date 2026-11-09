@@ -102,6 +102,19 @@ class DailyChoicesTests(unittest.TestCase):
         self.assertTrue(adopt_compatible_policy(self.store,old))
         config=self.repo.config();self.assertEqual(config['owner'],owner_token());self.assertEqual(config['daily_requests'],10)
         self.assertFalse(config['allow_project_clues']);self.assertEqual(self.store.get('ai_pause_reason'),'Unknown usage needs acknowledgement')
+    def test_revocation_at_upgrade_lock_boundary_is_not_overwritten(self):
+        from timesheet.desktop import adopt_compatible_policy
+        import json
+        old='a'*64;policy={**self.config,'owner':old};self.repo.configure(policy)
+        other=Store(self.store.path);switched=[]
+        def trace(sql):
+            if sql=='BEGIN IMMEDIATE' and not switched:
+                switched.append(True);other.set('ai_policy',json.dumps({**policy,'mode':'off'}))
+        self.store.db.set_trace_callback(trace)
+        try:
+            self.assertFalse(adopt_compatible_policy(self.store,old))
+            self.assertEqual(self.repo.config()['mode'],'off');self.assertTrue(switched)
+        finally:self.store.db.set_trace_callback(None);other.close()
     def test_upgrade_does_not_adopt_other_installation_or_enable_off_policy(self):
         from timesheet.desktop import adopt_compatible_policy
         self.assertFalse(adopt_compatible_policy(self.store,'b'*64))

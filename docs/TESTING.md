@@ -117,7 +117,7 @@ GDK_SCALE=2 GDK_BACKEND=x11 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory PYTHONPA
 
 ## 0.6.1 daily choices and cards
 
-226 unit tests and 41 default UI checks (normal/200%) cover the requested grouped
+227 unit tests and 41 default UI checks (normal/200%) cover the requested grouped
 decisions, live counters, rankings and clickable card details. Retained advanced
 workflows are tested separately. See DAILY_REVIEW_0.6.1.md. Synthetic test data
 only; no real account inference or activity transmission is needed for this change.
